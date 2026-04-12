@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Housings</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="logo">
+            <h2>UniNest</h2>
+        </div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Housings</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html" class="register-btn">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="page-header-content">
+            <h1>Explore Student Housings</h1>
+            <p>
+                Browse a variety of modern, safe, and comfortable student accommodations
+                near top universities in Lebanon.
+            </p>
+        </div>
+    </section>
+
+    <!-- Filter Section -->
+    <section class="housing-filter-section">
+        <div class="filter-box">
+            <h2>Find Your Ideal Housing</h2>
+
+            <form class="filter-form" action="search-results.html" method="GET">
+                <div class="form-group">
+                    <label for="university">University</label>
+                    <select id="university" name="university">
+                        <option value="">Select University</option>
+                        <option value="MU">MU</option>
+                        <option value="LU">LU</option>
+                        <option value="UA">UA</option>
+                        <option value="AUB">AUB</option>
+                        <option value="LAU">LAU</option>
+                        <option value="USJ">USJ</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <select id="city" name="city">
+                        <option value="">Select University First</option>
+                    </select>
+                </div>
+
+                
+
+
+                <div class="form-group search-btn-group">
+                    <button type="submit" class="btn primary-btn">Search Now</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    
+
+    <!-- Why Choose This Page Section -->
+    <section class="why-choose-us">
+        <div class="section-title">
+            <h2>What Makes Our Housings Special?</h2>
+            <p>Each housing option is selected to offer students comfort, security, and convenience.</p>
+        </div>
+
+        <div class="features-container">
+            <div class="feature-box">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h3>Safe Environment</h3>
+                <p>All listed accommodations prioritize student safety and secure living conditions.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-wifi"></i>
+                <h3>Modern Facilities</h3>
+                <p>Enjoy services like Wi-Fi, study areas, laundry rooms, and shared kitchens.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Prime Locations</h3>
+                <p>Stay close to your university and save time on daily transportation.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-wallet"></i>
+                <h3>Affordable Prices</h3>
+                <p>Find options that fit different budgets without sacrificing quality and comfort.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+
+            <div class="footer-box">
+                <h3>UniNest</h3>
+                <p>
+                    A modern student housing platform that helps students find safe,
+                    comfortable, and affordable accommodation near their universities.
+                </p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="housings.html">Housings</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-box">
+                <h3>Contact Info</h3>
+                <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+                <p><i class="fa-solid fa-phone"></i> +961 70 123 456</p>
+                <p><i class="fa-solid fa-location-dot"></i> Beirut, Lebanon</p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Follow Us</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+    const universitySelect = document.getElementById("university");
+    const citySelect = document.getElementById("city");
+
+    const universityCities = {
+        MU: ["Beirut"],
+        LU: ["Hadath", "Fanar", "Ras Maska"],
+        UA: ["Hadath", "Zahle", "Zgharta"],
+        AUB: ["Beirut"],
+        LAU: ["Beirut", "Byblos"],
+        USJ: ["Beirut"]
+    };
+
+    function updateCityOptions() {
+        const selectedUniversity = universitySelect.value;
+
+        citySelect.innerHTML = "";
+
+        if (selectedUniversity === "") {
+            citySelect.innerHTML = '<option value="">Select University First</option>';
+            return;
+        }
+
+        citySelect.innerHTML = '<option value="">Select City</option>';
+
+        universityCities[selectedUniversity].forEach(function (city) {
+            const option = document.createElement("option");
+            option.value = city;
+            option.textContent = city;
+            citySelect.appendChild(option);
+        });
+    }
+
+    universitySelect.addEventListener("change", updateCityOptions);
+</script>
+
+</body>
+</html>

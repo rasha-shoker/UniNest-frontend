@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Search Results</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="logo">
+            <h2>UniNest</h2>
+        </div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Housings</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html" class="register-btn">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Results Header -->
+    <section class="page-header">
+        <div class="page-header-content">
+            <h1>Search Results</h1>
+            <p id="resultsSummary">
+                Explore the student housing options that match your search.
+            </p>
+        </div>
+    </section>
+
+    <!-- Search Results -->
+    <section class="all-housings-section">
+        <div class="section-title">
+            <h2>Available Housings</h2>
+            <p>Choose the housing that fits your location, university, and budget.</p>
+        </div>
+
+        <div class="housing-cards" id="housingResults"></div>
+
+        <div id="noResultsMessage" class="no-results-message" style="display: none;">
+            <p>No housing found for your selected filters.</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+
+            <div class="footer-box">
+                <h3>UniNest</h3>
+                <p>
+                    A modern student housing platform that helps students find safe,
+                    comfortable, and affordable accommodation near their universities.
+                </p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="housings.html">Housings</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-box">
+                <h3>Contact Info</h3>
+                <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+                <p><i class="fa-solid fa-phone"></i> +961 70 123 456</p>
+                <p><i class="fa-solid fa-location-dot"></i> Beirut, Lebanon</p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Follow Us</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const housingResults = document.getElementById("housingResults");
+        const noResultsMessage = document.getElementById("noResultsMessage");
+        const resultsSummary = document.getElementById("resultsSummary");
+
+        const params = new URLSearchParams(window.location.search);
+
+        const selectedUniversity = params.get("university") || "";
+        const selectedCity = params.get("city") || "";
+        const selectedPrice = params.get("price") || "";
+
+       const housings = [
+
+/* ================= AUB ================= */
+{
+    id: 201,
+    name: "AUB Student Housing",
+    city: "Beirut",
+    university: "AUB",
+    price: 400,
+    image: "images/AUB2.jpg",
+    location: "Ras Beirut – Inside AUB Campus",
+    description: "Official student dormitories of AUB offering secure and fully equipped accommodation.",
+    type: "Official",
+    detailsLink: "housing-details.html"
+},
+{
+
+    id: 202,
+    name: "Hamra Student Apartments",
+    city: "Beirut",
+    university: "AUB",
+    price: 250,
+    image: "images/AUB10.jpg",
+    location: "Hamra – Beirut",
+    description: "Affordable furnished apartments in the heart of Hamra, perfect for AUB students.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 203,
+    name: "Manara Student Housing",
+    city: "Beirut",
+    university: "AUB",
+    price: 300,
+    image: "images/AUB30.jpg",
+    location: "Manara – Beirut",
+    description: "Comfortable student apartments near the seaside, close to AUB campus.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+/* ================= LAU BEIRUT ================= */
+{
+    id: 301,
+    name: "LAU Beirut Dorms",
+    city: "Beirut",
+    university: "LAU",
+    price: 350,
+    image: "images/LAU10.jpg",
+    location: "Koreitem – Beirut",
+    description: "Official LAU dormitories offering secure and comfortable student housing.",
+    type: "Official",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 302,
+    name: "Koreitem Student Apartments",
+    city: "Beirut",
+    university: "LAU",
+    price: 250,
+    image: "images/LAU20.jpg",
+    location: "Koreitem – Beirut",
+    description: "Affordable student apartments near LAU campus with modern facilities.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 303,
+    name: "Hamra Student Housing",
+    city: "Beirut",
+    university: "LAU",
+    price: 280,
+    image: "images/LAU30.jpg",
+    location: "Hamra – Beirut",
+    description: "Comfortable housing options in Hamra, ideal for LAU students.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+/* ================= LAU BYBLOS ================= */
+{
+    id: 304,
+    name: "LAU Byblos Dorms",
+    city: "Byblos",
+    university: "LAU",
+    price: 300,
+    image: "images/LAU1.jpg",
+    location: "Blat – Byblos",
+    description: "Official LAU dormitories in Byblos offering a safe and student-friendly environment.",
+    type: "Official",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 305,
+    name: "Byblos Student Apartments",
+    city: "Byblos",
+    university: "LAU",
+    price: 200,
+    image: "images/LAU2.jpg",
+    location: "Byblos – Lebanon",
+    description: "Affordable student apartments near LAU Byblos campus.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+/* ================= MU ================= */
+{
+    id: 10,
+    name: "MU Green Residence",
+    city: "Beirut",
+    university: "MU",
+    price: 230,
+    image: "images/housing10.jpg",
+    location: "Near Al Maaref University",
+    roomInfo: "Double Room",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 11,
+    name: "Airport Road Student Residence",
+    city: "Beirut",
+    university: "MU",
+    price: 210,
+    image: "images/housing11.jpg",
+    location: "Airport Road",
+    roomInfo: "Single Room",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+
+/* ================= LU ================= */
+{
+    id: 401,
+    name: "LU Hadath Student Dorms",
+    city: "Hadath",
+    university: "LU",
+    price: 150,
+    image: "images/LU1.jpg",
+    location: "Rafic Hariri University Campus – Hadath",
+    description: "Official student dormitories at the Lebanese University Rafic Hariri Campus in Hadath.",
+    type: "Official",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 402,
+    name: "Hadath Campus Area Housing",
+    city: "Hadath",
+    university: "LU",
+    price: 180,
+    image: "images/LU2.jpg",
+    location: "Near LU Hadath Campus",
+    description: "Private nearby housing close to the Lebanese University campus in Hadath.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 403,
+    name: "Fanar Campus Area Apartments",
+    city: "Fanar",
+    university: "LU",
+    price: 170,
+    image: "images/LU3.jpg",
+    location: "Near LU Fanar Campus",
+    description: "Private nearby apartments for students close to the Fanar campus.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 404,
+    name: "North Campus Area Housing",
+    city: "Ras Maska",
+    university: "LU",
+    price: 160,
+    image: "images/LU4.jpg",
+    location: "Near LU North Campus – Ras Maska",
+    description: "Private nearby housing serving students studying at the North Campus in Ras Maska.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+/* ================= UA ================= */
+{
+    id: 501,
+    name: "UA Hadath Student Housing",
+    city: "Hadath",
+    university: "UA",
+    price: 220,
+    image: "images/UA1.jpg",
+    location: "Hadath – Baabda",
+    description: "Student housing near Antonine University campus in Hadath with comfortable rooms.",
+    type: "Official / Campus Area",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 502,
+    name: "Zahle Student Apartments",
+    city: "Zahle",
+    university: "UA",
+    price: 170,
+    image: "images/UA3.jpg",
+    location: "Zahle – Bekaa",
+    description: "Affordable apartments near UA Zahle campus with a calm environment.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 503,
+    name: "Bekaa Shared Student Housing",
+    city: "Zahle",
+    university: "UA",
+    price: 150,
+    image: "images/UA4.jpg",
+    location: "Zahle – Bekaa",
+    description: "Shared housing option for students looking for affordable living near UA.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 504,
+    name: "Zgharta Student Housing",
+    city: "Zgharta",
+    university: "UA",
+    price: 140,
+    image: "images/UA5.jpg",
+    location: "Zgharta – North Lebanon",
+    description: "Budget-friendly student housing in a quiet area near UA campus.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+/* ================= USJ ================= */
+{
+    id: 601,
+    name: "Résidence USJ",
+    city: "Beirut",
+    university: "USJ",
+    price: 300,
+    image: "images/USJ1.jpg",
+    location: "Rue de Damas – Next to the Rectorate",
+    description: "Official USJ residence offering single rooms, double rooms, studios, and shared accommodation.",
+    type: "Official",
+    detailsLink: "housing-details.html"
+},
+{
+    id: 602,
+    name: "Huvelin Student Apartments",
+    city: "Beirut",
+    university: "USJ",
+    price: 240,
+    image: "images/USJ2.jpg",
+    location: "Rue Huvelin – Achrafieh",
+    description: "Private nearby student apartments close to USJ Social Sciences Campus.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+{
+    id: 603,
+    name: "Damascus Street Student Housing",
+    city: "Beirut",
+    university: "USJ",
+    price: 230,
+    image: "images/USJ3.jpg",
+    location: "Rue de Damas – Beirut",
+    description: "Private student housing near the Medical Sciences and Humanities campuses of USJ.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+{
+    id: 604,
+    name: "Achrafieh Campus Area Housing",
+    city: "Beirut",
+    university: "USJ",
+    price: 250,
+    image: "images/USJ4.jpg",
+    location: "Achrafieh – Beirut",
+    description: "Private nearby apartments in Achrafieh suitable for USJ students.",
+    type: "Private Nearby",
+    detailsLink: "housing-details.html"
+},
+
+];
+
+        function getPriceRange(priceRange) {
+            if (priceRange === "100-200") return [100, 200];
+            if (priceRange === "200-300") return [200, 300];
+            if (priceRange === "300-400") return [300, 400];
+            return [0, Infinity];
+        }
+
+        function renderHousings(housingList) {
+            housingResults.innerHTML = "";
+
+            if (housingList.length === 0) {
+                noResultsMessage.style.display = "block";
+                return;
+            }
+
+            noResultsMessage.style.display = "none";
+
+            housingList.forEach(function (housing) {
+                const housingCard = `
+                    <div class="housing-card">
+                        <img src="${housing.image}" alt="${housing.name}">
+                        <div class="housing-info">
+                            <h3>${housing.name}</h3>
+                            <p><i class="fa-solid fa-location-dot"></i> ${housing.location}</p>
+                            <p><i class="fa-solid fa-school"></i> Near ${housing.university}</p>
+                            <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${housing.price}/month</p>
+                            <a href="housing-details.html?id=${housing.id}" class="card-btn">View Details</a>
+                        </div>
+                    </div>
+                `;
+                housingResults.innerHTML += housingCard;
+            });
+        }
+
+        const [minPrice, maxPrice] = getPriceRange(selectedPrice);
+
+        const filteredHousings = housings.filter(function (housing) {
+            const matchUniversity = selectedUniversity === "" || housing.university === selectedUniversity;
+            const matchCity = selectedCity === "" || housing.city === selectedCity;
+            const matchPrice = selectedPrice === "" || (housing.price >= minPrice && housing.price <= maxPrice);
+
+            return matchUniversity && matchCity && matchPrice;
+        });
+
+        let summaryText = "Showing results";
+        if (selectedUniversity) summaryText += ` for ${selectedUniversity}`;
+        if (selectedCity) summaryText += ` in ${selectedCity}`;
+        resultsSummary.textContent = summaryText + ".";
+
+        renderHousings(filteredHousings);
+    </script>
+
+</body>
+</html>

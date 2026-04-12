@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Housing Details</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo"><h2>UniNest</h2></div>
+    <nav>
+        <ul class="nav-links">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="housings.html" class="active">Housings</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="register.html" class="register-btn">Register</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="page-header">
+    <div class="page-header-content">
+        <h1 id="detailsTitle">Housing Details</h1>
+    </div>
+</section>
+
+<section class="housing-details-section">
+    <div class="housing-details-container">
+
+        <div class="housing-gallery">
+            <img id="detailsImage" src="images/aub1.jpg">
+        </div>
+
+        <div class="housing-details-info">
+
+            <span id="detailsType" class="housing-badge"></span>
+
+            <h2 id="detailsName"></h2>
+
+            <p><i class="fa-solid fa-location-dot"></i> <span id="detailsLocation"></span></p>
+
+            <p><i class="fa-solid fa-school"></i> Near <span id="detailsUniversity"></span></p>
+
+
+
+            <p><i class="fa-solid fa-venus-mars"></i> <span id="detailsGender"></span></p>
+
+            <p><i class="fa-solid fa-route"></i> <span id="detailsDistance"></span></p>
+
+            <p><i class="fa-solid fa-circle-check"></i> <span id="detailsAvailability"></span></p>
+
+            <p><i class="fa-solid fa-phone"></i> <span id="detailsContact"></span></p>
+
+            <p id="detailsDescription"></p>
+
+            <div class="room-types">
+                <h3>Available Rooms</h3>
+                <div id="roomsContainer"></div>
+            </div>
+
+            <div class="details-actions">
+                <a href="login.html" class="btn primary-btn">Book Now</a>
+                <a href="javascript:history.back()" class="btn secondary-btn">Back</a>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<section class="facilities-section">
+    <div class="facilities-container" id="facilitiesContainer"></div>
+</section>
+
+<script>
+
+const params = new URLSearchParams(window.location.search);
+const housingId = Number(params.get("id"));
+
+const housings = [
+
+/* MU */
+{
+id:101,
+name:"Bahman Area Student Housing",
+city:"Beirut",
+university:"MU",
+image:"images/bahman.jpg",
+location:"Haret Hreik",
+description:"Affordable housing near Al Maaref University.",
+type:"Private Nearby",
+gender:"Male / Female",
+distance:"7 minutes from Al Maaref University",
+availability:"Available",
+contact:"+961 70 111 222",
+rooms:[
+{type:"Single Room",price:250},
+{type:"Double Room",price:200},
+{type:"Triple Room",price:150}
+],
+facilities:["Wi-Fi","Kitchen Access","Laundry"]
+},
+
+{
+id:102,
+name:"Ghobeiry Student Apartments",
+city:"Beirut",
+university:"MU",
+image:"images/ghobeiry.jpg",
+location:"Ghobeiry – Near Airport Road",
+description:"Shared and private apartments for students with affordable prices near MU.",
+type:"Private Nearby",
+gender:"Male / Female",
+distance:"5 minutes from Al Maaref University",
+availability:"Available",
+contact:"+961 70 333 444",
+rooms:[
+{type:"Single Room",price:230},
+{type:"Double Room",price:180},
+{type:"Triple Room",price:140}
+],
+facilities:["Wi-Fi","Comfortable Rooms","Kitchen Access"]
+},
+
+/* AUB */
+{
+id:201,
+name:"AUB Student Housing",
+city:"Beirut",
+university:"AUB",
+image:"images/aub1.jpg",
+location:"Ras Beirut",
+description:"Official AUB dormitories.",
+type:"Official",
+gender:"Male / Female",
+distance:"Inside AUB Campus",
+availability:"Limited Availability",
+contact:"+961 1 350 000",
+rooms:[
+{type:"Single Room",price:600},
+{type:"Double Room",price:400},
+{type:"Triple Room",price:300}
+],
+facilities:["Wi-Fi","Safe Environment","Laundry"]
+},
+
+{
+id:202,
+name:"Hamra Student Apartments",
+city:"Beirut",
+university:"AUB",
+image:"images/aub2.jpg",
+location:"Hamra",
+description:"Apartments near AUB.",
+type:"Private Nearby",
+gender:"Male / Female",
+distance:"5 minutes from AUB",
+availability:"Available",
+contact:"+961 71 555 666",
+rooms:[
+{type:"Single Room",price:400},
+{type:"Double Room",price:300},
+{type:"Triple Room",price:250}
+],
+facilities:["Wi-Fi","Kitchen Access"]
+},
+
+/* LAU */
+{
+id:301,
+name:"LAU Beirut Dorms",
+city:"Beirut",
+university:"LAU",
+image:"images/lau1.jpg",
+location:"Koreitem",
+description:"Official LAU dorms.",
+type:"Official",
+gender:"Male / Female",
+distance:"2 minutes from LAU Beirut",
+availability:"Available",
+contact:"+961 1 786 456",
+rooms:[
+{type:"Single Room",price:550},
+{type:"Double Room",price:350},
+{type:"Triple Room",price:280}
+],
+facilities:["Wi-Fi","Laundry","Safe Environment"]
+},
+
+{
+id:304,
+name:"LAU Byblos Dorms",
+city:"Byblos",
+university:"LAU",
+image:"images/lau4.jpg",
+location:"Blat – Byblos",
+description:"Official LAU Byblos dormitories.",
+type:"Official",
+gender:"Male / Female",
+distance:"Inside LAU Byblos Campus",
+availability:"Available",
+contact:"+961 9 547 254",
+rooms:[
+{type:"Single Room",price:500},
+{type:"Double Room",price:300},
+{type:"Triple Room",price:250}
+],
+facilities:["Wi-Fi","Laundry","Safe Environment"]
+},
+
+/* LU */
+{
+id:401,
+name:"LU Hadath Dorms",
+city:"Hadath",
+university:"LU",
+image:"images/lu1.jpg",
+location:"Hadath Campus",
+description:"Official LU housing.",
+type:"Official",
+gender:"Male / Female",
+distance:"Inside LU Hadath Campus",
+availability:"Available",
+contact:"+961 5 000 111",
+rooms:[
+{type:"Single Room",price:220},
+{type:"Double Room",price:180},
+{type:"Triple Room",price:140}
+],
+facilities:["Wi-Fi","Study-Friendly"]
+},
+
+/* UA */
+{
+id:501,
+name:"UA Hadath Housing",
+city:"Hadath",
+university:"UA",
+image:"images/ua1.jpg",
+location:"Hadath",
+description:"Housing near Antonine University.",
+type:"Official",
+gender:"Male / Female",
+distance:"3 minutes from UA Hadath",
+availability:"Available",
+contact:"+961 5 927 000",
+rooms:[
+{type:"Single Room",price:300},
+{type:"Double Room",price:220},
+{type:"Triple Room",price:180}
+],
+facilities:["Wi-Fi","Safe Environment"]
+},
+
+{
+id:502,
+name:"Zahle Student Apartments",
+city:"Zahle",
+university:"UA",
+image:"images/ua2.jpg",
+location:"Zahle",
+description:"Affordable apartments near UA Zahle campus.",
+type:"Private Nearby",
+gender:"Male / Female",
+distance:"8 minutes from UA Zahle",
+availability:"Available",
+contact:"+961 8 777 222",
+rooms:[
+{type:"Single Room",price:170},
+{type:"Double Room",price:140},
+{type:"Triple Room",price:120}
+],
+facilities:["Wi-Fi","Kitchen Access","Comfortable Rooms"]
+},
+
+/* USJ */
+{
+id:601,
+name:"USJ Residence",
+city:"Beirut",
+university:"USJ",
+image:"images/usj1.jpg",
+location:"Rue de Damas",
+description:"Official USJ residence.",
+type:"Official",
+gender:"Male / Female",
+distance:"Inside USJ Area",
+availability:"Limited Availability",
+contact:"+961 1 421 000",
+rooms:[
+{type:"Single Room",price:420},
+{type:"Double Room",price:300},
+{type:"Triple Room",price:260}
+],
+facilities:["Wi-Fi","Laundry","Safe Environment"]
+}
+
+];
+
+facilities:["Wi-Fi","Laundry","Safe Environment"]
+
+
+const housing = housings.find(h => h.id === housingId);
+
+if(housing){
+
+document.getElementById("detailsTitle").textContent = housing.name;
+document.getElementById("detailsImage").src = housing.image;
+document.getElementById("detailsType").textContent = housing.type;
+document.getElementById("detailsName").textContent = housing.name;
+document.getElementById("detailsLocation").textContent = housing.location;
+document.getElementById("detailsUniversity").textContent = housing.university;
+
+document.getElementById("detailsGender").textContent = housing.gender;
+document.getElementById("detailsDistance").textContent = housing.distance;
+document.getElementById("detailsAvailability").textContent = housing.availability;
+document.getElementById("detailsContact").textContent = housing.contact;
+
+
+document.getElementById("detailsDescription").textContent = housing.description;
+
+const roomsContainer = document.getElementById("roomsContainer");
+
+housing.rooms.forEach(room=>{
+const div=document.createElement("div");
+div.className="room-box";
+div.innerHTML=`<p>${room.type}</p><p>$${room.price}</p>`;
+roomsContainer.appendChild(div);
+});
+
+const facilitiesContainer=document.getElementById("facilitiesContainer");
+
+housing.facilities.forEach(f=>{
+const div=document.createElement("div");
+div.className="facility-box";
+div.innerHTML=`<h3>${f}</h3>`;
+facilitiesContainer.appendChild(div);
+});
+
+}
+
+</script>
+
+</body>
+</html>
