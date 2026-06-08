@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings | UniNest</title>
+
+    <link rel="stylesheet" href="my-booking.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<div class="bookings-layout">
+
+    <aside class="bookings-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Resident Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="student-dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="my-bookings.html" class="active"><i class="fa-solid fa-bed"></i> My Bookings</a></li>
+            <li><a href="payment.html"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+            <li><a href="maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="notifications.html"><i class="fa-solid fa-bell"></i> Notifications</a></li>
+            <li><a href="profile.html"><i class="fa-solid fa-user"></i> Profile</a></li>
+            <li><a href="housings.html"><i class="fa-solid fa-magnifying-glass"></i> Explore Dorms</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="bookings-main">
+        <div class="bookings-topbar">
+            <div>
+                <h1>My Bookings</h1>
+                <p>View your current and previous dorm booking requests.</p>
+            </div>
+
+            <a href="housings.html" class="primary-btn">
+                <i class="fa-solid fa-plus"></i> New Booking
+            </a>
+        </div>
+
+        <section class="booking-summary-stats">
+            <div class="summary-box">
+                <h3 id="totalBookings">0</h3>
+                <p>Total Bookings</p>
+            </div>
+
+            <div class="summary-box">
+                <h3 id="pendingBookings">0</h3>
+                <p>Pending</p>
+            </div>
+
+            <div class="summary-box">
+                <h3 id="approvedBookings">0</h3>
+                <p>Approved</p>
+            </div>
+
+            <div class="summary-box">
+                <h3 id="rejectedBookings">0</h3>
+                <p>Rejected</p>
+            </div>
+
+            <div class="summary-box">
+                <h3 id="cancelledBookings">0</h3>
+                <p>Cancelled</p>
+            </div>
+        </section>
+
+        <section class="booking-cards" id="bookingCards"></section>
+
+        <div class="empty-bookings" id="emptyBookingsMessage" style="display:none;">
+            <h3>No bookings yet</h3>
+            <p>You have not submitted any dorm booking request yet.</p>
+            <a href="housings.html" class="primary-btn">Explore Dorms</a>
+        </div>
+    </main>
+</div>
+
+<script>
+    function getCurrentUserEmailValue() {
+        return localStorage.getItem("loggedInUserEmail") || "";
+    }
+
+    function getCurrentResidentIdValue() {
+        return localStorage.getItem("loggedInResidentId") || "";
+    }
+
+    function getAllBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function saveBookings(bookings) {
+        localStorage.setItem("studentBookings", JSON.stringify(bookings));
+    }
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function addNotification(resident_id, notification_type, title, message) {
+        if (!resident_id && !getCurrentUserEmailValue()) {
+            return;
+        }
+
+        const notifications = getNotifications();
+
+        const notificationId = Date.now() + Math.floor(Math.random() * 1000);
+
+        const newNotification = {
+            notification_id: notificationId,
+            resident_id: resident_id || "",
+            title: title,
+            message: message,
+            notification_type: notification_type,
+            is_read: false,
+            created_at: formatDateToday(),
+
+            // Compatibility مع الصفحات القديمة
+            id: notificationId,
+            userEmail: getCurrentUserEmailValue(),
+            type: notification_type,
+            isRead: false,
+            date: formatDateToday()
+        };
+
+        notifications.unshift(newNotification);
+        saveNotifications(notifications);
+    }
+
+    function normalizeBooking(booking) {
+        return {
+            ...booking,
+
+            booking_id: booking.booking_id || booking.id,
+            resident_id: booking.resident_id || "",
+            resident_name: booking.resident_name || booking.residentName || booking.userName || booking.studentName || "",
+            email: booking.email || booking.userEmail || booking.studentEmail || booking.residentEmail || "",
+
+            dorm_id: booking.dorm_id || booking.housingId,
+            dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
+            dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
+
+            university_name: booking.university_name || booking.university || "",
+            city: booking.city || "",
+            area: booking.area || booking.location || "",
+
+            room_id: booking.room_id || booking.roomId || "",
+            room_number: booking.room_number || booking.roomNumber || "",
+            room_type: booking.room_type || booking.roomType || "",
+            room_price: Number(booking.room_price || booking.price || 0),
+
+            check_in_date: booking.check_in_date || booking.checkInDate || booking.moveInDate || "Not selected",
+            check_out_date: booking.check_out_date || booking.checkOutDate || "Not selected",
+            total_price: Number(booking.total_price || booking.totalCost || 0),
+
+            booking_status: booking.booking_status || booking.status || "Pending",
+            document_type: booking.document_type || booking.documentType || "Not uploaded",
+            document_status: booking.document_status || booking.documentStatus || "Pending",
+
+            payment_status: booking.payment_status || booking.paymentStatus || "Pending",
+            payment_method: booking.payment_method || booking.paymentMethod || "Not paid yet",
+
+            created_at: booking.created_at || booking.createdAt || "Not specified"
+        };
+    }
+
+    function getUserBookings() {
+        const currentEmail = getCurrentUserEmailValue().toLowerCase();
+        const currentResidentId = String(getCurrentResidentIdValue());
+
+        const bookings = getAllBookings();
+
+        return bookings
+            .map(normalizeBooking)
+            .filter(function(booking) {
+                const bookingEmail = (booking.email || "").toLowerCase();
+                const bookingResidentId = String(booking.resident_id || "");
+
+                return bookingResidentId === currentResidentId || bookingEmail === currentEmail;
+            });
+    }
+
+    function getStatusClass(status) {
+        return String(status || "Pending").toLowerCase();
+    }
+
+    function updateBookingStats(bookings) {
+        const total = bookings.length;
+        const pending = bookings.filter(b => b.booking_status === "Pending").length;
+        const approved = bookings.filter(b => b.booking_status === "Approved").length;
+        const rejected = bookings.filter(b => b.booking_status === "Rejected").length;
+        const cancelled = bookings.filter(b => b.booking_status === "Cancelled").length;
+
+        document.getElementById("totalBookings").textContent = total;
+        document.getElementById("pendingBookings").textContent = pending;
+        document.getElementById("approvedBookings").textContent = approved;
+        document.getElementById("rejectedBookings").textContent = rejected;
+        document.getElementById("cancelledBookings").textContent = cancelled;
+    }
+
+    function loadBookings() {
+        const bookingCards = document.getElementById("bookingCards");
+        const emptyBookingsMessage = document.getElementById("emptyBookingsMessage");
+
+        const bookings = getUserBookings();
+
+        bookingCards.innerHTML = "";
+        updateBookingStats(bookings);
+
+        if (bookings.length === 0) {
+            emptyBookingsMessage.style.display = "block";
+            return;
+        }
+
+        emptyBookingsMessage.style.display = "none";
+
+        bookings.forEach(function(booking) {
+            const card = document.createElement("div");
+            card.className = "booking-card";
+
+            const booking_id = booking.booking_id;
+            const dorm_id = booking.dorm_id;
+
+            const booking_status = booking.booking_status || "Pending";
+            const document_status = booking.document_status || "Pending";
+            const payment_status = booking.payment_status || "Pending";
+
+            const check_in_date = booking.check_in_date || "Not selected";
+            const check_out_date = booking.check_out_date || "Not selected";
+            const total_price = booking.total_price || 0;
+
+            let actions = `
+                <a href="housing-details.html?id=${dorm_id}" class="view-btn">
+                    View Dorm
+                </a>
+            `;
+
+            if (booking_status === "Pending") {
+                actions += `
+                    <button onclick="cancelBooking(${booking_id})" class="cancel-btn">
+                        Cancel Booking
+                    </button>
+                `;
+            }
+
+            if (booking_status === "Approved") {
+                if (payment_status === "Completed" || payment_status === "Paid") {
+                    actions += `
+                        <button type="button" class="disabled-btn" disabled>
+                            Paid
+                        </button>
+
+                        <a href="review.html?bookingId=${booking_id}" class="review-btn">
+                            Write Review
+                        </a>
+                    `;
+                } else {
+                    actions += `
+                        <a href="payment.html?bookingId=${booking_id}" class="success-btn">
+                            Pay Now
+                        </a>
+                    `;
+                }
+            }
+
+            if (booking_status === "Rejected" || booking_status === "Cancelled") {
+                actions += `
+                    <button type="button" class="disabled-btn" disabled>
+                        ${booking_status}
+                    </button>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="booking-card-image">
+                    <img src="${booking.dorm_image || 'images/aub1.jpg'}" alt="${booking.dorm_name || 'Dorm'}">
+                </div>
+
+                <div class="booking-card-content">
+                    <div class="booking-card-header">
+                        <h2>${booking.dorm_name || "Dorm Name"}</h2>
+                        <span class="booking-status ${getStatusClass(booking_status)}">${booking_status}</span>
+                    </div>
+
+                    <div class="booking-meta">
+                        <p><i class="fa-solid fa-location-dot"></i> ${booking.area || booking.city || "Location not specified"}</p>
+                        <p><i class="fa-solid fa-school"></i> Near ${booking.university_name || "Nearby university"}</p>
+                        <p><i class="fa-solid fa-door-open"></i> Room Number: ${booking.room_number || "Not specified"}</p>
+                        <p><i class="fa-solid fa-bed"></i> Room Type: ${booking.room_type || "Not specified"}</p>
+                        <p><i class="fa-solid fa-dollar-sign"></i> Price/month: $${booking.room_price || 0}</p>
+                        <p><i class="fa-solid fa-calendar-check"></i> Check-in: ${check_in_date}</p>
+                        <p><i class="fa-solid fa-calendar-xmark"></i> Check-out: ${check_out_date}</p>
+                        <p><i class="fa-solid fa-money-bill"></i> Total Cost: $${total_price}</p>
+                        <p><i class="fa-solid fa-credit-card"></i> Payment Status: ${payment_status}</p>
+                        <p><i class="fa-solid fa-receipt"></i> Payment Method: ${booking.payment_method || "Not paid yet"}</p>
+                        <p><i class="fa-solid fa-file"></i> Document: ${booking.document_type || "Not uploaded"}</p>
+                        <p><i class="fa-solid fa-file-circle-check"></i> Document Status: ${document_status}</p>
+                        <p><i class="fa-solid fa-clock"></i> Submitted: ${booking.created_at || "Not specified"}</p>
+                    </div>
+
+                    <div class="booking-actions">
+                        ${actions}
+                    </div>
+                </div>
+            `;
+
+            bookingCards.appendChild(card);
+        });
+    }
+
+    function cancelBooking(bookingId) {
+        const ok = confirm("Are you sure you want to cancel this booking?");
+
+        if (!ok) {
+            return;
+        }
+
+        const currentEmail = getCurrentUserEmailValue().toLowerCase();
+        const currentResidentId = String(getCurrentResidentIdValue());
+
+        const bookings = getAllBookings();
+
+        let cancelledBooking = null;
+
+        const updatedBookings = bookings.map(function(booking) {
+            const normalized = normalizeBooking(booking);
+
+            const sameBooking = Number(normalized.booking_id) === Number(bookingId);
+            const sameResident =
+                String(normalized.resident_id || "") === currentResidentId ||
+                (normalized.email || "").toLowerCase() === currentEmail;
+
+            if (
+                sameBooking &&
+                sameResident &&
+                normalized.booking_status === "Pending"
+            ) {
+                cancelledBooking = {
+                    ...booking,
+
+                    booking_status: "Cancelled",
+
+                    // Compatibility مع الصفحات القديمة
+                    status: "Cancelled"
+                };
+
+                return cancelledBooking;
+            }
+
+            return booking;
+        });
+
+        saveBookings(updatedBookings);
+
+        if (cancelledBooking) {
+            const normalizedCancelled = normalizeBooking(cancelledBooking);
+
+            addNotification(
+                normalizedCancelled.resident_id || currentResidentId,
+                "booking",
+                "Booking Cancelled",
+                "Your booking request for " + normalizedCancelled.dorm_name + " has been cancelled."
+            );
+        }
+
+        loadBookings();
+
+        alert("Booking cancelled successfully.");
+    }
+
+    loadBookings();
+</script>
+
+</body>
+</html>

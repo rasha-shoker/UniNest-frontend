@@ -3,452 +3,528 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UniNest | Search Results</title>
+    <title>Search Results | UniNest</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="search-results.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
 </head>
+
 <body>
 
-    <!-- Navbar -->
-    <header class="navbar">
-        <div class="logo">
-            <h2>UniNest</h2>
+<header class="navbar">
+    <a href="home.html" class="logo">UniNest</a>
+
+    <nav>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="housings.html" class="active">Housings</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="login.html" class="login-link">Login</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="page-header">
+    <div class="page-header-content">
+        <span class="page-badge">UniNest Search</span>
+        <h1>Search Results</h1>
+        <p id="resultsSubtitle">Browse available dorms based on your search.</p>
+    </div>
+</section>
+
+<section class="filters-section">
+    <div class="filters-box">
+        <div class="filter-group">
+            <label for="keywordInput">Search</label>
+            <input type="text" id="keywordInput" placeholder="Dorm name, university, city...">
         </div>
 
-        <nav>
-            <ul class="nav-links">
+        <div class="filter-group">
+            <label for="universityInput">University</label>
+            <input type="text" id="universityInput" placeholder="Example: AUB">
+        </div>
+
+        <div class="filter-group">
+            <label for="cityInput">City</label>
+            <input type="text" id="cityInput" placeholder="Example: Beirut">
+        </div>
+
+        <div class="filter-group">
+            <label for="availabilityInput">Availability</label>
+            <select id="availabilityInput">
+                <option value="">All</option>
+                <option value="Available">Available</option>
+                <option value="Full">Full</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="maxPriceInput">Max Price</label>
+            <input type="number" id="maxPriceInput" placeholder="Example: 250" min="0">
+        </div>
+
+        <button class="filter-btn" onclick="applyFilters()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            Search
+        </button>
+    </div>
+</section>
+
+<section class="results-section">
+    <div class="section-title">
+        <h2>Matching Dorms</h2>
+        <p id="resultsCountText">Showing available options.</p>
+    </div>
+
+    <div class="results-grid" id="resultsGrid"></div>
+
+    <div id="noResultsMessage" class="no-results">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <h3>No dorm found</h3>
+        <p>Try changing the university, city, price, or availability filter.</p>
+        <a href="housings.html">View All Dorms</a>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+
+        <div class="footer-box">
+            <h3>UniNest</h3>
+            <p>
+                A modern student housing platform that helps students find safe,
+                comfortable, and affordable accommodation near their universities.
+            </p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html">Housings</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-box">
+            <h3>Contact Info</h3>
+            <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+            <p><i class="fa-solid fa-phone"></i> +961 76 741 699</p>
+            <p><i class="fa-solid fa-location-dot"></i> Beirut, Lebanon</p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+                <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
+                <a href="#"><i class="fa-brands fa-twitter"></i></a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+    </div>
+</footer>
+
+<script src="housings-data.js"></script>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+
+    const resultsGrid = document.getElementById("resultsGrid");
+    const noResultsMessage = document.getElementById("noResultsMessage");
+    const resultsSubtitle = document.getElementById("resultsSubtitle");
+    const resultsCountText = document.getElementById("resultsCountText");
+
+    const keywordInput = document.getElementById("keywordInput");
+    const universityInput = document.getElementById("universityInput");
+    const cityInput = document.getElementById("cityInput");
+    const availabilityInput = document.getElementById("availabilityInput");
+    const maxPriceInput = document.getElementById("maxPriceInput");
+
+    function normalizeText(value) {
+        return String(value || "").trim().toLowerCase();
+    }
+
+    function getImageUrl(image) {
+        if (!image) {
+            return "";
+        }
+
+        if (typeof image === "string") {
+            return image;
+        }
+
+        return image.image_url || image.data || image.url || "";
+    }
+
+    function getDormImage(dorm) {
+        if (dorm.image_url) {
+            return dorm.image_url;
+        }
+
+        if (dorm.image) {
+            return dorm.image;
+        }
+
+        if (dorm.housingImage) {
+            return dorm.housingImage;
+        }
+
+        if (Array.isArray(dorm.images) && dorm.images.length > 0) {
+            return getImageUrl(dorm.images[0]) || "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=900&q=80";
+        }
+
+        return "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=900&q=80";
+    }
+
+    function normalizeRoom(room) {
+        return {
+            ...room,
+
+            room_id: room.room_id || room.roomId,
+            dorm_id: room.dorm_id || "",
+            room_number: room.room_number || room.roomNumber || "",
+            room_type: room.room_type || room.type || "",
+            room_capacity: Number(room.room_capacity || room.capacity || 1),
+            current_occupancy: Number(room.current_occupancy || room.currentOccupancy || 0),
+            occupancy_limit: Number(room.occupancy_limit || room.occupancyLimit || room.room_capacity || room.capacity || 1),
+            room_price: Number(room.room_price || room.price || 0),
+            availability_status: room.availability_status || room.status || "Available",
+
+            // Compatibility
+            roomId: room.room_id || room.roomId,
+            roomNumber: room.room_number || room.roomNumber || "",
+            type: room.room_type || room.type || "",
+            price: Number(room.room_price || room.price || 0),
+            status: room.availability_status || room.status || "Available"
+        };
+    }
+
+    function normalizeDorm(dorm) {
+        const rooms = Array.isArray(dorm.rooms) ? dorm.rooms.map(normalizeRoom) : [];
+
+        const dorm_id = dorm.dorm_id || dorm.id;
+        const dorm_name = dorm.dorm_name || dorm.name || "Dorm Name";
+        const university_name = dorm.university_name || dorm.university || "";
+        const city = dorm.city || dorm.location || "";
+        const area = dorm.area || "";
+        const dorm_description = dorm.dorm_description || dorm.description || "";
+
+        const availability_status = getDormAvailability({
+            ...dorm,
+            rooms: rooms
+        });
+
+        const base_price = Number(dorm.base_price || dorm.price || getStartingPrice({
+            ...dorm,
+            rooms: rooms
+        }) || 0);
+
+        const main_room_type =
+            dorm.main_room_type ||
+            dorm.roomType ||
+            dorm.type ||
+            (rooms[0] && rooms[0].room_type) ||
+            "Room";
+
+        return {
+            ...dorm,
+
+            dorm_id: dorm_id,
+            dorm_name: dorm_name,
+            university_name: university_name,
+            city: city,
+            area: area,
+            dorm_description: dorm_description,
+            dorm_type: dorm.dorm_type || dorm.type || "",
+            main_room_type: main_room_type,
+            base_price: base_price,
+            availability_status: availability_status,
+            image_url: getDormImage(dorm),
+            rooms: rooms,
+
+            // Compatibility مع الصفحات القديمة
+            id: dorm_id,
+            name: dorm_name,
+            university: university_name,
+            location: city,
+            description: dorm_description,
+            type: dorm.dorm_type || dorm.type || main_room_type,
+            roomType: main_room_type,
+            price: base_price,
+            status: availability_status,
+            availability: availability_status,
+            image: getDormImage(dorm),
+            housingImage: getDormImage(dorm)
+        };
+    }
+
+    function getAllDorms() {
+        const savedDorms = JSON.parse(localStorage.getItem("dorms"));
+        const savedHousings = JSON.parse(localStorage.getItem("housings"));
+
+        if (savedDorms && Array.isArray(savedDorms) && savedDorms.length > 0) {
+            return savedDorms.map(normalizeDorm);
+        }
+
+        if (savedHousings && Array.isArray(savedHousings) && savedHousings.length > 0) {
+            const normalizedDorms = savedHousings.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof dormsData !== "undefined" && Array.isArray(dormsData)) {
+            const normalizedDorms = dormsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof housingsData !== "undefined" && Array.isArray(housingsData)) {
+            const normalizedDorms = housingsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        return [];
+    }
+
+    function getStartingPrice(dorm) {
+        if (dorm.rooms && dorm.rooms.length > 0) {
+            const prices = dorm.rooms
+                .map(function(room) {
+                    return Number(room.room_price || room.price);
+                })
+                .filter(function(price) {
+                    return !isNaN(price) && price > 0;
+                });
+
+            if (prices.length > 0) {
+                return Math.min(...prices);
+            }
+        }
+
+        return Number(dorm.base_price || dorm.price) || 0;
+    }
+
+    function getDormAvailability(dorm) {
+        if (dorm.rooms && dorm.rooms.length > 0) {
+            const hasAvailableRoom = dorm.rooms.some(function(room) {
+                return (room.availability_status || room.status) === "Available";
+            });
+
+            if (hasAvailableRoom) {
+                return "Available";
+            }
+
+            return "Full";
+        }
+
+        return dorm.availability_status || dorm.status || dorm.availability || "Available";
+    }
+
+    function getAvailableRoomsCount(dorm) {
+        if (!dorm.rooms || dorm.rooms.length === 0) {
+            return 0;
+        }
+
+        return dorm.rooms.filter(function(room) {
+            return (room.availability_status || room.status) === "Available";
+        }).length;
+    }
+
+    function loadFiltersFromUrl() {
+        keywordInput.value = params.get("keyword") || params.get("search") || "";
+        universityInput.value = params.get("university") || "";
+        cityInput.value = params.get("city") || "";
+        availabilityInput.value = params.get("availability") || "";
+        maxPriceInput.value = params.get("maxPrice") || params.get("price") || "";
+    }
+
+    function filterDorms() {
+        const keyword = normalizeText(keywordInput.value);
+        const university = normalizeText(universityInput.value);
+        const city = normalizeText(cityInput.value);
+        const availability = availabilityInput.value;
+        const maxPrice = Number(maxPriceInput.value);
+
+        return getAllDorms().filter(function(dorm) {
+            const dormName = normalizeText(dorm.dorm_name);
+            const dormUniversity = normalizeText(dorm.university_name);
+            const dormCity = normalizeText(dorm.city);
+            const dormArea = normalizeText(dorm.area);
+            const dormType = normalizeText(dorm.dorm_type || dorm.main_room_type);
+            const dormDescription = normalizeText(dorm.dorm_description);
+
+            const searchText = `
+                ${dormName}
+                ${dormUniversity}
+                ${dormCity}
+                ${dormArea}
+                ${dormType}
+                ${dormDescription}
+            `;
+
+            const keywordMatch = keyword === "" || searchText.includes(keyword);
+            const universityMatch = university === "" || dormUniversity.includes(university);
+            const cityMatch = city === "" || dormCity.includes(city) || dormArea.includes(city);
+
+            const dormAvailability = getDormAvailability(dorm);
+            const availabilityMatch = availability === "" || dormAvailability === availability;
+
+            const price = getStartingPrice(dorm);
+            const priceMatch = !maxPrice || price <= maxPrice;
+
+            return keywordMatch && universityMatch && cityMatch && availabilityMatch && priceMatch;
+        });
+    }
+
+    function applyFilters() {
+        const newParams = new URLSearchParams();
+
+        if (keywordInput.value.trim()) {
+            newParams.set("keyword", keywordInput.value.trim());
+        }
+
+        if (universityInput.value.trim()) {
+            newParams.set("university", universityInput.value.trim());
+        }
+
+        if (cityInput.value.trim()) {
+            newParams.set("city", cityInput.value.trim());
+        }
+
+        if (availabilityInput.value) {
+            newParams.set("availability", availabilityInput.value);
+        }
+
+        if (maxPriceInput.value) {
+            newParams.set("maxPrice", maxPriceInput.value);
+        }
+
+        const queryString = newParams.toString();
+        const newUrl = queryString ? `search-results.html?${queryString}` : "search-results.html";
+
+        window.history.replaceState(null, "", newUrl);
+        renderResults();
+    }
+
+    function openDetails(dorm_id) {
+        localStorage.setItem("selectedDormId", dorm_id);
+
+        // Compatibility
+        localStorage.setItem("selectedHousingId", dorm_id);
+
+        window.location.href = `housing-details.html?id=${dorm_id}`;
+    }
+
+    function renderResults() {
+        const filteredDorms = filterDorms();
+
+        resultsGrid.innerHTML = "";
+
+        const university = universityInput.value.trim();
+        const city = cityInput.value.trim();
+
+        if (university && city) {
+            resultsSubtitle.textContent = `Results for ${university} in ${city}`;
+        } else if (university) {
+            resultsSubtitle.textContent = `Results for ${university}`;
+        } else if (city) {
+            resultsSubtitle.textContent = `Results in ${city}`;
+        } else {
+            resultsSubtitle.textContent = "Browse available dorms based on your search.";
+        }
+
+        resultsCountText.textContent = `${filteredDorms.length} dorm option(s) found.`;
+
+        if (filteredDorms.length === 0) {
+            noResultsMessage.style.display = "block";
+            return;
+        }
+
+        noResultsMessage.style.display = "none";
+
+        filteredDorms.forEach(function(dorm) {
+            const status = getDormAvailability(dorm);
+            const price = getStartingPrice(dorm);
+            const availableRooms = getAvailableRoomsCount(dorm);
+
+            const card = document.createElement("div");
+            card.className = "housing-card";
+
+            card.innerHTML = `
+                <div class="card-image">
+                    <img src="${getDormImage(dorm)}" alt="${dorm.dorm_name}">
+                    <span class="status-badge ${status === "Available" ? "available" : "full"}">${status}</span>
+                </div>
+
+                <div class="housing-info">
+                    <h3>${dorm.dorm_name}</h3>
+
+                    <p><i class="fa-solid fa-location-dot"></i> ${dorm.area || dorm.city || "Not specified"}</p>
+                    <p><i class="fa-solid fa-school"></i> ${dorm.university_name || "Not specified"}</p>
+                    <p><i class="fa-solid fa-bed"></i> ${dorm.main_room_type || dorm.dorm_type || "Room"}</p>
+                    <p><i class="fa-solid fa-door-open"></i> ${availableRooms} available room(s)</p>
+                    <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${price}/month</p>
+
+                    <button onclick="openDetails('${dorm.dorm_id}')" class="card-btn">
+                        View Details
+                    </button>
+                </div>
+            `;
+
+            resultsGrid.appendChild(card);
+        });
+    }
+
+    function updateNavbar() {
+        const role = localStorage.getItem("loggedInRole");
+        const user_type = localStorage.getItem("loggedInUserType") || role;
+        const navLinks = document.getElementById("navLinks");
+
+        if (user_type === "student" || user_type === "employee") {
+            navLinks.innerHTML = `
                 <li><a href="home.html">Home</a></li>
                 <li><a href="housings.html" class="active">Housings</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="contact.html">Contact</a></li>
-                <li><a href="login.html">Login</a></li>
-                <li><a href="register.html" class="register-btn">Register</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <!-- Results Header -->
-    <section class="page-header">
-        <div class="page-header-content">
-            <h1>Search Results</h1>
-            <p id="resultsSummary">
-                Explore the student housing options that match your search.
-            </p>
-        </div>
-    </section>
-
-    <!-- Search Results -->
-    <section class="all-housings-section">
-        <div class="section-title">
-            <h2>Available Housings</h2>
-            <p>Choose the housing that fits your location, university, and budget.</p>
-        </div>
-
-        <div class="housing-cards" id="housingResults"></div>
-
-        <div id="noResultsMessage" class="no-results-message" style="display: none;">
-            <p>No housing found for your selected filters.</p>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-container">
-
-            <div class="footer-box">
-                <h3>UniNest</h3>
-                <p>
-                    A modern student housing platform that helps students find safe,
-                    comfortable, and affordable accommodation near their universities.
-                </p>
-            </div>
-
-            <div class="footer-box">
-                <h3>Quick Links</h3>
-                <ul>
-                    <li><a href="home.html">Home</a></li>
-                    <li><a href="housings.html">Housings</a></li>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-box">
-                <h3>Contact Info</h3>
-                <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
-                <p><i class="fa-solid fa-phone"></i> +961 70 123 456</p>
-                <p><i class="fa-solid fa-location-dot"></i> Beirut, Lebanon</p>
-            </div>
-
-            <div class="footer-box">
-                <h3>Follow Us</h3>
-                <div class="social-icons">
-                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
-                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
-                    <a href="#"><i class="fa-brands fa-linkedin-in"></i></a>
-                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="footer-bottom">
-            <p>&copy; 2026 UniNest. All Rights Reserved.</p>
-        </div>
-    </footer>
-
-    <script>
-        const housingResults = document.getElementById("housingResults");
-        const noResultsMessage = document.getElementById("noResultsMessage");
-        const resultsSummary = document.getElementById("resultsSummary");
-
-        const params = new URLSearchParams(window.location.search);
-
-        const selectedUniversity = params.get("university") || "";
-        const selectedCity = params.get("city") || "";
-        const selectedPrice = params.get("price") || "";
-
-       const housings = [
-
-/* ================= AUB ================= */
-{
-    id: 201,
-    name: "AUB Student Housing",
-    city: "Beirut",
-    university: "AUB",
-    price: 400,
-    image: "images/AUB2.jpg",
-    location: "Ras Beirut – Inside AUB Campus",
-    description: "Official student dormitories of AUB offering secure and fully equipped accommodation.",
-    type: "Official",
-    detailsLink: "housing-details.html"
-},
-{
-
-    id: 202,
-    name: "Hamra Student Apartments",
-    city: "Beirut",
-    university: "AUB",
-    price: 250,
-    image: "images/AUB10.jpg",
-    location: "Hamra – Beirut",
-    description: "Affordable furnished apartments in the heart of Hamra, perfect for AUB students.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 203,
-    name: "Manara Student Housing",
-    city: "Beirut",
-    university: "AUB",
-    price: 300,
-    image: "images/AUB30.jpg",
-    location: "Manara – Beirut",
-    description: "Comfortable student apartments near the seaside, close to AUB campus.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-/* ================= LAU BEIRUT ================= */
-{
-    id: 301,
-    name: "LAU Beirut Dorms",
-    city: "Beirut",
-    university: "LAU",
-    price: 350,
-    image: "images/LAU10.jpg",
-    location: "Koreitem – Beirut",
-    description: "Official LAU dormitories offering secure and comfortable student housing.",
-    type: "Official",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 302,
-    name: "Koreitem Student Apartments",
-    city: "Beirut",
-    university: "LAU",
-    price: 250,
-    image: "images/LAU20.jpg",
-    location: "Koreitem – Beirut",
-    description: "Affordable student apartments near LAU campus with modern facilities.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 303,
-    name: "Hamra Student Housing",
-    city: "Beirut",
-    university: "LAU",
-    price: 280,
-    image: "images/LAU30.jpg",
-    location: "Hamra – Beirut",
-    description: "Comfortable housing options in Hamra, ideal for LAU students.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-/* ================= LAU BYBLOS ================= */
-{
-    id: 304,
-    name: "LAU Byblos Dorms",
-    city: "Byblos",
-    university: "LAU",
-    price: 300,
-    image: "images/LAU1.jpg",
-    location: "Blat – Byblos",
-    description: "Official LAU dormitories in Byblos offering a safe and student-friendly environment.",
-    type: "Official",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 305,
-    name: "Byblos Student Apartments",
-    city: "Byblos",
-    university: "LAU",
-    price: 200,
-    image: "images/LAU2.jpg",
-    location: "Byblos – Lebanon",
-    description: "Affordable student apartments near LAU Byblos campus.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-/* ================= MU ================= */
-{
-    id: 10,
-    name: "MU Green Residence",
-    city: "Beirut",
-    university: "MU",
-    price: 230,
-    image: "images/housing10.jpg",
-    location: "Near Al Maaref University",
-    roomInfo: "Double Room",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 11,
-    name: "Airport Road Student Residence",
-    city: "Beirut",
-    university: "MU",
-    price: 210,
-    image: "images/housing11.jpg",
-    location: "Airport Road",
-    roomInfo: "Single Room",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-
-/* ================= LU ================= */
-{
-    id: 401,
-    name: "LU Hadath Student Dorms",
-    city: "Hadath",
-    university: "LU",
-    price: 150,
-    image: "images/LU1.jpg",
-    location: "Rafic Hariri University Campus – Hadath",
-    description: "Official student dormitories at the Lebanese University Rafic Hariri Campus in Hadath.",
-    type: "Official",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 402,
-    name: "Hadath Campus Area Housing",
-    city: "Hadath",
-    university: "LU",
-    price: 180,
-    image: "images/LU2.jpg",
-    location: "Near LU Hadath Campus",
-    description: "Private nearby housing close to the Lebanese University campus in Hadath.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 403,
-    name: "Fanar Campus Area Apartments",
-    city: "Fanar",
-    university: "LU",
-    price: 170,
-    image: "images/LU3.jpg",
-    location: "Near LU Fanar Campus",
-    description: "Private nearby apartments for students close to the Fanar campus.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 404,
-    name: "North Campus Area Housing",
-    city: "Ras Maska",
-    university: "LU",
-    price: 160,
-    image: "images/LU4.jpg",
-    location: "Near LU North Campus – Ras Maska",
-    description: "Private nearby housing serving students studying at the North Campus in Ras Maska.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-/* ================= UA ================= */
-{
-    id: 501,
-    name: "UA Hadath Student Housing",
-    city: "Hadath",
-    university: "UA",
-    price: 220,
-    image: "images/UA1.jpg",
-    location: "Hadath – Baabda",
-    description: "Student housing near Antonine University campus in Hadath with comfortable rooms.",
-    type: "Official / Campus Area",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 502,
-    name: "Zahle Student Apartments",
-    city: "Zahle",
-    university: "UA",
-    price: 170,
-    image: "images/UA3.jpg",
-    location: "Zahle – Bekaa",
-    description: "Affordable apartments near UA Zahle campus with a calm environment.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 503,
-    name: "Bekaa Shared Student Housing",
-    city: "Zahle",
-    university: "UA",
-    price: 150,
-    image: "images/UA4.jpg",
-    location: "Zahle – Bekaa",
-    description: "Shared housing option for students looking for affordable living near UA.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 504,
-    name: "Zgharta Student Housing",
-    city: "Zgharta",
-    university: "UA",
-    price: 140,
-    image: "images/UA5.jpg",
-    location: "Zgharta – North Lebanon",
-    description: "Budget-friendly student housing in a quiet area near UA campus.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-/* ================= USJ ================= */
-{
-    id: 601,
-    name: "Résidence USJ",
-    city: "Beirut",
-    university: "USJ",
-    price: 300,
-    image: "images/USJ1.jpg",
-    location: "Rue de Damas – Next to the Rectorate",
-    description: "Official USJ residence offering single rooms, double rooms, studios, and shared accommodation.",
-    type: "Official",
-    detailsLink: "housing-details.html"
-},
-{
-    id: 602,
-    name: "Huvelin Student Apartments",
-    city: "Beirut",
-    university: "USJ",
-    price: 240,
-    image: "images/USJ2.jpg",
-    location: "Rue Huvelin – Achrafieh",
-    description: "Private nearby student apartments close to USJ Social Sciences Campus.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-{
-    id: 603,
-    name: "Damascus Street Student Housing",
-    city: "Beirut",
-    university: "USJ",
-    price: 230,
-    image: "images/USJ3.jpg",
-    location: "Rue de Damas – Beirut",
-    description: "Private student housing near the Medical Sciences and Humanities campuses of USJ.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-{
-    id: 604,
-    name: "Achrafieh Campus Area Housing",
-    city: "Beirut",
-    university: "USJ",
-    price: 250,
-    image: "images/USJ4.jpg",
-    location: "Achrafieh – Beirut",
-    description: "Private nearby apartments in Achrafieh suitable for USJ students.",
-    type: "Private Nearby",
-    detailsLink: "housing-details.html"
-},
-
-];
-
-        function getPriceRange(priceRange) {
-            if (priceRange === "100-200") return [100, 200];
-            if (priceRange === "200-300") return [200, 300];
-            if (priceRange === "300-400") return [300, 400];
-            return [0, Infinity];
+                <li><a href="student-dashboard.html">Dashboard</a></li>
+                <li><a href="my-bookings.html">My Bookings</a></li>
+                <li><a href="notifications.html">Notifications</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link">Logout</a></li>
+            `;
+        } else if (role === "admin") {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Housings</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <li><a href="admin-dashboard.html">Admin Dashboard</a></li>
+                <li><a href="manage-housings.html">Manage Dorms</a></li>
+                <li><a href="reports.html">Reports</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link">Logout</a></li>
+            `;
         }
+    }
 
-        function renderHousings(housingList) {
-            housingResults.innerHTML = "";
-
-            if (housingList.length === 0) {
-                noResultsMessage.style.display = "block";
-                return;
-            }
-
-            noResultsMessage.style.display = "none";
-
-            housingList.forEach(function (housing) {
-                const housingCard = `
-                    <div class="housing-card">
-                        <img src="${housing.image}" alt="${housing.name}">
-                        <div class="housing-info">
-                            <h3>${housing.name}</h3>
-                            <p><i class="fa-solid fa-location-dot"></i> ${housing.location}</p>
-                            <p><i class="fa-solid fa-school"></i> Near ${housing.university}</p>
-                            <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${housing.price}/month</p>
-                            <a href="housing-details.html?id=${housing.id}" class="card-btn">View Details</a>
-                        </div>
-                    </div>
-                `;
-                housingResults.innerHTML += housingCard;
-            });
-        }
-
-        const [minPrice, maxPrice] = getPriceRange(selectedPrice);
-
-        const filteredHousings = housings.filter(function (housing) {
-            const matchUniversity = selectedUniversity === "" || housing.university === selectedUniversity;
-            const matchCity = selectedCity === "" || housing.city === selectedCity;
-            const matchPrice = selectedPrice === "" || (housing.price >= minPrice && housing.price <= maxPrice);
-
-            return matchUniversity && matchCity && matchPrice;
-        });
-
-        let summaryText = "Showing results";
-        if (selectedUniversity) summaryText += ` for ${selectedUniversity}`;
-        if (selectedCity) summaryText += ` in ${selectedCity}`;
-        resultsSummary.textContent = summaryText + ".";
-
-        renderHousings(filteredHousings);
-    </script>
+    loadFiltersFromUrl();
+    updateNavbar();
+    renderResults();
+</script>
 
 </body>
 </html>

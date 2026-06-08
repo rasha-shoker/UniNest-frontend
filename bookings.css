@@ -1,0 +1,122 @@
+.booking-section {
+    padding: 70px 8%;
+    background-color: var(--light-bg);
+}
+
+.booking-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+    align-items: start;
+}
+
+.booking-summary-card,
+.booking-form-card {
+    background-color: var(--white-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.booking-summary-card img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: 22px;
+}
+
+.booking-summary-info h2,
+.booking-form-card h2 {
+    color: var(--heading-color);
+    margin-bottom: 18px;
+}
+
+.booking-summary-info p {
+    margin-bottom: 12px;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.booking-summary-info i {
+    color: var(--secondary-color);
+    margin-right: 8px;
+}
+
+.booking-form-card .form-group {
+    margin-bottom: 20px;
+}
+
+.booking-form-card label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--heading-color);
+    font-weight: 700;
+}
+
+.booking-form-card input,
+.booking-form-card select {
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8fafc;
+    outline: none;
+}
+
+.booking-form-card input:focus,
+.booking-form-card select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.input-note {
+    display: block;
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.total-cost-box {
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 22px;
+    margin-bottom: 22px;
+}
+
+.total-cost-box p {
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.total-cost-box h3 {
+    color: var(--secondary-color);
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+
+.total-cost-box small {
+    color: #64748b;
+}
+
+.secondary-link {
+    display: inline-block;
+    margin-top: 14px;
+    color: #1e3a8a;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.secondary-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+    .booking-container {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | UniNest</title>
+
+    <link rel="stylesheet" href="admin-dashboard.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+    <script src="housings-data.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("admin");
+</script>
+
+<div class="admin-layout">
+
+    <aside class="admin-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Admin Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html" class="active"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
+            <li><a href="manage-housings.html"><i class="fa-solid fa-building"></i> Manage Dorms</a></li>
+            <li><a href="manage-bookings.html"><i class="fa-solid fa-bed"></i> Manage Bookings</a></li>
+            <li><a href="manage-students.html"><i class="fa-solid fa-users"></i> Manage Residents</a></li>
+            <li><a href="manage-maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="manage-reviews.html"><i class="fa-solid fa-star"></i> Manage Reviews</a></li>
+            <li><a href="reports.html"><i class="fa-solid fa-chart-pie"></i> Reports</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="admin-main">
+
+        <div class="admin-topbar">
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p>Monitor dorms, residents, bookings, payments, maintenance, and reviews.</p>
+            </div>
+
+            <div class="admin-avatar">A</div>
+        </div>
+
+        <section class="admin-stats-grid">
+
+            <div class="admin-stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-building"></i>
+                </div>
+                <div>
+                    <h3 id="totalDormsCount">0</h3>
+                    <p>Total Dorms</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon cyan">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <h3 id="totalResidentsCount">0</h3>
+                    <p>Total Residents</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-bed"></i>
+                </div>
+                <div>
+                    <h3 id="totalBookingsCount">0</h3>
+                    <p>Total Bookings</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <h3 id="approvedBookingsCount">0</h3>
+                    <p>Approved Bookings</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon yellow">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div>
+                    <h3 id="pendingBookingsCount">0</h3>
+                    <p>Pending Bookings</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-dollar-sign"></i>
+                </div>
+                <div>
+                    <h3 id="totalRevenueCount">$0</h3>
+                    <p>Total Revenue</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon red">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <div>
+                    <h3 id="openMaintenanceCount">0</h3>
+                    <p>Open Maintenance</p>
+                </div>
+            </div>
+
+            <div class="admin-stat-card">
+                <div class="stat-icon pink">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div>
+                    <h3 id="totalReviewsCount">0</h3>
+                    <p>Total Reviews</p>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="quick-actions-section">
+            <a href="manage-housings.html" class="quick-action-card">
+                <i class="fa-solid fa-building"></i>
+                <span>Manage Dorms</span>
+            </a>
+
+            <a href="manage-bookings.html" class="quick-action-card">
+                <i class="fa-solid fa-bed"></i>
+                <span>Manage Bookings</span>
+            </a>
+
+            <a href="manage-students.html" class="quick-action-card">
+                <i class="fa-solid fa-users"></i>
+                <span>Manage Residents</span>
+            </a>
+
+            <a href="manage-maintenance.html" class="quick-action-card">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span>Maintenance</span>
+            </a>
+
+            <a href="manage-reviews.html" class="quick-action-card">
+                <i class="fa-solid fa-star"></i>
+                <span>Reviews</span>
+            </a>
+
+            <a href="reports.html" class="quick-action-card">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Reports</span>
+            </a>
+        </section>
+
+        <section class="admin-dashboard-grid">
+
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2>Recent Booking Requests</h2>
+                    <a href="manage-bookings.html">View All</a>
+                </div>
+
+                <div class="booking-request-list" id="bookingRequestList"></div>
+
+                <div class="empty-message" id="emptyBookingMessage" style="display:none;">
+                    <p>No booking requests yet.</p>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2>Recent Maintenance Requests</h2>
+                    <a href="manage-maintenance.html">View All</a>
+                </div>
+
+                <div class="maintenance-list" id="maintenanceList"></div>
+
+                <div class="empty-message" id="emptyMaintenanceMessage" style="display:none;">
+                    <p>No maintenance requests yet.</p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script>
+    function getDorms() {
+        const savedDorms = JSON.parse(localStorage.getItem("dorms"));
+        const savedHousings = JSON.parse(localStorage.getItem("housings"));
+
+        if (savedDorms && Array.isArray(savedDorms) && savedDorms.length > 0) {
+            return savedDorms.map(normalizeDorm);
+        }
+
+        if (savedHousings && Array.isArray(savedHousings) && savedHousings.length > 0) {
+            const normalizedDorms = savedHousings.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof dormsData !== "undefined" && Array.isArray(dormsData)) {
+            const normalizedDorms = dormsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof housingsData !== "undefined" && Array.isArray(housingsData)) {
+            const normalizedDorms = housingsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        return [];
+    }
+
+    function getResidents() {
+        const residents = JSON.parse(localStorage.getItem("residents"));
+        const users = JSON.parse(localStorage.getItem("users"));
+
+        if (residents && Array.isArray(residents)) {
+            return residents.map(normalizeResident);
+        }
+
+        if (users && Array.isArray(users)) {
+            return users.map(normalizeResident);
+        }
+
+        return [];
+    }
+
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function getPayments() {
+        return JSON.parse(localStorage.getItem("payments")) || [];
+    }
+
+    function getMaintenanceRequests() {
+        return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+    }
+
+    function getReviews() {
+        return JSON.parse(localStorage.getItem("reviews")) || [];
+    }
+
+    function normalizeDorm(dorm) {
+        return {
+            ...dorm,
+
+            dorm_id: dorm.dorm_id || dorm.id,
+            dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
+            availability_status: dorm.availability_status || dorm.status || dorm.availability || "Available"
+        };
+    }
+
+    function normalizeResident(resident) {
+        return {
+            ...resident,
+
+            resident_id: resident.resident_id || resident.id,
+            first_name: resident.first_name || resident.firstName || "",
+            last_name: resident.last_name || resident.lastName || "",
+            email: resident.email || "",
+            user_type: resident.user_type || resident.role || "student"
+        };
+    }
+
+    function normalizeBooking(booking) {
+        return {
+            ...booking,
+
+            booking_id: booking.booking_id || booking.id,
+
+            resident_id: booking.resident_id || "",
+            resident_name: booking.resident_name || booking.residentName || booking.userName || booking.studentName || "Resident",
+            email: booking.email || booking.userEmail || booking.studentEmail || booking.residentEmail || "",
+
+            dorm_id: booking.dorm_id || booking.housingId,
+            dorm_name: booking.dorm_name || booking.housingName || "Dorm",
+
+            room_id: booking.room_id || booking.roomId || "",
+            room_number: booking.room_number || booking.roomNumber || "-",
+            room_type: booking.room_type || booking.roomType || "Room",
+
+            booking_status: booking.booking_status || booking.status || "Pending",
+            payment_status: booking.payment_status || booking.paymentStatus || "Pending",
+
+            created_at: booking.created_at || booking.createdAt || booking.bookingDate || booking.checkInDate || ""
+        };
+    }
+
+    function normalizePayment(payment) {
+        return {
+            ...payment,
+
+            payment_id: payment.payment_id || payment.paymentId,
+            booking_id: payment.booking_id || payment.bookingId,
+            amount: Number(payment.amount || 0),
+            payment_status: payment.payment_status || payment.status || "Pending"
+        };
+    }
+
+    function normalizeMaintenanceRequest(request) {
+        return {
+            ...request,
+
+            request_id: request.request_id || request.id,
+            booking_id: request.booking_id || request.bookingId,
+
+            resident_id: request.resident_id || "",
+            resident_name: request.resident_name || request.residentName || request.userName || request.studentName || "Resident",
+            email: request.email || request.residentEmail || request.userEmail || request.studentEmail || "",
+
+            dorm_id: request.dorm_id || request.housingId,
+            dorm_name: request.dorm_name || request.housingName || request.currentHousing || "Dorm",
+
+            request_title: request.request_title || request.title || "Maintenance Request",
+            request_status: request.request_status || request.status || "Pending",
+            request_date: request.request_date || request.submittedDate || request.createdAt || request.date || ""
+        };
+    }
+
+    function normalizeReview(review) {
+        return {
+            ...review,
+
+            review_id: review.review_id || review.id,
+            resident_id: review.resident_id || "",
+            dorm_id: review.dorm_id || review.housingId,
+            rating: Number(review.rating || 0),
+            review_comment: review.review_comment || review.comment || "",
+            review_status: review.review_status || review.status || "Visible",
+            created_at: review.created_at || review.createdAt || review.date || ""
+        };
+    }
+
+    function isPaid(value) {
+        return value === "Completed" || value === "Paid";
+    }
+
+    function sortByNewest(items, idFields) {
+        return items.slice().sort(function(a, b) {
+            const aValue = getNewestValue(a, idFields);
+            const bValue = getNewestValue(b, idFields);
+
+            return bValue - aValue;
+        });
+    }
+
+    function getNewestValue(item, idFields) {
+        for (let i = 0; i < idFields.length; i++) {
+            const field = idFields[i];
+
+            if (item[field]) {
+                return Number(item[field]);
+            }
+        }
+
+        return 0;
+    }
+
+    function updateStats() {
+        const dorms = getDorms();
+        const residents = getResidents().filter(function(resident) {
+            const userType = String(resident.user_type || "").toLowerCase();
+            return userType === "student" || userType === "employee";
+        });
+
+        const bookings = getBookings().map(normalizeBooking);
+        const payments = getPayments().map(normalizePayment);
+        const maintenanceRequests = getMaintenanceRequests().map(normalizeMaintenanceRequest);
+        const reviews = getReviews().map(normalizeReview);
+
+        const approvedBookings = bookings.filter(function(booking) {
+            return booking.booking_status === "Approved";
+        }).length;
+
+        const pendingBookings = bookings.filter(function(booking) {
+            return booking.booking_status === "Pending";
+        }).length;
+
+        const completedPayments = payments.filter(function(payment) {
+            return isPaid(payment.payment_status);
+        });
+
+        const totalRevenue = completedPayments.reduce(function(total, payment) {
+            return total + Number(payment.amount || 0);
+        }, 0);
+
+        const openMaintenance = maintenanceRequests.filter(function(request) {
+            return request.request_status === "Pending" || request.request_status === "In Progress";
+        }).length;
+
+        document.getElementById("totalDormsCount").textContent = dorms.length;
+        document.getElementById("totalResidentsCount").textContent = residents.length;
+        document.getElementById("totalBookingsCount").textContent = bookings.length;
+        document.getElementById("approvedBookingsCount").textContent = approvedBookings;
+        document.getElementById("pendingBookingsCount").textContent = pendingBookings;
+        document.getElementById("totalRevenueCount").textContent = "$" + totalRevenue;
+        document.getElementById("openMaintenanceCount").textContent = openMaintenance;
+        document.getElementById("totalReviewsCount").textContent = reviews.length;
+    }
+
+    function renderRecentBookings() {
+        const bookings = sortByNewest(getBookings().map(normalizeBooking), ["booking_id", "id"]).slice(0, 5);
+        const list = document.getElementById("bookingRequestList");
+        const emptyMessage = document.getElementById("emptyBookingMessage");
+
+        list.innerHTML = "";
+
+        if (bookings.length === 0) {
+            emptyMessage.style.display = "block";
+            return;
+        }
+
+        emptyMessage.style.display = "none";
+
+        bookings.forEach(function(booking) {
+            const booking_status = booking.booking_status || "Pending";
+            const statusClass = booking_status.toLowerCase();
+
+            const residentName = booking.resident_name || "Resident";
+            const dormName = booking.dorm_name || "Dorm";
+            const roomType = booking.room_type || "Room";
+            const roomNumber = booking.room_number || "-";
+            const paymentStatus = booking.payment_status || "Pending";
+            const date = booking.created_at || "";
+
+            const card = document.createElement("div");
+            card.className = "booking-request-card";
+
+            card.innerHTML = `
+                <div>
+                    <h3>${residentName}</h3>
+                    <p>${dormName} • ${roomType} • Room ${roomNumber}</p>
+                    <small>Payment: ${paymentStatus} ${date ? "• " + date : ""}</small>
+                </div>
+
+                <span class="status-badge ${statusClass}">${booking_status}</span>
+            `;
+
+            list.appendChild(card);
+        });
+    }
+
+    function renderRecentMaintenance() {
+        const requests = sortByNewest(getMaintenanceRequests().map(normalizeMaintenanceRequest), ["request_id", "id"]).slice(0, 5);
+        const list = document.getElementById("maintenanceList");
+        const emptyMessage = document.getElementById("emptyMaintenanceMessage");
+
+        list.innerHTML = "";
+
+        if (requests.length === 0) {
+            emptyMessage.style.display = "block";
+            return;
+        }
+
+        emptyMessage.style.display = "none";
+
+        requests.forEach(function(request) {
+            const request_status = request.request_status || "Pending";
+            let statusClass = "pending";
+
+            if (request_status === "In Progress") {
+                statusClass = "progress";
+            } else if (request_status === "Resolved") {
+                statusClass = "resolved";
+            }
+
+            const residentName = request.resident_name || "Resident";
+            const title = request.request_title || "Maintenance Request";
+            const dorm = request.dorm_name || "Dorm";
+            const date = request.request_date || "";
+
+            const card = document.createElement("div");
+            card.className = "maintenance-request-card";
+
+            card.innerHTML = `
+                <div>
+                    <h3>${title}</h3>
+                    <p>${residentName} • ${dorm}</p>
+                    <small>${date}</small>
+                </div>
+
+                <span class="status-badge ${statusClass}">${request_status}</span>
+            `;
+
+            list.appendChild(card);
+        });
+    }
+
+    updateStats();
+    renderRecentBookings();
+    renderRecentMaintenance();
+</script>
+
+</body>
+</html>

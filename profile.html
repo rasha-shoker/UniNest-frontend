@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | UniNest</title>
+
+    <link rel="stylesheet" href="profile.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<div class="profile-layout">
+
+    <aside class="profile-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Resident Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="student-dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="my-bookings.html"><i class="fa-solid fa-bed"></i> My Bookings</a></li>
+            <li><a href="payment.html"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+            <li><a href="maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="notifications.html"><i class="fa-solid fa-bell"></i> Notifications</a></li>
+            <li><a href="profile.html" class="active"><i class="fa-solid fa-user"></i> Profile</a></li>
+            <li><a href="housings.html"><i class="fa-solid fa-magnifying-glass"></i> Explore Dorms</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="profile-main">
+        <div class="profile-topbar">
+            <div>
+                <h1>My Profile</h1>
+                <p>View and manage your resident information.</p>
+            </div>
+        </div>
+
+        <section class="profile-grid">
+
+            <div class="profile-card profile-info-card">
+                <div class="profile-avatar" id="profileAvatar">R</div>
+                <h2 id="profileCardName">Resident Name</h2>
+                <p class="profile-role" id="profileRoleText">Active Resident</p>
+
+                <div class="profile-tags">
+                    <span id="tagRole">Resident</span>
+                    <span id="tagAffiliation">Affiliation</span>
+                    <span id="tagPhone">Phone</span>
+                </div>
+            </div>
+
+            <div class="profile-card">
+                <div class="card-header">
+                    <h2>Personal Information</h2>
+                </div>
+
+                <form class="profile-form" id="profileForm">
+
+                    <div class="form-group">
+                        <label for="profileImage">Profile Image</label>
+                        <input type="file" id="profileImage" accept="image/*">
+                        <small class="form-note">Upload a profile image from your device.</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fullName">Full Name</label>
+                            <input type="text" id="fullName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="residentEmail">Email</label>
+                            <input type="email" id="residentEmail" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="text" id="phone" placeholder="Example: 71-123456" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="role">Role</label>
+                            <input type="text" id="role" disabled>
+                        </div>
+                    </div>
+
+                    <div id="studentFields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="university">University</label>
+                                <input type="text" id="university">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="major">Major</label>
+                                <input type="text" id="major">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="employeeFields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="company">Company</label>
+                                <input type="text" id="company">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="jobTitle">Job Title</label>
+                                <input type="text" id="jobTitle">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="currentHousing">Current Dorm</label>
+                            <input type="text" id="currentHousing" disabled>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="roomType">Room Type</label>
+                            <input type="text" id="roomType" disabled>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bio">Short Bio</label>
+                        <textarea id="bio" rows="5" placeholder="Write something about yourself..."></textarea>
+                    </div>
+
+                    <div class="password-section">
+                        <h3>Change Password</h3>
+                        <p>Leave these fields empty if you do not want to change your password.</p>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="currentPassword">Current Password</label>
+                                <input type="password" id="currentPassword" placeholder="Current password">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newPassword">New Password</label>
+                                <input type="password" id="newPassword" placeholder="New password">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="save-btn">Save Changes</button>
+                </form>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    const currentEmail = (localStorage.getItem("loggedInUserEmail") || "").toLowerCase();
+    const currentResidentId = localStorage.getItem("loggedInResidentId") || "";
+    let profileImageData = "";
+
+    function getUsers() {
+        return JSON.parse(localStorage.getItem("users")) || [];
+    }
+
+    function saveUsers(users) {
+        localStorage.setItem("users", JSON.stringify(users));
+    }
+
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function saveBookings(bookings) {
+        localStorage.setItem("studentBookings", JSON.stringify(bookings));
+    }
+
+    function getMaintenanceRequests() {
+        return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+    }
+
+    function saveMaintenanceRequests(requests) {
+        localStorage.setItem("maintenanceRequests", JSON.stringify(requests));
+    }
+
+    function getPayments() {
+        return JSON.parse(localStorage.getItem("payments")) || [];
+    }
+
+    function savePayments(payments) {
+        localStorage.setItem("payments", JSON.stringify(payments));
+    }
+
+    function getReviews() {
+        return JSON.parse(localStorage.getItem("reviews")) || [];
+    }
+
+    function saveReviews(reviews) {
+        localStorage.setItem("reviews", JSON.stringify(reviews));
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function splitFullName(fullName) {
+        const parts = fullName.trim().split(" ").filter(part => part !== "");
+
+        return {
+            first_name: parts[0] || "",
+            last_name: parts.length > 1 ? parts.slice(1).join(" ") : ""
+        };
+    }
+
+    function getResidentFullName(resident) {
+        const first_name = resident.first_name || "";
+        const last_name = resident.last_name || "";
+
+        const fullName = (first_name + " " + last_name).trim();
+
+        return fullName || "Resident";
+    }
+
+    function getCurrentUser() {
+        const users = getUsers();
+
+        return users.find(function(user) {
+            return String(user.resident_id || "") === String(currentResidentId) ||
+                   (user.email || "").toLowerCase() === currentEmail;
+        });
+    }
+
+    function getLatestBooking() {
+        const bookings = getBookings();
+
+        const myBookings = bookings
+            .filter(function(booking) {
+                const bookingResidentId = String(booking.resident_id || "");
+                const bookingEmail = (booking.email || booking.userEmail || booking.studentEmail || "").toLowerCase();
+
+                return bookingResidentId === String(currentResidentId) || bookingEmail === currentEmail;
+            })
+            .sort(function(a, b) {
+                return Number(b.booking_id || b.id || 0) - Number(a.booking_id || a.id || 0);
+            });
+
+        return myBookings.find(function(booking) {
+            const booking_status = booking.booking_status || booking.status || "Pending";
+            return booking_status === "Approved" || booking_status === "Pending";
+        });
+    }
+
+    function showFieldsByUserType(user_type) {
+        const studentFields = document.getElementById("studentFields");
+        const employeeFields = document.getElementById("employeeFields");
+
+        if (user_type === "student") {
+            studentFields.style.display = "block";
+            employeeFields.style.display = "none";
+        } else if (user_type === "employee") {
+            studentFields.style.display = "none";
+            employeeFields.style.display = "block";
+        } else {
+            studentFields.style.display = "none";
+            employeeFields.style.display = "none";
+        }
+    }
+
+    function renderProfileAvatar(fullName, imageData) {
+        const avatar = document.getElementById("profileAvatar");
+
+        if (imageData) {
+            avatar.innerHTML = `<img src="${imageData}" alt="Profile Image">`;
+        } else {
+            avatar.textContent = fullName.charAt(0).toUpperCase();
+        }
+    }
+
+    function loadProfile() {
+        const resident = getCurrentUser();
+
+        if (!resident) {
+            alert("Profile not found. Please login again.");
+            window.location.href = "login.html";
+            return;
+        }
+
+        const latestBooking = getLatestBooking();
+
+        const fullName = getResidentFullName(resident);
+        const user_type = (resident.user_type || localStorage.getItem("loggedInUserType") || localStorage.getItem("loggedInRole") || "student").toLowerCase();
+        const phone = resident.phone || "";
+
+        profileImageData = resident.profile_image || "";
+
+        document.getElementById("fullName").value = fullName;
+        document.getElementById("residentEmail").value = resident.email || currentEmail;
+        document.getElementById("phone").value = phone;
+        document.getElementById("role").value = user_type.charAt(0).toUpperCase() + user_type.slice(1);
+
+        document.getElementById("university").value = resident.university_name || "";
+        document.getElementById("major").value = resident.major || "";
+
+        document.getElementById("company").value = resident.company_name || "";
+        document.getElementById("jobTitle").value = resident.job_position || "";
+
+        document.getElementById("bio").value = resident.bio || "";
+
+        document.getElementById("currentHousing").value = latestBooking ? (latestBooking.dorm_name || latestBooking.housingName || "") : "";
+        document.getElementById("roomType").value = latestBooking ? (latestBooking.room_type || latestBooking.roomType || "") : "";
+
+        document.getElementById("profileCardName").textContent = fullName;
+        renderProfileAvatar(fullName, profileImageData);
+
+        const readableRole = user_type.charAt(0).toUpperCase() + user_type.slice(1);
+
+        document.getElementById("profileRoleText").textContent = `Active ${readableRole}`;
+        document.getElementById("tagRole").textContent = readableRole;
+
+        if (user_type === "student") {
+            document.getElementById("tagAffiliation").textContent = resident.university_name || "University";
+        } else if (user_type === "employee") {
+            document.getElementById("tagAffiliation").textContent = resident.company_name || "Company";
+        } else {
+            document.getElementById("tagAffiliation").textContent = "Affiliation";
+        }
+
+        document.getElementById("tagPhone").textContent = phone || "Phone";
+
+        showFieldsByUserType(user_type);
+    }
+
+    function updateRelatedData(newName) {
+        const bookings = getBookings().map(function(booking) {
+            const bookingResidentId = String(booking.resident_id || "");
+            const bookingEmail = (booking.email || booking.userEmail || booking.studentEmail || "").toLowerCase();
+
+            if (bookingResidentId === String(currentResidentId) || bookingEmail === currentEmail) {
+                return {
+                    ...booking,
+                    resident_name: newName,
+
+                    // old compatibility
+                    userName: newName,
+                    studentName: newName,
+                    residentName: newName
+                };
+            }
+
+            return booking;
+        });
+
+        saveBookings(bookings);
+
+        const requests = getMaintenanceRequests().map(function(request) {
+            const requestResidentId = String(request.resident_id || "");
+            const requestEmail = (request.email || request.userEmail || request.studentEmail || request.residentEmail || "").toLowerCase();
+
+            if (requestResidentId === String(currentResidentId) || requestEmail === currentEmail) {
+                return {
+                    ...request,
+                    resident_name: newName,
+
+                    // old compatibility
+                    userName: newName,
+                    studentName: newName,
+                    residentName: newName
+                };
+            }
+
+            return request;
+        });
+
+        saveMaintenanceRequests(requests);
+
+        const payments = getPayments().map(function(payment) {
+            const paymentResidentId = String(payment.resident_id || "");
+            const paymentEmail = (payment.email || payment.userEmail || payment.studentEmail || "").toLowerCase();
+
+            if (paymentResidentId === String(currentResidentId) || paymentEmail === currentEmail) {
+                return {
+                    ...payment,
+                    resident_name: newName,
+
+                    // old compatibility
+                    userName: newName,
+                    studentName: newName,
+                    residentName: newName
+                };
+            }
+
+            return payment;
+        });
+
+        savePayments(payments);
+
+        const reviews = getReviews().map(function(review) {
+            const reviewResidentId = String(review.resident_id || "");
+            const reviewEmail = (review.email || review.userEmail || review.residentEmail || "").toLowerCase();
+
+            if (reviewResidentId === String(currentResidentId) || reviewEmail === currentEmail) {
+                return {
+                    ...review,
+                    resident_name: newName,
+
+                    // old compatibility
+                    userName: newName,
+                    residentName: newName
+                };
+            }
+
+            return review;
+        });
+
+        saveReviews(reviews);
+    }
+
+    document.getElementById("profileImage").addEventListener("change", function() {
+        const file = this.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith("image/")) {
+            alert("Please upload an image file only.");
+            this.value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            profileImageData = e.target.result;
+            const fullName = document.getElementById("fullName").value.trim() || "Resident";
+            renderProfileAvatar(fullName, profileImageData);
+        };
+
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById("profileForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const fullName = document.getElementById("fullName").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+
+        const university_name = document.getElementById("university").value.trim();
+        const major = document.getElementById("major").value.trim();
+
+        const company_name = document.getElementById("company").value.trim();
+        const job_position = document.getElementById("jobTitle").value.trim();
+
+        const bio = document.getElementById("bio").value.trim();
+
+        const currentPassword = document.getElementById("currentPassword").value.trim();
+        const newPassword = document.getElementById("newPassword").value.trim();
+        const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+        if (!fullName || !phone) {
+            alert("Please fill all required fields.");
+            return;
+        }
+
+        const phoneRegex = /^\d{2}-\d{6}$/;
+
+        if (!phoneRegex.test(phone)) {
+            alert("Phone number must be like this: 71-123456");
+            return;
+        }
+
+        const users = getUsers();
+
+        const currentResident = users.find(function(user) {
+            return String(user.resident_id || "") === String(currentResidentId) ||
+                   (user.email || "").toLowerCase() === currentEmail;
+        });
+
+        if (!currentResident) {
+            alert("User not found.");
+            return;
+        }
+
+        const user_type = (currentResident.user_type || localStorage.getItem("loggedInUserType") || localStorage.getItem("loggedInRole") || "student").toLowerCase();
+
+        if (user_type === "student" && (!university_name || !major)) {
+            alert("Please fill university and major fields.");
+            return;
+        }
+
+        if (user_type === "employee" && (!company_name || !job_position)) {
+            alert("Please fill company and job title fields.");
+            return;
+        }
+
+        let finalPassword = currentResident.password || "";
+
+        if (currentPassword || newPassword || confirmPassword) {
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                alert("Please fill all password fields to change your password.");
+                return;
+            }
+
+            if (currentPassword !== currentResident.password) {
+                alert("Current password is incorrect.");
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert("New password must be at least 6 characters.");
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert("New password and confirmation do not match.");
+                return;
+            }
+
+            finalPassword = newPassword;
+        }
+
+        const nameParts = splitFullName(fullName);
+
+        const updatedUsers = users.map(function(user) {
+            const sameResident =
+                String(user.resident_id || "") === String(currentResidentId) ||
+                (user.email || "").toLowerCase() === currentEmail;
+
+            if (sameResident) {
+                return {
+                    ...user,
+
+                    first_name: nameParts.first_name,
+                    last_name: nameParts.last_name,
+
+                    phone: phone,
+
+                    user_type: user_type,
+
+                    university_name: user_type === "student" ? university_name : "",
+                    major: user_type === "student" ? major : "",
+
+                    company_name: user_type === "employee" ? company_name : "",
+                    job_position: user_type === "employee" ? job_position : "",
+
+                    bio: bio,
+                    profile_image: profileImageData,
+                    password: finalPassword,
+                    updated_at: formatDateToday()
+                };
+            }
+
+            return user;
+        });
+
+        saveUsers(updatedUsers);
+
+        updateRelatedData(fullName);
+
+        localStorage.setItem("loggedInUser", fullName);
+        localStorage.setItem("loggedInUserType", user_type);
+        localStorage.setItem("loggedInRole", user_type);
+
+        alert("Profile updated successfully!");
+        window.location.reload();
+    });
+
+    loadProfile();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications | UniNest</title>
+
+    <link rel="stylesheet" href="notifications.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<div class="notifications-layout">
+
+    <aside class="notifications-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Resident Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="student-dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="my-bookings.html"><i class="fa-solid fa-bed"></i> My Bookings</a></li>
+            <li><a href="payment.html"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+            <li><a href="maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="notifications.html" class="active"><i class="fa-solid fa-bell"></i> Notifications</a></li>
+            <li><a href="profile.html"><i class="fa-solid fa-user"></i> Profile</a></li>
+            <li><a href="housings.html"><i class="fa-solid fa-magnifying-glass"></i> Explore Dorms</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="notifications-main">
+
+        <div class="notifications-topbar">
+            <div>
+                <h1>Notifications</h1>
+                <p>View booking, payment, maintenance, and review updates.</p>
+            </div>
+
+            <div class="topbar-actions">
+                <button class="mark-btn" onclick="markAllAsRead()">
+                    <i class="fa-solid fa-check-double"></i>
+                    Mark All as Read
+                </button>
+
+                <button class="delete-all-btn" onclick="deleteAllNotifications()">
+                    <i class="fa-solid fa-trash"></i>
+                    Delete All
+                </button>
+            </div>
+        </div>
+
+        <section class="notifications-stats">
+            <div class="stat-card">
+                <h3 id="totalNotificationsCount">0</h3>
+                <p>Total</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="unreadNotificationsCount">0</h3>
+                <p>Unread</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="bookingNotificationsCount">0</h3>
+                <p>Booking</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="paymentNotificationsCount">0</h3>
+                <p>Payment</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="maintenanceNotificationsCount">0</h3>
+                <p>Maintenance</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="reviewNotificationsCount">0</h3>
+                <p>Review</p>
+            </div>
+        </section>
+
+        <section class="notifications-filter-card">
+            <div class="filter-group">
+                <label for="typeFilter">Filter by Type</label>
+                <select id="typeFilter" onchange="renderNotifications()">
+                    <option value="All">All Types</option>
+                    <option value="booking">Booking</option>
+                    <option value="payment">Payment</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="review">Review</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="readFilter">Filter by Status</label>
+                <select id="readFilter" onchange="renderNotifications()">
+                    <option value="All">All</option>
+                    <option value="Unread">Unread</option>
+                    <option value="Read">Read</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="notifications-list" id="notificationsList"></section>
+
+        <div class="empty-notifications" id="emptyNotificationsMessage" style="display:none;">
+            <h3>No notifications found</h3>
+            <p>You do not have any notifications yet.</p>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+    const loggedInUserEmail = (localStorage.getItem("loggedInUserEmail") || "").toLowerCase();
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function normalizeNotification(notification) {
+        return {
+            ...notification,
+
+            notification_id: notification.notification_id || notification.id,
+            resident_id: notification.resident_id || "",
+            email: notification.email || notification.userEmail || "",
+
+            title: notification.title || "Notification",
+            message: notification.message || "-",
+            notification_type: notification.notification_type || notification.type || "notification",
+
+            is_read: notification.is_read !== undefined ? notification.is_read : (notification.isRead || false),
+            created_at: notification.created_at || notification.date || ""
+        };
+    }
+
+    function normalizeType(type) {
+        return String(type || "notification").toLowerCase();
+    }
+
+    function displayType(type) {
+        const value = normalizeType(type);
+
+        if (value === "booking") return "Booking";
+        if (value === "payment") return "Payment";
+        if (value === "maintenance") return "Maintenance";
+        if (value === "review") return "Review";
+
+        return "Notification";
+    }
+
+    function getNotificationIcon(type) {
+        const value = normalizeType(type);
+
+        if (value === "booking") return "fa-bed";
+        if (value === "payment") return "fa-credit-card";
+        if (value === "maintenance") return "fa-screwdriver-wrench";
+        if (value === "review") return "fa-star";
+
+        return "fa-bell";
+    }
+
+    function getMyNotifications() {
+        const notifications = getNotifications().map(normalizeNotification);
+
+        return notifications
+            .filter(function(notification) {
+                const notificationResidentId = String(notification.resident_id || "");
+                const notificationEmail = (notification.email || "").toLowerCase();
+
+                return notificationResidentId === String(loggedInResidentId) ||
+                       notificationEmail === loggedInUserEmail;
+            })
+            .sort(function(a, b) {
+                return Number(b.notification_id || 0) - Number(a.notification_id || 0);
+            });
+    }
+
+    function getFilteredNotifications() {
+        const typeFilter = document.getElementById("typeFilter").value;
+        const readFilter = document.getElementById("readFilter").value;
+
+        return getMyNotifications().filter(function(notification) {
+            const notification_type = normalizeType(notification.notification_type);
+
+            const matchType =
+                typeFilter === "All" ||
+                notification_type === typeFilter;
+
+            const matchRead =
+                readFilter === "All" ||
+                (readFilter === "Unread" && notification.is_read === false) ||
+                (readFilter === "Read" && notification.is_read === true);
+
+            return matchType && matchRead;
+        });
+    }
+
+    function updateNotificationStats(myNotifications) {
+        const unread = myNotifications.filter(n => n.is_read === false).length;
+        const booking = myNotifications.filter(n => normalizeType(n.notification_type) === "booking").length;
+        const payment = myNotifications.filter(n => normalizeType(n.notification_type) === "payment").length;
+        const maintenance = myNotifications.filter(n => normalizeType(n.notification_type) === "maintenance").length;
+        const review = myNotifications.filter(n => normalizeType(n.notification_type) === "review").length;
+
+        document.getElementById("totalNotificationsCount").textContent = myNotifications.length;
+        document.getElementById("unreadNotificationsCount").textContent = unread;
+        document.getElementById("bookingNotificationsCount").textContent = booking;
+        document.getElementById("paymentNotificationsCount").textContent = payment;
+        document.getElementById("maintenanceNotificationsCount").textContent = maintenance;
+        document.getElementById("reviewNotificationsCount").textContent = review;
+    }
+
+    function renderNotifications() {
+        const notificationsList = document.getElementById("notificationsList");
+        const empty = document.getElementById("emptyNotificationsMessage");
+
+        const myNotifications = getMyNotifications();
+        const filteredNotifications = getFilteredNotifications();
+
+        notificationsList.innerHTML = "";
+
+        updateNotificationStats(myNotifications);
+
+        if (filteredNotifications.length === 0) {
+            empty.style.display = "block";
+            return;
+        }
+
+        empty.style.display = "none";
+
+        filteredNotifications.forEach(function(notification) {
+            const notification_id = notification.notification_id;
+            const notification_type = normalizeType(notification.notification_type);
+
+            const card = document.createElement("div");
+
+            card.className = notification.is_read ? "notification-card read" : "notification-card unread";
+
+            card.innerHTML = `
+                <div class="notification-icon ${notification_type}">
+                    <i class="fa-solid ${getNotificationIcon(notification_type)}"></i>
+                </div>
+
+                <div class="notification-content">
+                    <div class="notification-title-row">
+                        <h2>${notification.title || "Notification"}</h2>
+                        <span class="notification-type">${displayType(notification_type)}</span>
+                    </div>
+
+                    <p>${notification.message || "-"}</p>
+
+                    <small>
+                        <i class="fa-solid fa-calendar-days"></i>
+                        ${notification.created_at || ""}
+                    </small>
+                </div>
+
+                <div class="notification-actions">
+                    ${
+                        notification.is_read
+                        ? `<button class="disabled-btn" disabled>Read</button>`
+                        : `<button class="read-btn" onclick="markAsRead(${notification_id})">Mark Read</button>`
+                    }
+
+                    <button class="delete-btn" onclick="deleteNotification(${notification_id})">
+                        Delete
+                    </button>
+                </div>
+            `;
+
+            notificationsList.appendChild(card);
+        });
+    }
+
+    function markAsRead(notificationId) {
+        const notifications = getNotifications();
+
+        const updatedNotifications = notifications.map(function(notification) {
+            const normalized = normalizeNotification(notification);
+
+            const sameNotification = Number(normalized.notification_id) === Number(notificationId);
+            const sameResident =
+                String(normalized.resident_id || "") === String(loggedInResidentId) ||
+                (normalized.email || "").toLowerCase() === loggedInUserEmail;
+
+            if (sameNotification && sameResident) {
+                return {
+                    ...notification,
+
+                    is_read: true,
+
+                    // Compatibility
+                    isRead: true
+                };
+            }
+
+            return notification;
+        });
+
+        saveNotifications(updatedNotifications);
+        renderNotifications();
+    }
+
+    function markAllAsRead() {
+        const notifications = getNotifications();
+
+        const updatedNotifications = notifications.map(function(notification) {
+            const normalized = normalizeNotification(notification);
+
+            const sameResident =
+                String(normalized.resident_id || "") === String(loggedInResidentId) ||
+                (normalized.email || "").toLowerCase() === loggedInUserEmail;
+
+            if (sameResident) {
+                return {
+                    ...notification,
+
+                    is_read: true,
+
+                    // Compatibility
+                    isRead: true
+                };
+            }
+
+            return notification;
+        });
+
+        saveNotifications(updatedNotifications);
+        renderNotifications();
+    }
+
+    function deleteNotification(notificationId) {
+        const ok = confirm("Are you sure you want to delete this notification?");
+
+        if (!ok) {
+            return;
+        }
+
+        const notifications = getNotifications();
+
+        const updatedNotifications = notifications.filter(function(notification) {
+            const normalized = normalizeNotification(notification);
+
+            const sameNotification = Number(normalized.notification_id) === Number(notificationId);
+            const sameResident =
+                String(normalized.resident_id || "") === String(loggedInResidentId) ||
+                (normalized.email || "").toLowerCase() === loggedInUserEmail;
+
+            return !(sameNotification && sameResident);
+        });
+
+        saveNotifications(updatedNotifications);
+        renderNotifications();
+    }
+
+    function deleteAllNotifications() {
+        const ok = confirm("Are you sure you want to delete all your notifications?");
+
+        if (!ok) {
+            return;
+        }
+
+        const notifications = getNotifications();
+
+        const updatedNotifications = notifications.filter(function(notification) {
+            const normalized = normalizeNotification(notification);
+
+            const sameResident =
+                String(normalized.resident_id || "") === String(loggedInResidentId) ||
+                (normalized.email || "").toLowerCase() === loggedInUserEmail;
+
+            return !sameResident;
+        });
+
+        saveNotifications(updatedNotifications);
+        renderNotifications();
+    }
+
+    renderNotifications();
+</script>
+
+</body>
+</html>

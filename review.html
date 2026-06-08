@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write Review | UniNest</title>
+
+    <link rel="stylesheet" href="my-booking.css">
+    <link rel="stylesheet" href="review.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<div class="bookings-layout">
+
+    <aside class="bookings-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Resident Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="student-dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="my-bookings.html"><i class="fa-solid fa-bed"></i> My Bookings</a></li>
+            <li><a href="payment.html"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+            <li><a href="maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="notifications.html"><i class="fa-solid fa-bell"></i> Notifications</a></li>
+            <li><a href="profile.html"><i class="fa-solid fa-user"></i> Profile</a></li>
+            <li><a href="housings.html"><i class="fa-solid fa-magnifying-glass"></i> Explore Dorms</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="bookings-main">
+        <div class="bookings-topbar">
+            <div>
+                <h1>Write Review</h1>
+                <p>Rate your dorm experience and share your feedback.</p>
+            </div>
+
+            <a href="my-bookings.html" class="primary-btn">
+                <i class="fa-solid fa-arrow-left"></i> My Bookings
+            </a>
+        </div>
+
+        <section class="review-page-container">
+
+            <div class="review-summary-card">
+                <h2>Booking Summary</h2>
+                <div id="reviewBookingDetails"></div>
+            </div>
+
+            <div class="review-form-card">
+                <h2>Your Review</h2>
+
+                <form id="reviewForm">
+
+                    <div class="form-group">
+                        <label for="rating">Rating</label>
+                        <select id="rating" required>
+                            <option value="">Select rating</option>
+                            <option value="5">5 - Excellent</option>
+                            <option value="4">4 - Very Good</option>
+                            <option value="3">3 - Good</option>
+                            <option value="2">2 - Fair</option>
+                            <option value="1">1 - Poor</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comment">Review Comment</label>
+                        <textarea id="comment" rows="6" placeholder="Describe your experience..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="primary-btn">Submit Review</button>
+                    <a href="my-bookings.html" class="secondary-link">Back to My Bookings</a>
+                </form>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const bookingId = Number(params.get("bookingId"));
+
+    const loggedInUser = localStorage.getItem("loggedInUser") || "Resident";
+    const loggedInUserEmail = localStorage.getItem("loggedInUserEmail") || "";
+    const loggedInRole = localStorage.getItem("loggedInRole") || "";
+    const loggedInUserType = localStorage.getItem("loggedInUserType") || loggedInRole;
+    const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+
+    const reviewBookingDetails = document.getElementById("reviewBookingDetails");
+    const reviewForm = document.getElementById("reviewForm");
+
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function getReviews() {
+        return JSON.parse(localStorage.getItem("reviews")) || [];
+    }
+
+    function saveReviews(reviews) {
+        localStorage.setItem("reviews", JSON.stringify(reviews));
+    }
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function addNotification(resident_id, notification_type, title, message) {
+        if (!resident_id && !loggedInUserEmail) {
+            return;
+        }
+
+        const notifications = getNotifications();
+        const notificationId = Date.now() + Math.floor(Math.random() * 1000);
+
+        const newNotification = {
+            notification_id: notificationId,
+            resident_id: resident_id || "",
+            title: title,
+            message: message,
+            notification_type: notification_type,
+            is_read: false,
+            created_at: formatDateToday(),
+
+            // Compatibility مع الصفحات القديمة
+            id: notificationId,
+            userEmail: loggedInUserEmail,
+            type: notification_type,
+            isRead: false,
+            date: formatDateToday()
+        };
+
+        notifications.unshift(newNotification);
+        saveNotifications(notifications);
+    }
+
+    function normalizeBooking(booking) {
+        return {
+            ...booking,
+
+            booking_id: booking.booking_id || booking.id,
+
+            resident_id: booking.resident_id || "",
+            resident_name: booking.resident_name || booking.residentName || booking.userName || booking.studentName || "",
+            email: booking.email || booking.userEmail || booking.studentEmail || booking.residentEmail || "",
+
+            dorm_id: booking.dorm_id || booking.housingId,
+            dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
+
+            university_name: booking.university_name || booking.university || "",
+            city: booking.city || "",
+            area: booking.area || booking.location || "",
+
+            room_id: booking.room_id || booking.roomId || "",
+            room_number: booking.room_number || booking.roomNumber || "",
+            room_type: booking.room_type || booking.roomType || "",
+
+            check_in_date: booking.check_in_date || booking.checkInDate || "-",
+            check_out_date: booking.check_out_date || booking.checkOutDate || "-",
+
+            booking_status: booking.booking_status || booking.status || "Pending",
+            payment_status: booking.payment_status || booking.paymentStatus || "Pending"
+        };
+    }
+
+    function normalizeReview(review) {
+        return {
+            ...review,
+
+            review_id: review.review_id || review.id,
+            booking_id: review.booking_id || review.bookingId,
+
+            resident_id: review.resident_id || "",
+            resident_name: review.resident_name || review.residentName || review.userName || "",
+            email: review.email || review.userEmail || review.residentEmail || "",
+
+            dorm_id: review.dorm_id || review.housingId,
+            dorm_name: review.dorm_name || review.housingName || "",
+
+            rating: Number(review.rating || 0),
+            review_comment: review.review_comment || review.comment || "",
+            review_status: review.review_status || review.status || "Visible",
+            created_at: review.created_at || review.createdAt || review.date || ""
+        };
+    }
+
+    function isPaidBooking(booking) {
+        const payment_status = booking.payment_status || "Pending";
+        return payment_status === "Completed" || payment_status === "Paid";
+    }
+
+    function getSelectedBooking() {
+        const bookings = getBookings().map(normalizeBooking);
+        const currentEmail = loggedInUserEmail.toLowerCase();
+        const currentResidentId = String(loggedInResidentId);
+
+        return bookings.find(function(booking) {
+            const bookingEmail = (booking.email || "").toLowerCase();
+            const bookingResidentId = String(booking.resident_id || "");
+
+            return Number(booking.booking_id) === Number(bookingId)
+                && (
+                    bookingResidentId === currentResidentId ||
+                    bookingEmail === currentEmail
+                );
+        });
+    }
+
+    let selectedBooking = getSelectedBooking();
+
+    function userAlreadyReviewed() {
+        const reviews = getReviews().map(normalizeReview);
+        const currentEmail = loggedInUserEmail.toLowerCase();
+        const currentResidentId = String(loggedInResidentId);
+
+        return reviews.some(function(review) {
+            const reviewEmail = (review.email || "").toLowerCase();
+            const reviewResidentId = String(review.resident_id || "");
+
+            return Number(review.booking_id) === Number(bookingId)
+                && (
+                    reviewResidentId === currentResidentId ||
+                    reviewEmail === currentEmail
+                );
+        });
+    }
+
+    function validateReviewAccess() {
+        if (!bookingId) {
+            alert("Please choose a paid booking to review.");
+            window.location.href = "my-bookings.html";
+            return false;
+        }
+
+        if (!selectedBooking) {
+            alert("Booking not found or you do not have access to this booking.");
+            window.location.href = "my-bookings.html";
+            return false;
+        }
+
+        if (loggedInUserType !== "student" && loggedInUserType !== "employee") {
+            alert("Only residents can write reviews.");
+            window.location.href = "login.html";
+            return false;
+        }
+
+        if (selectedBooking.booking_status !== "Approved") {
+            alert("You can review only approved bookings.");
+            window.location.href = "my-bookings.html";
+            return false;
+        }
+
+        if (!isPaidBooking(selectedBooking)) {
+            alert("You can review only after completing payment.");
+            window.location.href = "my-bookings.html";
+            return false;
+        }
+
+        if (userAlreadyReviewed()) {
+            alert("You already submitted a review for this booking.");
+            window.location.href = "my-bookings.html";
+            return false;
+        }
+
+        return true;
+    }
+
+    function renderBookingSummary() {
+        if (!selectedBooking) {
+            return;
+        }
+
+        reviewBookingDetails.innerHTML = `
+            <p><i class="fa-solid fa-building"></i> <strong>Dorm:</strong> ${selectedBooking.dorm_name || "Dorm Name"}</p>
+            <p><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong> ${selectedBooking.area || selectedBooking.city || "-"}</p>
+            <p><i class="fa-solid fa-school"></i> <strong>University:</strong> ${selectedBooking.university_name || "-"}</p>
+            <p><i class="fa-solid fa-door-open"></i> <strong>Room Number:</strong> ${selectedBooking.room_number || "-"}</p>
+            <p><i class="fa-solid fa-bed"></i> <strong>Room Type:</strong> ${selectedBooking.room_type || "-"}</p>
+            <p><i class="fa-solid fa-calendar-check"></i> <strong>Check-in:</strong> ${selectedBooking.check_in_date || "-"}</p>
+            <p><i class="fa-solid fa-calendar-xmark"></i> <strong>Check-out:</strong> ${selectedBooking.check_out_date || "-"}</p>
+            <p><i class="fa-solid fa-credit-card"></i> <strong>Payment:</strong> ${selectedBooking.payment_status || "Pending"}</p>
+        `;
+    }
+
+    reviewForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        selectedBooking = getSelectedBooking();
+
+        if (!selectedBooking) {
+            alert("Booking not found.");
+            window.location.href = "my-bookings.html";
+            return;
+        }
+
+        if (userAlreadyReviewed()) {
+            alert("You already submitted a review for this booking.");
+            window.location.href = "my-bookings.html";
+            return;
+        }
+
+        const rating = Number(document.getElementById("rating").value);
+        const review_comment = document.getElementById("comment").value.trim();
+
+        if (!rating || !review_comment) {
+            alert("Please enter rating and comment.");
+            return;
+        }
+
+        const reviews = getReviews();
+
+        const reviewId = Date.now();
+        const createdAt = formatDateToday();
+
+        const newReview = {
+            review_id: reviewId,
+
+            booking_id: selectedBooking.booking_id,
+
+            resident_id: loggedInResidentId || selectedBooking.resident_id || "",
+            resident_name: loggedInUser,
+            email: loggedInUserEmail,
+
+            dorm_id: selectedBooking.dorm_id,
+            dorm_name: selectedBooking.dorm_name,
+
+            room_id: selectedBooking.room_id || "",
+            room_number: selectedBooking.room_number || "",
+            room_type: selectedBooking.room_type || "",
+
+            rating: rating,
+            review_comment: review_comment,
+
+            review_status: "Visible",
+            created_at: createdAt,
+
+            // Compatibility مع الصفحات القديمة
+            id: reviewId,
+            bookingId: selectedBooking.booking_id,
+
+            housingId: selectedBooking.dorm_id,
+            housingName: selectedBooking.dorm_name,
+
+            userName: loggedInUser,
+            residentName: loggedInUser,
+
+            userEmail: loggedInUserEmail,
+            residentEmail: loggedInUserEmail,
+
+            roomNumber: selectedBooking.room_number || "",
+            roomType: selectedBooking.room_type || "",
+
+            comment: review_comment,
+            status: "Visible",
+            createdAt: createdAt
+        };
+
+        reviews.unshift(newReview);
+        saveReviews(reviews);
+
+        addNotification(
+            loggedInResidentId || selectedBooking.resident_id,
+            "review",
+            "Review Submitted",
+            "Your review for " + selectedBooking.dorm_name + " has been submitted successfully."
+        );
+
+        alert("Review submitted successfully.");
+        window.location.href = `housing-details.html?id=${selectedBooking.dorm_id}`;
+    });
+
+    if (validateReviewAccess()) {
+        renderBookingSummary();
+    }
+</script>
+
+</body>
+</html>

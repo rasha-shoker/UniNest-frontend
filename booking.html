@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Booking Request</title>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="booking.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<header class="navbar">
+    <div class="logo">
+        <h2>UniNest</h2>
+    </div>
+
+    <nav>
+        <ul class="nav-links">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="housings.html">Dorms</a></li>
+            <li><a href="student-dashboard.html">Dashboard</a></li>
+            <li><a href="my-bookings.html">My Bookings</a></li>
+            <li><a href="#" onclick="logout()">Logout</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="page-header">
+    <div class="page-header-content">
+        <h1>Booking Request</h1>
+        <p>Complete your booking request by selecting dates and uploading the required document.</p>
+    </div>
+</section>
+
+<section class="booking-section">
+    <div class="booking-container">
+
+        <div class="booking-summary-card">
+            <img id="bookingDormImage" src="images/aub1.jpg" alt="Dorm Image">
+
+            <div class="booking-summary-info">
+                <h2 id="bookingDormName">Dorm Name</h2>
+
+                <p><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong> <span id="bookingLocation"></span></p>
+                <p><i class="fa-solid fa-school"></i> <strong>University:</strong> <span id="bookingUniversity"></span></p>
+                <p><i class="fa-solid fa-bed"></i> <strong>Room Type:</strong> <span id="bookingRoomType"></span></p>
+                <p><i class="fa-solid fa-door-open"></i> <strong>Room Number:</strong> <span id="bookingRoomNumber"></span></p>
+                <p><i class="fa-solid fa-dollar-sign"></i> <strong>Price/month:</strong> $<span id="bookingPrice"></span></p>
+                <p><i class="fa-solid fa-calendar-check"></i> <strong>Available From:</strong> <span id="bookingAvailableFrom"></span></p>
+                <p><i class="fa-solid fa-calendar-xmark"></i> <strong>Available To:</strong> <span id="bookingAvailableTo"></span></p>
+                <p><i class="fa-solid fa-file-circle-check"></i> <strong>Document Status:</strong> Pending</p>
+                <p><i class="fa-solid fa-circle-info"></i> <strong>Booking Status:</strong> Pending</p>
+                <p><i class="fa-solid fa-credit-card"></i> <strong>Payment Status:</strong> Pending</p>
+            </div>
+        </div>
+
+        <div class="booking-form-card">
+            <h2>Complete Booking Information</h2>
+
+            <form id="bookingForm">
+
+                <div class="form-group">
+                    <label for="checkInDate">Check-in Date</label>
+                    <input type="date" id="checkInDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="checkOutDate">Check-out Date</label>
+                    <input type="date" id="checkOutDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="documentType">Document Type</label>
+                    <select id="documentType" required>
+                        <option value="">Select document type</option>
+                        <option value="Identification Document">Identification Document</option>
+                        <option value="University Document">University Document</option>
+                        <option value="Company Verification Document">Company Verification Document</option>
+                        <option value="Work Verification Document">Work Verification Document</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookingDocument">Upload Booking Document</label>
+
+                    <input 
+                        type="file" 
+                        id="bookingDocument" 
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                        onchange="previewBookingDocument(this)"
+                        required
+                    >
+
+                    <input type="hidden" id="bookingDocumentData">
+
+                    <small class="input-note">Allowed files: PDF, JPG, PNG, DOC, DOCX.</small>
+
+                    <div class="booking-document-preview" id="bookingDocumentPreview">
+                        <span>No document selected</span>
+                    </div>
+                </div>
+
+                <div class="total-cost-box">
+                    <p>Total Cost</p>
+                    <h3>$<span id="totalCost">0</span></h3>
+                    <small>The cost is calculated automatically based on room price and stay duration.</small>
+                </div>
+
+                <button type="submit" class="btn primary-btn">Submit Booking Request</button>
+                <a href="housing-details.html" class="secondary-link">Back to dorm details</a>
+            </form>
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+
+        <div class="footer-box">
+            <h3>UniNest</h3>
+            <p>
+                A modern dorm booking platform that helps students and employees find safe,
+                comfortable, and affordable accommodation.
+            </p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html">Dorms</a></li>
+                <li><a href="student-dashboard.html">Dashboard</a></li>
+                <li><a href="my-bookings.html">My Bookings</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-box">
+            <h3>Contact Info</h3>
+            <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+            <p><i class="fa-solid fa-phone"></i> +961 76 741 699</p>
+            <p><i class="fa-solid fa-phone"></i> +961 81 894 380</p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+                <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+    </div>
+</footer>
+
+<script>
+    const pendingBooking = JSON.parse(localStorage.getItem("pendingBooking"));
+
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    const loggedInUserEmail = localStorage.getItem("loggedInUserEmail");
+    const loggedInRole = localStorage.getItem("loggedInRole");
+    const loggedInUserType = localStorage.getItem("loggedInUserType") || loggedInRole;
+    const loggedInResidentId = localStorage.getItem("loggedInResidentId");
+
+    const bookingForm = document.getElementById("bookingForm");
+    const checkInDate = document.getElementById("checkInDate");
+    const checkOutDate = document.getElementById("checkOutDate");
+    const documentType = document.getElementById("documentType");
+    const bookingDocument = document.getElementById("bookingDocument");
+    const totalCostSpan = document.getElementById("totalCost");
+
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function saveBookings(bookings) {
+        localStorage.setItem("studentBookings", JSON.stringify(bookings));
+    }
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function getTodayISO() {
+        return new Date().toISOString().split("T")[0];
+    }
+
+    function addNotification(resident_id, notification_type, title, message) {
+        if (!resident_id && !loggedInUserEmail) {
+            return;
+        }
+
+        const notifications = getNotifications();
+
+        const newNotification = {
+            notification_id: Date.now() + Math.floor(Math.random() * 1000),
+            resident_id: resident_id || "",
+            title: title,
+            message: message,
+            notification_type: notification_type,
+            is_read: false,
+            created_at: formatDateToday(),
+
+            // Compatibility مع الصفحات القديمة
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            userEmail: loggedInUserEmail || "",
+            type: notification_type,
+            isRead: false,
+            date: formatDateToday()
+        };
+
+        notifications.unshift(newNotification);
+        saveNotifications(notifications);
+    }
+
+    function normalizePendingBooking(booking) {
+        if (!booking) {
+            return null;
+        }
+
+        return {
+            ...booking,
+
+            booking_id: booking.booking_id || booking.id || Date.now(),
+
+            resident_id: booking.resident_id || loggedInResidentId || "",
+            resident_name: booking.resident_name || booking.residentName || booking.userName || booking.studentName || loggedInUser || "",
+            email: booking.email || booking.userEmail || booking.studentEmail || booking.residentEmail || loggedInUserEmail || "",
+
+            dorm_id: booking.dorm_id || booking.housingId,
+            dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
+            dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
+
+            university_name: booking.university_name || booking.university || "",
+            city: booking.city || "",
+            area: booking.area || booking.location || "",
+
+            room_id: booking.room_id || booking.roomId || "",
+            room_number: booking.room_number || booking.roomNumber || "",
+            room_type: booking.room_type || booking.roomType || "",
+            room_price: Number(booking.room_price || booking.price || 0),
+
+            available_from: booking.available_from || booking.availableFrom || "Not specified",
+            available_to: booking.available_to || booking.availableTo || "Not specified",
+
+            check_in_date: booking.check_in_date || booking.checkInDate || "",
+            check_out_date: booking.check_out_date || booking.checkOutDate || "",
+            total_price: Number(booking.total_price || booking.totalCost || 0),
+
+            booking_status: booking.booking_status || booking.status || "Pending",
+            document_status: booking.document_status || booking.documentStatus || "Pending",
+            payment_status: booking.payment_status || booking.paymentStatus || "Pending",
+
+            created_at: booking.created_at || booking.createdAt || formatDateToday()
+        };
+    }
+
+    const normalizedPendingBooking = normalizePendingBooking(pendingBooking);
+
+    function setMinimumDates() {
+        const today = getTodayISO();
+
+        checkInDate.min = today;
+        checkOutDate.min = today;
+    }
+
+    if (!normalizedPendingBooking) {
+        alert("No selected room found. Please select a room first.");
+        window.location.href = "housings.html";
+    }
+
+    if (loggedInUserType === "admin") {
+        alert("Admin cannot submit booking requests.");
+        window.location.href = "admin-dashboard.html";
+    }
+
+    if (normalizedPendingBooking) {
+        document.getElementById("bookingDormImage").src = normalizedPendingBooking.dorm_image || "images/aub1.jpg";
+        document.getElementById("bookingDormName").textContent = normalizedPendingBooking.dorm_name || "Dorm Name";
+        document.getElementById("bookingLocation").textContent = normalizedPendingBooking.area || normalizedPendingBooking.city || "-";
+        document.getElementById("bookingUniversity").textContent = normalizedPendingBooking.university_name || "-";
+        document.getElementById("bookingRoomType").textContent = normalizedPendingBooking.room_type || "-";
+        document.getElementById("bookingRoomNumber").textContent = normalizedPendingBooking.room_number || "-";
+        document.getElementById("bookingPrice").textContent = normalizedPendingBooking.room_price || "0";
+
+        document.getElementById("bookingAvailableFrom").textContent = normalizedPendingBooking.available_from || "Not specified";
+        document.getElementById("bookingAvailableTo").textContent = normalizedPendingBooking.available_to || "Not specified";
+
+        if (normalizedPendingBooking.available_from && normalizedPendingBooking.available_from !== "Not specified") {
+            checkInDate.min = normalizedPendingBooking.available_from;
+        }
+
+        if (normalizedPendingBooking.available_to && normalizedPendingBooking.available_to !== "Not specified") {
+            checkInDate.max = normalizedPendingBooking.available_to;
+            checkOutDate.max = normalizedPendingBooking.available_to;
+        }
+    }
+
+    function isDateInsideRoomAvailability() {
+        const available_from = normalizedPendingBooking.available_from;
+        const available_to = normalizedPendingBooking.available_to;
+
+        if (!available_from || !available_to || available_from === "Not specified" || available_to === "Not specified") {
+            return true;
+        }
+
+        const checkIn = new Date(checkInDate.value);
+        const checkOut = new Date(checkOutDate.value);
+        const from = new Date(available_from);
+        const to = new Date(available_to);
+
+        if (checkIn < from || checkOut > to) {
+            alert(
+                "This room is only available from " +
+                available_from +
+                " to " +
+                available_to +
+                ". Please choose dates inside this period."
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    function calculateTotalCost() {
+        const inDateValue = checkInDate.value;
+        const outDateValue = checkOutDate.value;
+
+        if (!inDateValue || !outDateValue) {
+            totalCostSpan.textContent = "0";
+            return 0;
+        }
+
+        const inDate = new Date(inDateValue);
+        const outDate = new Date(outDateValue);
+
+        if (outDate <= inDate) {
+            totalCostSpan.textContent = "0";
+            return 0;
+        }
+
+        const diffTime = outDate - inDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        const monthlyPrice = Number(normalizedPendingBooking.room_price || 0);
+        const dailyPrice = monthlyPrice / 30;
+        const total = Math.ceil(dailyPrice * diffDays);
+
+        totalCostSpan.textContent = total;
+        return total;
+    }
+
+    checkInDate.addEventListener("change", function() {
+        if (checkInDate.value) {
+            checkOutDate.min = checkInDate.value;
+        }
+
+        calculateTotalCost();
+    });
+
+    checkOutDate.addEventListener("change", calculateTotalCost);
+
+    function previewBookingDocument(input) {
+        const file = input.files[0];
+        const hiddenInput = document.getElementById("bookingDocumentData");
+        const previewBox = document.getElementById("bookingDocumentPreview");
+
+        if (!file) {
+            hiddenInput.value = "";
+            previewBox.innerHTML = "<span>No document selected</span>";
+            return;
+        }
+
+        const allowedTypes = [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            alert("Please upload a valid file: PDF, JPG, PNG, DOC, or DOCX.");
+            input.value = "";
+            hiddenInput.value = "";
+            previewBox.innerHTML = "<span>No document selected</span>";
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const documentObject = {
+                file_name: file.name,
+                file_type: file.type,
+                file_path: e.target.result,
+
+                // Compatibility
+                name: file.name,
+                type: file.type,
+                data: e.target.result
+            };
+
+            hiddenInput.value = JSON.stringify(documentObject);
+
+            if (file.type.startsWith("image/")) {
+                previewBox.innerHTML = `
+                    <img src="${e.target.result}" alt="Booking Document">
+                    <p>${file.name}</p>
+                `;
+            } else {
+                previewBox.innerHTML = `
+                    <div class="file-preview-box">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <p>${file.name}</p>
+                    </div>
+                `;
+            }
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    function getUploadedBookingDocument() {
+        let documentObject = null;
+
+        try {
+            documentObject = JSON.parse(document.getElementById("bookingDocumentData").value || "null");
+        } catch (error) {
+            documentObject = null;
+        }
+
+        return documentObject;
+    }
+
+    bookingForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        if (!loggedInUser || !loggedInUserEmail || !loggedInUserType) {
+            alert("Please login first to complete your booking.");
+            window.location.href = "login.html";
+            return;
+        }
+
+        if (loggedInUserType !== "student" && loggedInUserType !== "employee") {
+            alert("Only residents can submit booking requests.");
+            return;
+        }
+
+        const totalPrice = calculateTotalCost();
+
+        if (totalPrice <= 0) {
+            alert("Please select a valid check-in and check-out date.");
+            return;
+        }
+
+        if (!isDateInsideRoomAvailability()) {
+            return;
+        }
+
+        if (!documentType.value) {
+            alert("Please select document type.");
+            return;
+        }
+
+        if (!bookingDocument.files[0]) {
+            alert("Please upload a booking document.");
+            return;
+        }
+
+        const uploadedDocument = getUploadedBookingDocument();
+
+        if (!uploadedDocument || !uploadedDocument.file_path) {
+            alert("Please wait until the document finishes uploading.");
+            return;
+        }
+
+        const bookings = getBookings();
+
+        const duplicatePending = bookings.find(function(booking) {
+            const bookingResidentId = String(booking.resident_id || "");
+            const bookingEmail = (booking.email || booking.userEmail || booking.studentEmail || "").toLowerCase();
+
+            const bookingDormId = Number(booking.dorm_id || booking.housingId);
+            const bookingRoomId = String(booking.room_id || booking.roomId || "");
+
+            const bookingStatus = booking.booking_status || booking.status || "Pending";
+
+            return (
+                (bookingResidentId === String(loggedInResidentId) || bookingEmail === loggedInUserEmail.toLowerCase()) &&
+                bookingDormId === Number(normalizedPendingBooking.dorm_id) &&
+                bookingRoomId === String(normalizedPendingBooking.room_id) &&
+                bookingStatus === "Pending"
+            );
+        });
+
+        if (duplicatePending) {
+            alert("You already have a pending booking request for this room.");
+            return;
+        }
+
+        const bookingId = Date.now();
+
+        const completedBooking = {
+            ...normalizedPendingBooking,
+
+            booking_id: bookingId,
+
+            resident_id: loggedInResidentId || normalizedPendingBooking.resident_id || "",
+            resident_name: loggedInUser,
+            email: loggedInUserEmail,
+            user_type: loggedInUserType,
+
+            dorm_id: normalizedPendingBooking.dorm_id,
+            dorm_name: normalizedPendingBooking.dorm_name,
+            dorm_image: normalizedPendingBooking.dorm_image || "images/aub1.jpg",
+
+            university_name: normalizedPendingBooking.university_name || "",
+            city: normalizedPendingBooking.city || "",
+            area: normalizedPendingBooking.area || "",
+
+            room_id: normalizedPendingBooking.room_id || "",
+            room_number: normalizedPendingBooking.room_number || "",
+            room_type: normalizedPendingBooking.room_type || "",
+            room_price: Number(normalizedPendingBooking.room_price || 0),
+
+            available_from: normalizedPendingBooking.available_from || "",
+            available_to: normalizedPendingBooking.available_to || "",
+
+            check_in_date: checkInDate.value,
+            check_out_date: checkOutDate.value,
+            total_price: totalPrice,
+
+            booking_status: "Pending",
+            admin_note: "",
+            admin_id: null,
+
+            document_type: documentType.value,
+            document_status: "Pending",
+            file_path: uploadedDocument.file_path,
+            file_name: uploadedDocument.file_name,
+            file_type: uploadedDocument.file_type,
+
+            payment_status: "Pending",
+
+            created_at: formatDateToday(),
+
+            // Compatibility مع الصفحات القديمة
+            id: bookingId,
+
+            userName: loggedInUser,
+            studentName: loggedInUser,
+            residentName: loggedInUser,
+
+            userEmail: loggedInUserEmail,
+            studentEmail: loggedInUserEmail,
+            residentEmail: loggedInUserEmail,
+
+            userRole: loggedInUserType,
+
+            housingId: normalizedPendingBooking.dorm_id,
+            housingName: normalizedPendingBooking.dorm_name,
+            housingImage: normalizedPendingBooking.dorm_image || "images/aub1.jpg",
+
+            university: normalizedPendingBooking.university_name || "",
+            location: normalizedPendingBooking.area || normalizedPendingBooking.city || "",
+
+            roomId: normalizedPendingBooking.room_id || "",
+            roomNumber: normalizedPendingBooking.room_number || "",
+            roomType: normalizedPendingBooking.room_type || "",
+            price: Number(normalizedPendingBooking.room_price || 0),
+
+            availableFrom: normalizedPendingBooking.available_from || "",
+            availableTo: normalizedPendingBooking.available_to || "",
+
+            checkInDate: checkInDate.value,
+            checkOutDate: checkOutDate.value,
+            totalCost: totalPrice,
+
+            documentType: documentType.value,
+            documentName: uploadedDocument.file_name,
+            documentFileType: uploadedDocument.file_type,
+            documentData: uploadedDocument.file_path,
+
+            documentStatus: "Pending",
+            status: "Pending",
+            paymentStatus: "Pending",
+
+            createdAt: formatDateToday()
+        };
+
+        bookings.push(completedBooking);
+        saveBookings(bookings);
+
+        localStorage.removeItem("pendingBooking");
+
+        addNotification(
+            completedBooking.resident_id,
+            "booking",
+            "Booking Request Submitted",
+            "Your booking request for " + completedBooking.dorm_name + " is pending admin approval."
+        );
+
+        alert("Booking request submitted successfully. Your booking is now pending admin approval.");
+        window.location.href = "my-bookings.html";
+    });
+
+    setMinimumDates();
+</script>
+
+</body>
+</html>

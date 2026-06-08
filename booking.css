@@ -1,0 +1,340 @@
+.booking-section {
+    background-color: var(--light-bg);
+}
+
+.booking-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+    align-items: start;
+}
+
+.booking-summary-card,
+.booking-form-card {
+    background-color: var(--white-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.booking-summary-card img {
+    height: 300px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: 22px;
+}
+
+.booking-summary-info h2,
+.booking-form-card h2 {
+    color: var(--heading-color);
+    margin-bottom: 18px;
+}
+
+.booking-summary-info p {
+    margin-bottom: 12px;
+    color: #475569;
+}
+
+.booking-summary-info i {
+    color: var(--secondary-color);
+    margin-right: 8px;
+}
+
+.booking-form-card .form-group {
+    margin-bottom: 20px;
+}
+
+.booking-form-card input,
+.booking-form-card select {
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8fafc;
+    outline: none;
+}
+
+.booking-form-card input:focus,
+.booking-form-card select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.total-cost-box {
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 22px;
+    margin-bottom: 22px;
+}
+
+.total-cost-box p {
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.total-cost-box h3 {
+    color: var(--secondary-color);
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+
+.total-cost-box small {
+    color: #64748b;
+}
+
+@media (max-width: 900px) {
+    .booking-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.review-page-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.review-summary-card,
+.review-form-card {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.review-summary-card h2,
+.review-form-card h2 {
+    margin-bottom: 18px;
+    color: #0f172a;
+}
+
+.review-summary-card p {
+    margin-bottom: 12px;
+    color: #475569;
+}
+
+.review-summary-card i {
+    color: #1e3a8a;
+    margin-right: 8px;
+}
+
+.review-form-card .form-group {
+    margin-bottom: 18px;
+}
+
+.review-form-card label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: #1e3a8a;
+}
+
+.review-form-card select,
+.review-form-card textarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    font-family: inherit;
+    background: #f8fafc;
+    outline: none;
+}
+
+.review-form-card select {
+    height: 52px;
+}
+
+.review-form-card select:focus,
+.review-form-card textarea:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.secondary-link {
+    display: inline-block;
+    margin-top: 14px;
+    color: #1e3a8a;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.secondary-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+    .review-page-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.booking-section {
+    padding: 70px 8%;
+    background-color: var(--light-bg);
+}
+
+.booking-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+    align-items: start;
+}
+
+.booking-summary-card,
+.booking-form-card {
+    background-color: var(--white-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.booking-summary-card img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: 22px;
+}
+
+.booking-summary-info h2,
+.booking-form-card h2 {
+    color: var(--heading-color);
+    margin-bottom: 18px;
+}
+
+.booking-summary-info p {
+    margin-bottom: 12px;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.booking-summary-info i {
+    color: var(--secondary-color);
+    margin-right: 8px;
+}
+
+.booking-form-card .form-group {
+    margin-bottom: 20px;
+}
+
+.booking-form-card label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--heading-color);
+    font-weight: 700;
+}
+
+.booking-form-card input,
+.booking-form-card select {
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8fafc;
+    outline: none;
+}
+
+.booking-form-card input:focus,
+.booking-form-card select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.input-note {
+    display: block;
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.total-cost-box {
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 22px;
+    margin-bottom: 22px;
+}
+
+.total-cost-box p {
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.total-cost-box h3 {
+    color: var(--secondary-color);
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+
+.total-cost-box small {
+    color: #64748b;
+}
+
+.secondary-link {
+    display: inline-block;
+    margin-top: 14px;
+    color: #1e3a8a;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.secondary-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+    .booking-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.booking-document-preview {
+    margin-top: 12px;
+    min-height: 90px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+    padding: 12px;
+}
+
+.booking-document-preview img {
+    width: 130px;
+    height: 95px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.booking-document-preview span,
+.booking-document-preview p {
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.file-preview-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.file-preview-box i {
+    font-size: 2rem;
+    color: #2563eb;
+}
