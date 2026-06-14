@@ -1,0 +1,644 @@
+/* =========================
+   Housings Page Styles
+========================= */
+
+.housings-page {
+    --primary-color: #0f172a;
+    --secondary-color: #1e3a8a;
+    --accent-color: #38bdf8;
+    --gold-color: #f59e0b;
+    --white-color: #ffffff;
+    --light-bg: #f8fafc;
+    --section-bg: #eef4ff;
+    --text-color: #334155;
+    --heading-color: #0f172a;
+    --border-color: #e2e8f0;
+    --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+    --soft-shadow: 0 8px 25px rgba(15, 23, 42, 0.05);
+    --radius-lg: 24px;
+    --radius-md: 18px;
+    --transition: all 0.3s ease;
+
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--light-bg);
+    color: var(--text-color);
+    line-height: 1.7;
+    min-height: 100vh;
+}
+
+.housings-page img {
+    width: 100%;
+    display: block;
+}
+
+.housings-page a {
+    text-decoration: none;
+}
+
+.housings-page ul {
+    list-style: none;
+}
+
+.housings-page section {
+    padding: 90px 8%;
+}
+
+/* =========================
+   Navbar
+========================= */
+
+.housings-navbar {
+    width: 100%;
+    padding: 20px 8%;
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 20px rgba(15, 23, 42, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.housings-logo h2 {
+    font-size: 1.9rem;
+    color: var(--secondary-color);
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.housings-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.housings-nav-links li a {
+    color: var(--heading-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+    position: relative;
+}
+
+.housings-nav-links li a:hover,
+.housings-nav-links li a.active {
+    color: var(--secondary-color);
+}
+
+.housings-nav-links li a.active::after,
+.housings-nav-links li a:hover::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 2px;
+    background-color: var(--accent-color);
+    border-radius: 5px;
+}
+
+.housings-nav-links .register-btn {
+    background: linear-gradient(135deg, var(--gold-color), #fbbf24);
+    color: var(--white-color) !important;
+    padding: 10px 20px;
+    border-radius: 30px;
+    box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
+}
+
+.housings-nav-links .register-btn:hover {
+    transform: translateY(-2px);
+}
+
+.housings-nav-links .register-btn::after {
+    display: none !important;
+}
+
+/* =========================
+   Page Header
+========================= */
+
+.housings-page-header {
+    padding: 110px 8% 70px;
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    text-align: center;
+}
+
+.housings-page-header-content h1 {
+    font-size: 3rem;
+    color: var(--heading-color);
+    margin-bottom: 15px;
+    font-weight: 800;
+}
+
+.housings-page-header-content p {
+    max-width: 750px;
+    margin: auto;
+    color: #475569;
+    font-size: 1.05rem;
+}
+
+/* =========================
+   Section Title
+========================= */
+
+.housings-page .section-title {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.housings-page .section-title h2 {
+    font-size: 2.2rem;
+    color: var(--heading-color);
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+.housings-page .section-title p {
+    font-size: 1rem;
+    color: #64748b;
+    max-width: 650px;
+    margin: auto;
+}
+
+/* =========================
+   Filter Section
+========================= */
+
+.housing-filter-section {
+    margin-top: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.filter-box {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+}
+
+.filter-box h2 {
+    text-align: center;
+    color: var(--heading-color);
+    margin-bottom: 30px;
+    font-size: 2rem;
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.housings-page .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.housings-page .form-group label {
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.housings-page .form-group select,
+.housings-page .form-group input[type="number"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    outline: none;
+    background-color: #f8fafc;
+    transition: var(--transition);
+}
+
+.housings-page .form-group select:focus,
+.housings-page .form-group input[type="number"]:focus {
+    border-color: #2563eb;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.search-btn-group {
+    display: flex;
+    align-items: flex-start;
+    margin-top: 10px;
+}
+
+.housings-page .btn {
+    display: inline-block;
+    padding: 14px 28px;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
+}
+
+.housings-page .primary-btn {
+    background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+    color: var(--white-color);
+    box-shadow: 0 10px 25px rgba(30, 58, 138, 0.25);
+}
+
+.housings-page .primary-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px rgba(30, 58, 138, 0.30);
+}
+
+.search-btn-group .btn {
+    width: 100%;
+    text-align: center;
+}
+
+/* =========================
+   Available Dorms
+========================= */
+
+.available-housings-section {
+    padding: 70px 8%;
+    background: #f8fbff;
+}
+
+.available-housings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 26px;
+    margin-top: 35px;
+}
+
+.housings-card {
+    background: #ffffff;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+    transition: 0.3s ease;
+}
+
+.housings-card:hover {
+    transform: translateY(-6px);
+}
+
+.housings-card img {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
+}
+
+.housings-info {
+    padding: 22px;
+}
+
+.housings-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.housings-info h3 {
+    color: #0f172a;
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.housings-info p {
+    color: #475569;
+    margin: 9px 0;
+    font-size: 0.95rem;
+}
+
+.housings-info i {
+    color: #2563eb;
+    margin-right: 8px;
+}
+
+.housings-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.housings-status.available {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.housings-status.full {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.housings-facilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.housings-facilities span {
+    background: #eff6ff;
+    color: #1e3a8a;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.housings-card-btn {
+    display: inline-block;
+    width: 100%;
+    border: none;
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1e3a8a, #38bdf8);
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: 0.3s ease;
+}
+
+.housings-card-btn:hover {
+    transform: translateY(-2px);
+}
+
+.empty-housings-message {
+    background: #ffffff;
+    padding: 35px;
+    border-radius: 22px;
+    text-align: center;
+    margin-top: 30px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.empty-housings-message h3 {
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.empty-housings-message p {
+    color: #64748b;
+}
+
+/* =========================
+   Why Section
+========================= */
+
+.housings-why-section {
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.housings-features-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+}
+
+.housings-feature-box {
+    background-color: var(--white-color);
+    padding: 35px 25px;
+    border-radius: var(--radius-md);
+    text-align: center;
+    box-shadow: var(--soft-shadow);
+    transition: var(--transition);
+    border: 1px solid #edf2f7;
+}
+
+.housings-feature-box:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.08);
+}
+
+.housings-feature-box i {
+    width: 75px;
+    height: 75px;
+    line-height: 75px;
+    border-radius: 50%;
+    font-size: 1.8rem;
+    margin-bottom: 18px;
+    color: var(--secondary-color);
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(30, 58, 138, 0.10));
+}
+
+.housings-feature-box h3 {
+    font-size: 1.2rem;
+    margin-bottom: 12px;
+    color: var(--heading-color);
+}
+
+.housings-feature-box p {
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+/* =========================
+   Footer
+========================= */
+
+.housings-footer {
+    background-color: var(--primary-color);
+    color: #cbd5e1;
+    padding-top: 70px;
+}
+
+.housings-footer-container {
+    width: 84%;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 35px;
+    padding-bottom: 40px;
+}
+
+.housings-footer-box h3 {
+    color: var(--white-color);
+    margin-bottom: 18px;
+    font-size: 1.2rem;
+}
+
+.housings-footer-box p,
+.housings-footer-box ul li {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.housings-footer-box ul li a {
+    color: #cbd5e1;
+    transition: var(--transition);
+}
+
+.housings-footer-box ul li a:hover {
+    color: var(--accent-color);
+    padding-left: 4px;
+}
+
+.housings-footer-box p i {
+    color: var(--accent-color);
+    margin-right: 8px;
+}
+
+.housings-social-icons {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.housings-social-icons a {
+    width: 42px;
+    height: 42px;
+    line-height: 42px;
+    text-align: center;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--white-color);
+    transition: var(--transition);
+}
+
+.housings-social-icons a:hover {
+    background-color: var(--accent-color);
+    transform: translateY(-3px);
+}
+
+.housings-footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+    padding: 20px 8%;
+    font-size: 0.92rem;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 1200px) {
+    .filter-form {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .available-housings-grid,
+    .housings-features-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .housings-footer-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .housings-navbar {
+        flex-direction: column;
+        gap: 15px;
+        padding: 18px 5%;
+    }
+
+    .housings-nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 14px;
+    }
+
+    .housings-page-header-content h1 {
+        font-size: 2.3rem;
+    }
+
+    .filter-box {
+        padding: 25px;
+    }
+
+    .filter-form,
+    .available-housings-grid,
+    .housings-features-container,
+    .housings-footer-container {
+        grid-template-columns: 1fr;
+    }
+
+    .housings-page section {
+        padding: 70px 5%;
+    }
+
+    .available-housings-section {
+        padding: 45px 6%;
+    }
+}
+
+@media (max-width: 480px) {
+    .housings-page-header-content h1 {
+        font-size: 1.9rem;
+    }
+
+    .housings-page-header-content p {
+        font-size: 0.95rem;
+    }
+
+    .housings-page .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .housings-logo h2 {
+        font-size: 1.6rem;
+    }
+}
+
+
+
+
+
+.housings-logout-link {
+    color: #0f172a;
+    font-weight: 500;
+    transition: 0.3s ease;
+}
+
+.housings-logout-link:hover {
+    color: #1e3a8a;
+}
+
+
+
+/* ===== Fix Housings search button like HTML ===== */
+
+.housing-filter-section .search-btn-group {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    margin-top: 22px !important;
+}
+
+.housing-filter-section .search-btn-group .btn,
+.housing-filter-section .search-btn-group button,
+.housing-filter-section .search-btn {
+    width: auto !important;
+    min-width: 260px !important;
+    height: 58px !important;
+    padding: 14px 36px !important;
+    border-radius: 50px !important;
+    background: linear-gradient(135deg, #1e3a8a, #38bdf8) !important;
+    color: white !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 10px 25px rgba(30, 58, 138, 0.25) !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}

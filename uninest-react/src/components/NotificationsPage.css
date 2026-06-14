@@ -1,0 +1,472 @@
+/* =========================
+   Notifications Page
+========================= */
+
+.notifications-layout {
+    display: grid;
+    grid-template-columns: 270px 1fr;
+    min-height: 100vh;
+    background: #f8fbff;
+    color: #0f172a;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+/* =========================
+   Sidebar
+========================= */
+
+.notifications-sidebar {
+    background: linear-gradient(180deg, #0f172a, #1e293b);
+    color: white;
+    padding: 30px 20px;
+}
+
+.notifications-sidebar .sidebar-logo h2 {
+    font-size: 1.9rem;
+    margin-bottom: 6px;
+}
+
+.notifications-sidebar .sidebar-logo p {
+    color: #cbd5e1;
+    font-size: 0.95rem;
+    margin-bottom: 35px;
+}
+
+.notifications-sidebar .sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.notifications-sidebar .sidebar-menu li {
+    margin-bottom: 12px;
+}
+
+.notifications-sidebar .sidebar-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #e2e8f0;
+    text-decoration: none;
+    padding: 14px 16px;
+    border-radius: 14px;
+    transition: 0.3s ease;
+    font-weight: 600;
+}
+
+.notifications-sidebar .sidebar-menu li a i {
+    width: 22px;
+}
+
+.notifications-sidebar .sidebar-menu li a:hover,
+.notifications-sidebar .sidebar-menu li a.active {
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
+}
+
+/* =========================
+   Main
+========================= */
+
+.notifications-main {
+    padding: 20px 30px;
+    overflow-x: hidden;
+}
+
+.notifications-topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.notifications-topbar h1 {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    color: #0f172a;
+}
+
+.notifications-topbar p {
+    color: #64748b;
+}
+
+.topbar-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* =========================
+   Buttons
+========================= */
+
+.mark-btn,
+.delete-all-btn {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.mark-btn {
+    background: #1e3a8a;
+}
+
+.mark-btn:hover {
+    background: #1d4ed8;
+}
+
+.delete-all-btn {
+    background: #991b1b;
+}
+
+.delete-all-btn:hover {
+    background: #b91c1c;
+}
+
+/* =========================
+   Stats
+========================= */
+
+.notifications-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-top: -70px;
+    margin-bottom: 18px;
+}
+
+.notifications-stats .stat-card {
+    background: white;
+    border-radius: 18px;
+    padding: 14px;
+    min-height: 95px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.notifications-stats .stat-card h3 {
+    font-size: 2rem;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+}
+
+.notifications-stats .stat-card p {
+    color: #64748b;
+    font-weight: 600;
+}
+
+/* =========================
+   Filters
+========================= */
+
+.notifications-filter-card {
+    background: white;
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: -65px;
+    margin-bottom: 16px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #1e3a8a;
+    font-weight: 700;
+}
+
+.filter-group select {
+    width: 100%;
+    height: 52px;
+    padding: 0 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    font-family: inherit;
+    outline: none;
+}
+
+.filter-group select:focus {
+    border-color: #2563eb;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+/* =========================
+   Notifications List
+========================= */
+
+.notifications-list {
+    display: grid;
+    gap: 28px;
+    margin-top: -85px;
+}
+
+.notification-card {
+    background: white;
+    border-radius: 22px;
+    padding: 22px;
+    display: grid;
+    grid-template-columns: 60px 1fr 170px;
+    gap: 18px;
+    align-items: start;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+    margin: 0;
+}
+
+.notification-card.unread {
+    border-left: 5px solid #1e3a8a;
+}
+
+.notification-card.read {
+    opacity: 0.78;
+}
+
+.notification-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.notification-icon.booking {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.notification-icon.payment {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.notification-icon.maintenance {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.notification-icon.review {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.notification-icon.notification {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.notification-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.notification-title-row h2 {
+    font-size: 1.12rem;
+    color: #0f172a;
+}
+
+.notification-type {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.notification-content p {
+    color: #475569;
+    line-height: 1.7;
+    margin-bottom: 10px;
+}
+
+.notification-content small {
+    color: #64748b;
+}
+
+.notification-content small i {
+    color: #1e3a8a;
+    margin-right: 6px;
+}
+
+.notification-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* =========================
+   Action Buttons
+========================= */
+
+.read-btn,
+.delete-btn,
+.disabled-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+}
+
+.read-btn {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.read-btn:hover {
+    background: #bfdbfe;
+}
+
+.delete-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.delete-btn:hover {
+    background: #fecaca;
+}
+
+.disabled-btn {
+    background: #e5e7eb;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* =========================
+   Empty
+========================= */
+
+.empty-notifications {
+    background: white;
+    padding: 35px;
+    border-radius: 22px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.empty-notifications h3 {
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.empty-notifications p {
+    color: #64748b;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 900px) {
+    .notifications-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1100px) {
+    .notification-card {
+        grid-template-columns: 60px 1fr;
+    }
+
+    .notification-actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+    }
+
+    .read-btn,
+    .delete-btn,
+    .disabled-btn {
+        width: auto;
+    }
+}
+
+@media (max-width: 850px) {
+    .notifications-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .notifications-sidebar {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+    .notifications-filter-card {
+        grid-template-columns: 1fr;
+    }
+
+    .notifications-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .topbar-actions {
+        width: 100%;
+    }
+
+    .notification-card {
+        grid-template-columns: 1fr;
+    }
+
+    .notification-actions {
+        flex-direction: column;
+    }
+
+    .read-btn,
+    .delete-btn,
+    .disabled-btn,
+    .mark-btn,
+    .delete-all-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .notifications-main {
+        padding: 18px;
+    }
+
+    .notifications-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .notifications-topbar h1 {
+        font-size: 1.7rem;
+    }
+
+    .notification-card {
+        padding: 18px;
+    }
+}
+
+
+
+
+

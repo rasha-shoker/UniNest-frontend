@@ -1,0 +1,375 @@
+.maintenance-layout {
+    display: grid;
+    grid-template-columns: 270px 1fr;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.maintenance-sidebar {
+    background: linear-gradient(180deg, #0f172a, #1e293b);
+    color: white;
+    padding: 30px 20px;
+}
+
+.sidebar-logo h2 {
+    font-size: 1.9rem;
+    margin-bottom: 6px;
+}
+
+.sidebar-logo p {
+    color: #cbd5e1;
+    font-size: 0.95rem;
+    margin-bottom: 35px;
+}
+
+.sidebar-menu {
+    list-style: none;
+}
+
+.sidebar-menu li {
+    margin-bottom: 12px;
+}
+
+.sidebar-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #e2e8f0;
+    text-decoration: none;
+    padding: 14px 16px;
+    border-radius: 14px;
+    transition: 0.3s ease;
+    font-weight: 600;
+}
+
+.sidebar-menu li a:hover,
+.sidebar-menu li a.active {
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
+}
+
+/* Main */
+.maintenance-main {
+    padding: 30px;
+}
+
+.maintenance-topbar {
+    margin-bottom: 28px;
+}
+
+.maintenance-topbar h1 {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+}
+
+.maintenance-topbar p {
+    color: #64748b;
+}
+
+/* Stats */
+.maintenance-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.maintenance-stat-card {
+    background: white;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.maintenance-stat-card h3 {
+    font-size: 2rem;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+}
+
+.maintenance-stat-card p {
+    color: #64748b;
+    font-weight: 600;
+}
+
+/* Request cards */
+.request-list {
+    display: grid;
+    gap: 18px;
+}
+
+.request-card {
+    background: white;
+    border-radius: 24px;
+    padding: 22px;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.request-main {
+    flex: 1;
+}
+
+.request-main h2 {
+    font-size: 1.2rem;
+    margin-bottom: 14px;
+    color: #0f172a;
+}
+
+.request-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 18px;
+}
+
+.request-main p {
+    color: #475569;
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.request-main i {
+    color: #2563eb;
+    margin-right: 8px;
+}
+
+.description-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 14px;
+    border-radius: 16px;
+    margin-top: 14px;
+}
+
+.request-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+    min-width: 190px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Buttons */
+.progress-btn,
+.complete-btn,
+.delete-btn,
+.disabled-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.progress-btn {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.complete-btn {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.delete-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.disabled-btn {
+    background: #e5e7eb;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* Status */
+.status-badge {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.progress {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-badge.resolved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+/* Priority */
+.priority {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.priority.low {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.priority.medium {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.priority.high {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.priority.urgent {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.empty-requests {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 35px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.empty-requests h3 {
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.empty-requests p {
+    color: #64748b;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .maintenance-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .request-info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .request-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .request-side {
+        align-items: flex-start;
+        min-width: unset;
+    }
+
+    .request-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 850px) {
+    .maintenance-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .maintenance-sidebar {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .maintenance-main {
+        padding: 18px;
+    }
+
+    .maintenance-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .maintenance-topbar h1 {
+        font-size: 1.7rem;
+    }
+}
+
+.maintenance-images-preview,
+.maintenance-image-gallery {
+    margin-top: 12px;
+    min-height: 90px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px;
+}
+
+.maintenance-images-preview img,
+.maintenance-image-gallery img {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.maintenance-images-preview span {
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+
+
+
+
+
+/* ===== Fix Manage Maintenance spaces ===== */
+
+.manage-maintenance-page .maintenance-main {
+    padding: 30px !important;
+}
+
+.manage-maintenance-page .maintenance-topbar {
+    margin-bottom: 18px !important;
+}
+
+/* طلّع كروت الإحصائيات لفوق */
+.manage-maintenance-page .maintenance-stats {
+    margin-top: -90px !important;
+    margin-bottom: 22px !important;
+}
+
+/* طلّع empty card / request cards لفوق */
+.manage-maintenance-page .request-list,
+.manage-maintenance-page .empty-requests {
+    margin-top: -90px !important;
+}

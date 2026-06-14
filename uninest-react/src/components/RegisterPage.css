@@ -1,0 +1,333 @@
+/* =========================
+   Register Page Styles
+========================= */
+
+.register-wrapper {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 520px;
+    background: linear-gradient(135deg, #eef4ff, #f8fbff);
+    color: #0f172a;
+    font-family: 'Inter', sans-serif;
+}
+
+.register-brand {
+    padding: 60px;
+    background: linear-gradient(135deg, #0f172a, #1e3a8a, #0ea5e9);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+}
+
+.register-brand .brand-logo {
+    position: absolute;
+    top: 35px;
+    left: 60px;
+    color: white;
+    text-decoration: none;
+    font-size: 1.6rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.register-brand h1 {
+    font-size: 3.2rem;
+    margin-bottom: 18px;
+    max-width: 560px;
+}
+
+.register-brand p {
+    color: #dbeafe;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    max-width: 580px;
+}
+
+.register-brand .brand-features {
+    margin-top: 35px;
+    display: grid;
+    gap: 16px;
+}
+
+.register-brand .brand-features div {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 15px 18px;
+    border-radius: 16px;
+    max-width: 430px;
+}
+
+.register-brand .brand-features i {
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.register-brand .brand-features span {
+    font-weight: 700;
+}
+
+.register-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 35px;
+}
+
+.register-card {
+    width: 100%;
+    max-width: 460px;
+    background: #ffffff;
+    padding: 35px;
+    border-radius: 24px;
+    box-shadow: 0 18px 45px rgba(30, 58, 138, 0.14);
+    border: 1px solid #e2e8f0;
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.register-page-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.register-page-header h2 {
+    color: #1e3a8a;
+    font-size: 2.1rem;
+    margin-bottom: 8px;
+}
+
+.register-page-header p {
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.register-card .form-group {
+    margin-bottom: 18px;
+}
+
+.register-card .form-group label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: #1e3a8a;
+}
+
+.register-card .input-box {
+    position: relative;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 14px;
+    background-color: #f8fafc;
+    transition: 0.3s ease;
+}
+
+.register-card .input-box:focus-within {
+    border-color: #2563eb;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.register-card .input-box i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    z-index: 2;
+}
+
+.register-card .input-box input,
+.register-card .input-box select {
+    width: 100%;
+    padding: 14px 16px 14px 45px;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    background: transparent;
+    font-family: inherit;
+    outline: none;
+    color: #0f172a;
+}
+
+.register-card .input-box input::placeholder {
+    color: #737373;
+}
+
+.register-card .input-box select {
+    cursor: pointer;
+}
+
+.role-fields {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    border-radius: 18px;
+    margin-bottom: 18px;
+}
+
+.role-fields .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.register-card button[type="submit"] {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #1e3a8a, #38bdf8);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 8px;
+    box-shadow: 0 8px 18px rgba(30, 58, 138, 0.18);
+    transition: 0.3s ease;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.register-card button[type="submit"]:hover {
+    transform: translateY(-2px);
+}
+
+.register-links {
+    margin-top: 22px;
+    text-align: center;
+}
+
+.register-links p {
+    margin-top: 14px;
+    color: #64748b;
+    font-size: 15px;
+}
+
+.register-links a {
+    color: #2563eb;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.register-links a:hover {
+    text-decoration: underline;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 1050px) {
+    .register-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .register-brand {
+        display: none;
+    }
+
+    .register-container {
+        min-height: 100vh;
+    }
+}
+
+@media (max-width: 540px) {
+    .register-container {
+        padding: 22px;
+    }
+
+    .register-card {
+        padding: 25px;
+        max-height: none;
+    }
+
+    .register-page-header h2 {
+        font-size: 1.8rem;
+    }
+}
+
+
+
+
+/* ===== Fix Register inputs like HTML ===== */
+
+.register-form-card .input-box,
+.register-card .input-box,
+.input-box {
+    position: relative !important;
+    width: 100% !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.register-form-card .input-box i,
+.register-card .input-box i,
+.input-box i {
+    position: absolute !important;
+    left: 18px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #64748b !important;
+    font-size: 1rem !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+}
+
+.register-form-card .input-box input,
+.register-form-card .input-box select,
+.register-card .input-box input,
+.register-card .input-box select,
+.input-box input,
+.input-box select {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 16px 0 48px !important;
+    border: none !important;
+    outline: none !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 15px !important;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+.register-form-card .input-box:focus-within,
+.register-card .input-box:focus-within,
+.input-box:focus-within {
+    border-color: #2563eb !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Chrome autofill fix */
+.input-box input:-webkit-autofill,
+.input-box input:-webkit-autofill:hover,
+.input-box input:-webkit-autofill:focus,
+.input-box input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #0f172a !important;
+    transition: background-color 9999s ease-in-out 0s !important;
+}
+
+
+
+
