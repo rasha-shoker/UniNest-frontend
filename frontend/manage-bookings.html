@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Bookings | UniNest</title>
+
+    <link rel="stylesheet" href="manage-bookings.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("admin");
+</script>
+
+<div class="bookings-layout">
+
+    <aside class="bookings-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Admin Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
+            <li><a href="manage-housings.html"><i class="fa-solid fa-building"></i> Manage Dorms</a></li>
+            <li><a href="manage-bookings.html" class="active"><i class="fa-solid fa-bed"></i> Manage Bookings</a></li>
+            <li><a href="manage-students.html"><i class="fa-solid fa-users"></i> Manage Residents</a></li>
+            <li><a href="manage-maintenance.html"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="manage-reviews.html"><i class="fa-solid fa-star"></i> Manage Reviews</a></li>
+            <li><a href="reports.html"><i class="fa-solid fa-chart-pie"></i> Reports</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="bookings-main">
+
+        <div class="bookings-topbar">
+            <div>
+                <h1>Manage Bookings</h1>
+                <p>Review booking requests, uploaded documents, and approve or reject requests.</p>
+            </div>
+        </div>
+
+        <section class="booking-stats">
+            <div class="stat-card">
+                <h3 id="allBookingsCount">0</h3>
+                <p>Total Bookings</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="approvedBookingsCount">0</h3>
+                <p>Approved</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="pendingBookingsCount">0</h3>
+                <p>Pending</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="rejectedBookingsCount">0</h3>
+                <p>Rejected</p>
+            </div>
+
+            <div class="stat-card">
+                <h3 id="cancelledBookingsCount">0</h3>
+                <p>Cancelled</p>
+            </div>
+        </section>
+
+        <section class="booking-list" id="bookingList"></section>
+
+        <div class="empty-bookings" id="emptyAdminBookings" style="display:none;">
+            <h3>No bookings found</h3>
+            <p>No resident booking requests have been submitted yet.</p>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function saveBookings(bookings) {
+        localStorage.setItem("studentBookings", JSON.stringify(bookings));
+    }
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function getDorms() {
+        const dorms = JSON.parse(localStorage.getItem("dorms"));
+        const housings = JSON.parse(localStorage.getItem("housings"));
+
+        if (dorms && Array.isArray(dorms)) {
+            return dorms;
+        }
+
+        if (housings && Array.isArray(housings)) {
+            localStorage.setItem("dorms", JSON.stringify(housings));
+            return housings;
+        }
+
+        return [];
+    }
+
+    function saveDorms(dorms) {
+        localStorage.setItem("dorms", JSON.stringify(dorms));
+
+        // Compatibility مع الصفحات القديمة
+        localStorage.setItem("housings", JSON.stringify(dorms));
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function normalizeBooking(booking) {
+        return {
+            ...booking,
+
+            booking_id: booking.booking_id || booking.id,
+
+            resident_id: booking.resident_id || "",
+            resident_name: booking.resident_name || booking.residentName || booking.userName || booking.studentName || "Resident",
+            email: booking.email || booking.userEmail || booking.studentEmail || booking.residentEmail || "-",
+
+            dorm_id: booking.dorm_id || booking.housingId,
+            dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
+            dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
+
+            university_name: booking.university_name || booking.university || "-",
+            city: booking.city || "",
+            area: booking.area || booking.location || "-",
+
+            room_id: booking.room_id || booking.roomId || "",
+            room_number: booking.room_number || booking.roomNumber || "-",
+            room_type: booking.room_type || booking.roomType || "-",
+            room_price: Number(booking.room_price || booking.price || 0),
+
+            check_in_date: booking.check_in_date || booking.checkInDate || booking.moveInDate || "-",
+            check_out_date: booking.check_out_date || booking.checkOutDate || "-",
+            total_price: Number(booking.total_price || booking.totalCost || 0),
+
+            booking_status: booking.booking_status || booking.status || "Pending",
+            admin_note: booking.admin_note || "",
+            admin_id: booking.admin_id || localStorage.getItem("loggedInAdminId") || 1,
+
+            document_type: booking.document_type || booking.documentType || "Not specified",
+            document_status: booking.document_status || booking.documentStatus || "Pending",
+            file_path: booking.file_path || booking.documentData || "",
+            file_name: booking.file_name || booking.documentName || "No file uploaded",
+            file_type: booking.file_type || booking.documentFileType || "",
+
+            payment_status: booking.payment_status || booking.paymentStatus || "Pending",
+
+            created_at: booking.created_at || booking.createdAt || "-",
+            updated_at: booking.updated_at || booking.updatedAt || "Not updated yet"
+        };
+    }
+
+    function getBookingId(booking) {
+        return booking.booking_id || booking.id;
+    }
+
+    function calculateDormStatus(rooms) {
+        if (!rooms || rooms.length === 0) {
+            return "Full";
+        }
+
+        const hasAvailableRoom = rooms.some(function(room) {
+            const availability_status = room.availability_status || room.status || "Available";
+            return availability_status === "Available";
+        });
+
+        return hasAvailableRoom ? "Available" : "Full";
+    }
+
+    function updateRoomOccupancyAfterApproval(booking) {
+        const normalizedBooking = normalizeBooking(booking);
+        const dorms = getDorms();
+
+        const dormIndex = dorms.findIndex(function(dorm) {
+            return Number(dorm.dorm_id || dorm.id) === Number(normalizedBooking.dorm_id);
+        });
+
+        if (dormIndex === -1) {
+            alert("Dorm not found. Room occupancy was not updated.");
+            return false;
+        }
+
+        const dorm = dorms[dormIndex];
+
+        if (!Array.isArray(dorm.rooms)) {
+            alert("No rooms found for this dorm.");
+            return false;
+        }
+
+        const roomIndex = dorm.rooms.findIndex(function(room) {
+            return String(room.room_id || room.roomId || "") === String(normalizedBooking.room_id || "") ||
+                   String(room.room_number || room.roomNumber || "") === String(normalizedBooking.room_number || "");
+        });
+
+        if (roomIndex === -1) {
+            alert("Room not found. Room occupancy was not updated.");
+            return false;
+        }
+
+        const room = dorm.rooms[roomIndex];
+
+        const occupancy_limit = Number(room.occupancy_limit || room.occupancyLimit || room.room_capacity || room.capacity || 1);
+        const current_occupancy = Number(room.current_occupancy || room.currentOccupancy || 0);
+
+        if (current_occupancy >= occupancy_limit) {
+            alert("This room is already full. Booking cannot be approved.");
+            return false;
+        }
+
+        const newOccupancy = current_occupancy + 1;
+        const newRoomStatus = newOccupancy >= occupancy_limit ? "Full" : "Available";
+
+        dorm.rooms[roomIndex] = {
+            ...room,
+
+            current_occupancy: newOccupancy,
+            occupancy_limit: occupancy_limit,
+            availability_status: newRoomStatus,
+
+            // Compatibility
+            currentOccupancy: newOccupancy,
+            occupancyLimit: occupancy_limit,
+            status: newRoomStatus
+        };
+
+        const dormStatus = calculateDormStatus(dorm.rooms);
+
+        dorms[dormIndex] = {
+            ...dorm,
+
+            rooms: dorm.rooms,
+            availability_status: dormStatus,
+
+            // Compatibility
+            status: dormStatus,
+            availability: dormStatus
+        };
+
+        saveDorms(dorms);
+
+        return true;
+    }
+
+    function addNotification(resident_id, notification_type, title, message, emailFallback) {
+        if (!resident_id && !emailFallback) {
+            return;
+        }
+
+        const notifications = getNotifications();
+        const notificationId = Date.now() + Math.floor(Math.random() * 1000);
+
+        const newNotification = {
+            notification_id: notificationId,
+            resident_id: resident_id || "",
+            title: title,
+            message: message,
+            notification_type: notification_type,
+            is_read: false,
+            created_at: formatDateToday(),
+
+            // Compatibility
+            id: notificationId,
+            userEmail: emailFallback || "",
+            type: notification_type,
+            isRead: false,
+            date: formatDateToday()
+        };
+
+        notifications.unshift(newNotification);
+        saveNotifications(notifications);
+    }
+
+    function updateBookingCounts(bookings) {
+        const normalizedBookings = bookings.map(normalizeBooking);
+
+        const approved = normalizedBookings.filter(b => b.booking_status === "Approved").length;
+        const pending = normalizedBookings.filter(b => b.booking_status === "Pending").length;
+        const rejected = normalizedBookings.filter(b => b.booking_status === "Rejected").length;
+        const cancelled = normalizedBookings.filter(b => b.booking_status === "Cancelled").length;
+
+        document.getElementById("allBookingsCount").textContent = normalizedBookings.length;
+        document.getElementById("approvedBookingsCount").textContent = approved;
+        document.getElementById("pendingBookingsCount").textContent = pending;
+        document.getElementById("rejectedBookingsCount").textContent = rejected;
+        document.getElementById("cancelledBookingsCount").textContent = cancelled;
+    }
+
+    function getStatusClass(status) {
+        return String(status || "Pending").toLowerCase();
+    }
+
+    function getDocumentStatusClass(status) {
+        return String(status || "Pending").toLowerCase();
+    }
+
+    function renderBookings() {
+        const bookingList = document.getElementById("bookingList");
+        const emptyAdminBookings = document.getElementById("emptyAdminBookings");
+        const bookings = getBookings();
+
+        bookingList.innerHTML = "";
+
+        if (bookings.length === 0) {
+            emptyAdminBookings.style.display = "block";
+            updateBookingCounts([]);
+            return;
+        }
+
+        emptyAdminBookings.style.display = "none";
+
+        bookings.forEach(function(originalBooking) {
+            const booking = normalizeBooking(originalBooking);
+
+            const card = document.createElement("div");
+            card.className = "booking-card";
+
+            const booking_id = booking.booking_id;
+            const booking_status = booking.booking_status || "Pending";
+            const document_status = booking.document_status || "Pending";
+            const payment_status = booking.payment_status || "Pending";
+
+            let bookingActions = "";
+
+            if (booking_status === "Pending") {
+                bookingActions += `
+                    <button class="approve-btn" onclick="approveBooking(${booking_id})">
+                        Approve Booking
+                    </button>
+
+                    <button class="reject-btn" onclick="rejectBooking(${booking_id})">
+                        Reject Booking
+                    </button>
+                `;
+            }
+
+            if (booking_status === "Approved") {
+                bookingActions += `
+                    <button class="disabled-btn" disabled>
+                        Booking Approved
+                    </button>
+                `;
+            }
+
+            if (booking_status === "Rejected") {
+                bookingActions += `
+                    <button class="disabled-btn" disabled>
+                        Booking Rejected
+                    </button>
+                `;
+            }
+
+            if (booking_status === "Cancelled") {
+                bookingActions += `
+                    <button class="disabled-btn" disabled>
+                        Cancelled by Resident
+                    </button>
+                `;
+            }
+
+            let documentActions = "";
+
+            if (document_status === "Pending" && booking_status === "Pending") {
+                documentActions = `
+                    <button class="approve-doc-btn" onclick="approveDocument(${booking_id})">
+                        Approve Document
+                    </button>
+
+                    <button class="reject-doc-btn" onclick="rejectDocument(${booking_id})">
+                        Reject Document
+                    </button>
+                `;
+            } else {
+                documentActions = `
+                    <button class="disabled-btn" disabled>
+                        Document ${document_status}
+                    </button>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="booking-card-left">
+                    <img src="${booking.dorm_image || 'images/aub1.jpg'}" alt="${booking.dorm_name || 'Dorm'}">
+                </div>
+
+                <div class="booking-card-middle">
+                    <div class="booking-title-row">
+                        <h2>${booking.dorm_name || "Dorm Name"}</h2>
+                        <span class="status-badge ${getStatusClass(booking_status)}">${booking_status}</span>
+                    </div>
+
+                    <div class="booking-info-grid">
+                        <p><i class="fa-solid fa-user"></i> <strong>Resident:</strong> ${booking.resident_name}</p>
+                        <p><i class="fa-solid fa-envelope"></i> <strong>Email:</strong> ${booking.email}</p>
+                        <p><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong> ${booking.area || booking.city || "-"}</p>
+                        <p><i class="fa-solid fa-school"></i> <strong>Near:</strong> ${booking.university_name || "-"}</p>
+                        <p><i class="fa-solid fa-door-open"></i> <strong>Room Number:</strong> ${booking.room_number || "-"}</p>
+                        <p><i class="fa-solid fa-bed"></i> <strong>Room Type:</strong> ${booking.room_type || "-"}</p>
+                        <p><i class="fa-solid fa-dollar-sign"></i> <strong>Price/month:</strong> $${booking.room_price || 0}</p>
+                        <p><i class="fa-solid fa-money-bill"></i> <strong>Total Cost:</strong> $${booking.total_price || 0}</p>
+                        <p><i class="fa-solid fa-calendar-check"></i> <strong>Check-in:</strong> ${booking.check_in_date || "-"}</p>
+                        <p><i class="fa-solid fa-calendar-xmark"></i> <strong>Check-out:</strong> ${booking.check_out_date || "-"}</p>
+                        <p><i class="fa-solid fa-clock"></i> <strong>Submitted:</strong> ${booking.created_at || "-"}</p>
+                        <p><i class="fa-solid fa-clock-rotate-left"></i> <strong>Updated:</strong> ${booking.updated_at || "Not updated yet"}</p>
+                        <p><i class="fa-solid fa-credit-card"></i> <strong>Payment Status:</strong> ${payment_status}</p>
+                    </div>
+
+                    <div class="document-box">
+                        <h3><i class="fa-solid fa-file-lines"></i> Booking Document</h3>
+
+                        <p><strong>Document Type:</strong> ${booking.document_type || "Not specified"}</p>
+                        <p><strong>File Name:</strong> ${booking.file_name || "No file uploaded"}</p>
+
+                        ${
+                            booking.file_path
+                            ? `
+                                <div class="booking-document-view">
+                                    ${
+                                        booking.file_type && booking.file_type.startsWith("image/")
+                                        ? `<img src="${booking.file_path}" alt="${booking.file_name || 'Booking Document'}">`
+                                        : `
+                                            <a href="${booking.file_path}" download="${booking.file_name || 'booking-document'}" class="download-document-btn">
+                                                <i class="fa-solid fa-download"></i>
+                                                Download / Review Document
+                                            </a>
+                                        `
+                                    }
+                                </div>
+                            `
+                            : `
+                                <p class="missing-document">No stored document file found.</p>
+                            `
+                        }
+
+                        <p>
+                            <strong>Document Status:</strong>
+                            <span class="document-status ${getDocumentStatusClass(document_status)}">${document_status}</span>
+                        </p>
+
+                        <div class="document-actions">
+                            ${documentActions}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="booking-card-right">
+                    <div class="booking-actions">
+                        ${bookingActions}
+
+                        <a href="housing-details.html?id=${booking.dorm_id}" class="view-btn">
+                            View Dorm
+                        </a>
+
+                        <button class="delete-btn" onclick="deleteBooking(${booking_id})">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            bookingList.appendChild(card);
+        });
+
+        updateBookingCounts(bookings);
+    }
+
+    function approveDocument(bookingId) {
+        const bookings = getBookings();
+
+        const updatedBookings = bookings.map(function(booking) {
+            const normalized = normalizeBooking(booking);
+
+            if (Number(normalized.booking_id) === Number(bookingId)) {
+                addNotification(
+                    normalized.resident_id,
+                    "booking",
+                    "Document Approved",
+                    "Your document for " + normalized.dorm_name + " has been approved. Your booking is ready for final approval.",
+                    normalized.email
+                );
+
+                return {
+                    ...booking,
+
+                    document_status: "Approved",
+                    updated_at: formatDateToday(),
+
+                    // Compatibility
+                    documentStatus: "Approved",
+                    updatedAt: formatDateToday()
+                };
+            }
+
+            return booking;
+        });
+
+        saveBookings(updatedBookings);
+        renderBookings();
+        alert("Document approved successfully.");
+    }
+
+    function rejectDocument(bookingId) {
+        const bookings = getBookings();
+
+        const updatedBookings = bookings.map(function(booking) {
+            const normalized = normalizeBooking(booking);
+
+            if (Number(normalized.booking_id) === Number(bookingId)) {
+                addNotification(
+                    normalized.resident_id,
+                    "booking",
+                    "Document Rejected",
+                    "Your document for " + normalized.dorm_name + " has been rejected. Your booking request has also been rejected.",
+                    normalized.email
+                );
+
+                return {
+                    ...booking,
+
+                    document_status: "Rejected",
+                    booking_status: "Rejected",
+                    updated_at: formatDateToday(),
+
+                    // Compatibility
+                    documentStatus: "Rejected",
+                    status: "Rejected",
+                    updatedAt: formatDateToday()
+                };
+            }
+
+            return booking;
+        });
+
+        saveBookings(updatedBookings);
+        renderBookings();
+        alert("Document rejected. Booking has also been rejected.");
+    }
+
+    function approveBooking(bookingId) {
+        const bookings = getBookings();
+
+        const booking = bookings.find(function(item) {
+            const normalized = normalizeBooking(item);
+            return Number(normalized.booking_id) === Number(bookingId);
+        });
+
+        if (!booking) {
+            alert("Booking not found.");
+            return;
+        }
+
+        const normalizedBooking = normalizeBooking(booking);
+
+        if (normalizedBooking.booking_status === "Cancelled") {
+            alert("This booking was cancelled by the resident.");
+            return;
+        }
+
+        if (normalizedBooking.booking_status === "Approved") {
+            alert("This booking is already approved.");
+            return;
+        }
+
+        if (normalizedBooking.document_status !== "Approved") {
+            alert("Please approve the uploaded document before approving the booking.");
+            return;
+        }
+
+        const occupancyUpdated = updateRoomOccupancyAfterApproval(normalizedBooking);
+
+        if (!occupancyUpdated) {
+            return;
+        }
+
+        const updatedBookings = bookings.map(function(item) {
+            const normalized = normalizeBooking(item);
+
+            if (Number(normalized.booking_id) === Number(bookingId)) {
+                addNotification(
+                    normalized.resident_id,
+                    "booking",
+                    "Booking Approved",
+                    "Your booking at " + normalized.dorm_name + ", Room " + (normalized.room_number || "-") + ", has been approved. You can now complete your payment.",
+                    normalized.email
+                );
+
+                return {
+                    ...item,
+
+                    booking_status: "Approved",
+                    document_status: "Approved",
+                    payment_status: normalized.payment_status || "Pending",
+                    admin_id: localStorage.getItem("loggedInAdminId") || 1,
+                    updated_at: formatDateToday(),
+
+                    // Compatibility
+                    status: "Approved",
+                    documentStatus: "Approved",
+                    paymentStatus: normalized.payment_status || "Pending",
+                    updatedAt: formatDateToday()
+                };
+            }
+
+            return item;
+        });
+
+        saveBookings(updatedBookings);
+        renderBookings();
+
+        alert("Booking approved successfully. Room occupancy has been updated.");
+    }
+
+    function rejectBooking(bookingId) {
+        const bookings = getBookings();
+
+        const updatedBookings = bookings.map(function(booking) {
+            const normalized = normalizeBooking(booking);
+
+            if (Number(normalized.booking_id) === Number(bookingId)) {
+                addNotification(
+                    normalized.resident_id,
+                    "booking",
+                    "Booking Rejected",
+                    "Your booking request at " + normalized.dorm_name + " has been rejected.",
+                    normalized.email
+                );
+
+                const finalDocumentStatus = normalized.document_status === "Pending" ? "Rejected" : normalized.document_status;
+
+                return {
+                    ...booking,
+
+                    booking_status: "Rejected",
+                    document_status: finalDocumentStatus,
+                    updated_at: formatDateToday(),
+
+                    // Compatibility
+                    status: "Rejected",
+                    documentStatus: finalDocumentStatus,
+                    updatedAt: formatDateToday()
+                };
+            }
+
+            return booking;
+        });
+
+        saveBookings(updatedBookings);
+        renderBookings();
+        alert("Booking rejected successfully.");
+    }
+
+    function deleteBooking(bookingId) {
+        const ok = confirm("Are you sure you want to delete this booking?");
+
+        if (!ok) {
+            return;
+        }
+
+        const bookings = getBookings();
+
+        const updatedBookings = bookings.filter(function(booking) {
+            const normalized = normalizeBooking(booking);
+            return Number(normalized.booking_id) !== Number(bookingId);
+        });
+
+        saveBookings(updatedBookings);
+        renderBookings();
+        alert("Booking deleted successfully.");
+    }
+
+    renderBookings();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Dorm Booking Platform</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="logo">
+            <h2>UniNest</h2>
+        </div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="home.html" class="active">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html" class="register-btn">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-text">
+            <h1>Find the Perfect Dorm Room for Your Stay</h1>
+
+            <p>
+                UniNest helps students and employees browse available dorms, compare room types,
+                prices, facilities, ratings, and submit booking requests after registration.
+            </p>
+
+            <div class="visitor-note">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>
+                    Visitors can browse dorms freely. Login or registration is required only for
+                    booking rooms, making payments, submitting reviews, and sending maintenance requests.
+                </span>
+            </div>
+
+            <div class="hero-buttons">
+                <a href="housings.html" class="btn primary-btn">Browse Dorms</a>
+                <a href="register.html" class="btn secondary-btn">Create Account</a>
+            </div>
+        </div>
+
+        <div class="hero-image">
+            <img src="images/hero-student-housing.jpg" alt="Dorm Room">
+        </div>
+    </section>
+
+    
+
+    <!-- Featured Dorms -->
+    <section class="featured-housings">
+        <div class="section-title">
+            <h2>Featured Dorms</h2>
+            <p>Discover popular dorms with room types, prices, ratings, and facilities.</p>
+        </div>
+
+        <div class="housing-cards" id="featuredHousings"></div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="why-choose-us">
+        <div class="section-title">
+            <h2>Why Choose UniNest?</h2>
+            <p>We make dorm search, booking, and stay management easier and more reliable.</p>
+        </div>
+
+        <div class="features-container">
+
+            <div class="feature-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <h3>Easy Search</h3>
+                <p>Search dorms by location, room type, and price range.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-bed"></i>
+                <h3>Room Details</h3>
+                <p>View room types, capacity, prices, facilities, and availability before booking.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-calendar-check"></i>
+                <h3>Online Booking</h3>
+                <p>Submit booking requests with check-in and check-out dates after registration.</p>
+            </div>
+
+            <div class="feature-box">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <h3>Maintenance Support</h3>
+                <p>Residents can submit and track maintenance requests during their stay.</p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="section-title">
+            <h2>How It Works</h2>
+            <p>Find and manage your dorm stay in a few simple steps.</p>
+        </div>
+
+        <div class="steps-container">
+            <div class="step-box">
+                <span>01</span>
+                <h3>Browse</h3>
+                <p>Visitors can browse available dorms without logging in.</p>
+            </div>
+
+            <div class="step-box">
+                <span>02</span>
+                <h3>Compare</h3>
+                <p>Compare location, room types, facilities, prices, ratings, and reviews.</p>
+            </div>
+
+            <div class="step-box">
+                <span>03</span>
+                <h3>Register</h3>
+                <p>Create an account as a student or employee to request a booking.</p>
+            </div>
+
+            <div class="step-box">
+                <span>04</span>
+                <h3>Book & Manage</h3>
+                <p>Book a room, upload documents, view payments, and manage maintenance requests.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="stats-section">
+        <div class="stat-box">
+            <h3>200+</h3>
+            <p>Residents Served</p>
+        </div>
+
+        <div class="stat-box">
+            <h3>10+</h3>
+            <p>Dorm Options</p>
+        </div>
+
+        <div class="stat-box">
+            <h3>30+</h3>
+            <p>Rooms Available</p>
+        </div>
+
+        <div class="stat-box">
+            <h3>24/7</h3>
+            <p>Support Service</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+
+            <div class="footer-box">
+                <h3>UniNest</h3>
+                <p>
+                    A modern dorm booking platform that helps students and employees find safe,
+                    comfortable, and affordable accommodation.
+                </p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="home.html">Home</a></li>
+                    <li><a href="housings.html">Dorms</a></li>
+                    <li><a href="about.html">About</a></li>
+                    
+                </ul>
+            </div>
+
+            <div class="footer-box">
+                <h3>Contact Info</h3>
+                <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+                <p><i class="fa-solid fa-phone"></i> +961 76 741 699</p>
+                <p><i class="fa-solid fa-phone"></i> +961 81 894 380</p>
+            </div>
+
+            <div class="footer-box">
+                <h3>Follow Us</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="housings-data.js"></script>
+
+    <script>
+        const featuredContainer = document.getElementById("featuredHousings");
+
+        if (featuredContainer && typeof housingsData !== "undefined") {
+            const featuredContainer = document.getElementById("featuredHousings");
+
+function getDormsForHome() {
+    const savedDorms = JSON.parse(localStorage.getItem("dorms")) || [];
+    const savedHousings = JSON.parse(localStorage.getItem("housings")) || [];
+
+    if (savedDorms.length > 0) return savedDorms;
+    if (savedHousings.length > 0) return savedHousings;
+    if (typeof dormsData !== "undefined") return dormsData;
+    if (typeof housingsData !== "undefined") return housingsData;
+
+    return [];
+}
+
+function getDormImage(dorm) {
+    if (dorm.image_url) return dorm.image_url;
+    if (dorm.image) return dorm.image;
+    if (dorm.housingImage) return dorm.housingImage;
+
+    if (Array.isArray(dorm.images) && dorm.images.length > 0) {
+        const img = dorm.images[0];
+        if (typeof img === "string") return img;
+        return img.image_url || img.data || "images/aub1.jpg";
+    }
+
+    return "images/aub1.jpg";
+}
+
+function getStartingPrice(dorm) {
+    const rooms = dorm.rooms || [];
+
+    if (rooms.length > 0) {
+        const prices = rooms
+            .map(room => Number(room.room_price || room.price))
+            .filter(price => !isNaN(price) && price > 0);
+
+        if (prices.length > 0) return Math.min(...prices);
+    }
+
+    return Number(dorm.base_price || dorm.price || 0);
+}
+
+function renderFeaturedDorms() {
+    const dorms = getDormsForHome();
+
+    featuredContainer.innerHTML = "";
+
+   const featuredNames = [
+    "AUB Student Residence",
+    "LAU Byblos Dorm",
+    "USJ Beirut Dorm"
+];
+
+let featured = featuredNames
+    .map(function(name) {
+        return dorms.find(function(dorm) {
+            const dormName = String(dorm.dorm_name || dorm.name || "").trim().toLowerCase();
+            return dormName === name.toLowerCase();
+        });
+    })
+    .filter(Boolean);
+
+if (featured.length < 3) {
+    const extraDorms = dorms.filter(function(dorm) {
+        const dormName = String(dorm.dorm_name || dorm.name || "").trim().toLowerCase();
+
+        return !featured.some(function(item) {
+            return Number(item.dorm_id || item.id) === Number(dorm.dorm_id || dorm.id);
+        }) &&
+        dormName !== "303 dorm" &&
+        dormName !== "new dorm";
+    });
+
+    featured = featured.concat(extraDorms).slice(0, 3);
+}
+
+    featured.forEach(function(dorm) {
+        const dorm_id = dorm.dorm_id || dorm.id;
+        const dorm_name = dorm.dorm_name || dorm.name || "Dorm Name";
+        const city = dorm.city || dorm.location || "Not specified";
+        const university_name = dorm.university_name || dorm.university || "nearby universities";
+        const rating = dorm.rating || "4.5";
+        const startingPrice = getStartingPrice(dorm);
+
+        const card = document.createElement("div");
+        card.className = "housing-card";
+
+        card.innerHTML = `
+            <img src="${getDormImage(dorm)}" alt="${dorm_name}">
+            <div class="housing-info">
+                <h3>${dorm_name}</h3>
+                <p><i class="fa-solid fa-location-dot"></i> ${city}, Lebanon</p>
+                <p><i class="fa-solid fa-school"></i> Near ${university_name}</p>
+                <p><i class="fa-solid fa-star"></i> ${rating} / 5 rating</p>
+                <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${startingPrice}/month</p>
+                <a href="housing-details.html?id=${dorm_id}" class="card-btn">View Details</a>
+            </div>
+        `;
+
+        featuredContainer.appendChild(card);
+    });
+}
+
+renderFeaturedDorms();
+
+            featured.forEach(housing => {
+                const card = document.createElement("div");
+                card.className = "housing-card";
+
+                const startingPrice = housing.rooms && housing.rooms.length > 0
+                    ? housing.rooms[0].price
+                    : housing.price;
+
+                card.innerHTML = `
+                    <img src="${housing.image}" alt="${housing.name}">
+                    <div class="housing-info">
+                        <h3>${housing.name}</h3>
+                        <p><i class="fa-solid fa-location-dot"></i> ${housing.city}, Lebanon</p>
+                        <p><i class="fa-solid fa-school"></i> Near ${housing.university || "nearby universities"}</p>
+                        <p><i class="fa-solid fa-star"></i> ${housing.rating || "4.5"} / 5 rating</p>
+                        <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${startingPrice}/month</p>
+                        <a href="housing-details.html?id=${housing.id}" class="card-btn">View Details</a>
+                    </div>
+                `;
+
+                featuredContainer.appendChild(card);
+            });
+        }
+    </script>
+
+</body>
+</html>

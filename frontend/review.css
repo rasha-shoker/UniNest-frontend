@@ -1,0 +1,94 @@
+.review-page-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.review-summary-card,
+.review-form-card {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.review-summary-card h2,
+.review-form-card h2 {
+    color: #0f172a;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+}
+
+#reviewBookingDetails p {
+    color: #475569;
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+#reviewBookingDetails i {
+    color: #1e3a8a;
+    margin-right: 8px;
+}
+
+.review-form-card .form-group {
+    margin-bottom: 18px;
+}
+
+.review-form-card label {
+    display: block;
+    color: #1e3a8a;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.review-form-card select,
+.review-form-card textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    resize: vertical;
+}
+
+.review-form-card select {
+    height: 54px;
+}
+
+.review-form-card select:focus,
+.review-form-card textarea:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.secondary-link {
+    display: inline-block;
+    margin-left: 12px;
+    color: #1e3a8a;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.secondary-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 1000px) {
+    .review-page-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 650px) {
+    .secondary-link {
+        display: block;
+        margin-left: 0;
+        margin-top: 14px;
+    }
+}

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | UniNest</title>
+
+    <link rel="stylesheet" href="login.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+    <div class="login-wrapper">
+
+        <div class="login-brand">
+            <a href="home.html" class="brand-logo">
+                <i class="fa-solid fa-building-user"></i>
+                UniNest
+            </a>
+
+            <h1>Welcome Back</h1>
+            <p>Login to continue managing your dorm bookings, payments, maintenance requests, and reviews.</p>
+
+            <div class="brand-features">
+                <div>
+                    <i class="fa-solid fa-bed"></i>
+                    <span>Book dorm rooms easily</span>
+                </div>
+
+                <div>
+                    <i class="fa-solid fa-credit-card"></i>
+                    <span>Track payments safely</span>
+                </div>
+
+                <div>
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                    <span>Submit maintenance requests</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-page-header">
+                    <h2>Login</h2>
+                    <p>Access your UniNest account</p>
+                </div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-envelope"></i>
+                            <input type="email" id="email" placeholder="Enter your email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-lock"></i>
+                            <input type="password" id="password" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <div class="forgot-password-box">
+                        <a href="forgot-password.html">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        Login
+                    </button>
+                </form>
+
+                <div class="login-links">
+                    <p>
+                        Don't have an account?
+                        <a href="register.html">Register</a>
+                    </p>
+
+                    <p>
+                        <a href="home.html">Back to Home</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function getResidentFullName(resident) {
+            const first_name = resident.first_name || resident.firstName || "";
+            const last_name = resident.last_name || resident.lastName || "";
+
+            const fullName = (first_name + " " + last_name).trim();
+
+            return fullName || resident.fullName || resident.name || "Resident";
+        }
+
+        function getResidentsData() {
+            const residents = JSON.parse(localStorage.getItem("residents"));
+            const users = JSON.parse(localStorage.getItem("users"));
+
+            if (residents && Array.isArray(residents) && residents.length > 0) {
+                return residents;
+            }
+
+            if (users && Array.isArray(users)) {
+                return users;
+            }
+
+            return [];
+        }
+
+        function shouldRedirectToBooking() {
+            const pendingBooking = localStorage.getItem("pendingBooking");
+            const redirectAfterLogin = localStorage.getItem("redirectAfterLogin");
+
+            return pendingBooking && redirectAfterLogin === "booking";
+        }
+
+        document.getElementById("loginForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value.trim().toLowerCase();
+            const password = document.getElementById("password").value.trim();
+
+            if (!email || !password) {
+                alert("Please fill all fields.");
+                return;
+            }
+
+            if (email === "admin@uninest.com" && password === "123456") {
+                localStorage.setItem("loggedInAdminId", "1");
+                localStorage.setItem("loggedInUser", "Admin");
+                localStorage.setItem("loggedInUserEmail", email);
+                localStorage.setItem("loggedInRole", "admin");
+                localStorage.setItem("loggedInUserType", "admin");
+
+                localStorage.removeItem("loggedInResidentId");
+                localStorage.removeItem("redirectAfterLogin");
+
+                window.location.href = "admin-dashboard.html";
+                return;
+            }
+
+            const residents = getResidentsData();
+
+            const resident = residents.find(function(item) {
+                return (item.email || "").toLowerCase() === email;
+            });
+
+            if (!resident) {
+                alert("Account not found. Please register first.");
+                return;
+            }
+
+            if (resident.status === "Inactive") {
+                alert("Your account is inactive. Please contact the admin.");
+                return;
+            }
+
+            if (resident.password !== password) {
+                alert("Incorrect password. Please try again.");
+                return;
+            }
+
+            const resident_id = resident.resident_id || resident.id || "";
+            const residentName = getResidentFullName(resident);
+            const residentEmail = resident.email || email;
+            const user_type = (resident.user_type || resident.role || "student").toLowerCase();
+
+            localStorage.setItem("loggedInResidentId", resident_id);
+            localStorage.setItem("loggedInUser", residentName);
+            localStorage.setItem("loggedInUserEmail", residentEmail);
+            localStorage.setItem("loggedInRole", user_type);
+            localStorage.setItem("loggedInUserType", user_type);
+
+            localStorage.removeItem("loggedInAdminId");
+
+            if (shouldRedirectToBooking() && (user_type === "student" || user_type === "employee")) {
+                const pendingBooking = JSON.parse(localStorage.getItem("pendingBooking"));
+
+                pendingBooking.resident_id = resident_id;
+                pendingBooking.resident_name = residentName;
+                pendingBooking.email = residentEmail;
+
+                // Compatibility
+                pendingBooking.userName = residentName;
+                pendingBooking.studentName = residentName;
+                pendingBooking.residentName = residentName;
+
+                pendingBooking.userEmail = residentEmail;
+                pendingBooking.studentEmail = residentEmail;
+                pendingBooking.residentEmail = residentEmail;
+
+                localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
+                localStorage.removeItem("redirectAfterLogin");
+
+                window.location.href = "booking.html";
+                return;
+            }
+
+            localStorage.removeItem("redirectAfterLogin");
+
+            if (user_type === "student" || user_type === "employee") {
+                window.location.href = "student-dashboard.html";
+                return;
+            }
+
+            localStorage.setItem("loggedInRole", "student");
+            localStorage.setItem("loggedInUserType", "student");
+            window.location.href = "student-dashboard.html";
+        });
+    </script>
+
+</body>
+</html>

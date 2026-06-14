@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance | UniNest</title>
+
+    <link rel="stylesheet" href="maintenance.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<script>
+    checkAccess("student");
+</script>
+
+<div class="maintenance-layout">
+
+    <aside class="maintenance-sidebar">
+        <div class="sidebar-logo">
+            <h2>UniNest</h2>
+            <p>Resident Panel</p>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li><a href="student-dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="my-bookings.html"><i class="fa-solid fa-bed"></i> My Bookings</a></li>
+            <li><a href="payment.html"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+            <li><a href="maintenance.html" class="active"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</a></li>
+            <li><a href="notifications.html"><i class="fa-solid fa-bell"></i> Notifications</a></li>
+            <li><a href="profile.html"><i class="fa-solid fa-user"></i> Profile</a></li>
+            <li><a href="housings.html"><i class="fa-solid fa-magnifying-glass"></i> Explore Dorms</a></li>
+            <li><a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="maintenance-main">
+        <div class="maintenance-topbar">
+            <div>
+                <h1>Maintenance Requests</h1>
+                <p>Submit and track maintenance issues related to your approved bookings.</p>
+            </div>
+        </div>
+
+        <section class="maintenance-grid">
+
+            <div class="maintenance-card">
+                <div class="card-header">
+                    <h2>New Maintenance Request</h2>
+                    <p>Select an approved booking and describe the maintenance issue.</p>
+                </div>
+
+                <form class="maintenance-form" id="maintenanceForm">
+
+                    <div class="form-group">
+                        <label for="relatedBooking">Related Booking</label>
+                        <select id="relatedBooking" required>
+                            <option value="">Select approved booking</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestTitle">Request Title</label>
+                        <input type="text" id="requestTitle" placeholder="Example: Broken window" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maintenanceCategory">Maintenance Category</label>
+                        <select id="maintenanceCategory" required>
+                            <option value="">Select category</option>
+                            <option value="Electricity">Electricity</option>
+                            <option value="Water">Water</option>
+                            <option value="Internet">Internet</option>
+                            <option value="Furniture">Furniture</option>
+                            <option value="Bathroom">Bathroom</option>
+                            <option value="Air Conditioning">Air Conditioning</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Priority</label>
+                        <select id="priority" required>
+                            <option value="">Select priority</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Detailed Issue Description</label>
+                        <textarea id="description" rows="5" placeholder="Describe the issue clearly..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+    <label for="maintenanceImages">Upload Issue Images</label>
+
+    <input 
+        type="file" 
+        id="maintenanceImages" 
+        accept="image/*" 
+        multiple
+        onchange="previewMaintenanceImages(this)"
+    >
+
+    <input type="hidden" id="maintenanceImagesData">
+
+    <div class="maintenance-images-preview" id="maintenanceImagesPreview">
+        <span>No images selected</span>
+    </div>
+</div>
+
+                    <button type="submit" class="submit-btn">Submit Request</button>
+                </form>
+            </div>
+
+            <div class="maintenance-card small-card">
+                <div class="card-header">
+                    <h2>Summary</h2>
+                </div>
+
+                <div class="summary-boxes">
+                    <div class="summary-item">
+                        <h3 id="totalRequestsCount">0</h3>
+                        <p>Total Requests</p>
+                    </div>
+
+                    <div class="summary-item">
+                        <h3 id="pendingRequestsCount">0</h3>
+                        <p>Pending</p>
+                    </div>
+
+                    <div class="summary-item">
+                        <h3 id="progressRequestsCount">0</h3>
+                        <p>In Progress</p>
+                    </div>
+
+                    <div class="summary-item">
+                        <h3 id="resolvedRequestsCount">0</h3>
+                        <p>Resolved</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="maintenance-card full-card">
+                <div class="card-header">
+                    <h2>My Requests</h2>
+                    <p>Track the progress of your submitted maintenance requests.</p>
+                </div>
+
+                <div class="request-list" id="studentRequestList"></div>
+
+                <div id="emptyRequestsMessage" class="empty-requests-message" style="display:none;">
+                    <p>No maintenance requests yet.</p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    function getBookings() {
+        return JSON.parse(localStorage.getItem("studentBookings")) || [];
+    }
+
+    function getMaintenanceRequests() {
+        return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+    }
+
+    function saveMaintenanceRequests(requests) {
+        localStorage.setItem("maintenanceRequests", JSON.stringify(requests));
+    }
+
+    function getNotifications() {
+        return JSON.parse(localStorage.getItem("notifications")) || [];
+    }
+
+    function saveNotifications(notifications) {
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+    }
+
+    function addNotification(userEmail, type, title, message) {
+        if (!userEmail) return;
+
+        const notifications = getNotifications();
+
+        const newNotification = {
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            userEmail: userEmail,
+            type: type,
+            title: title,
+            message: message,
+            isRead: false,
+            date: new Date().toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            })
+        };
+
+        notifications.unshift(newNotification);
+        saveNotifications(notifications);
+    }
+
+    function getCurrentUserEmailValue() {
+        return localStorage.getItem("loggedInUserEmail") || "";
+    }
+
+    function getCurrentUserNameValue() {
+        return localStorage.getItem("loggedInUser") || "Resident";
+    }
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function loadApprovedBookings() {
+        const relatedBooking = document.getElementById("relatedBooking");
+        const currentEmail = getCurrentUserEmailValue().toLowerCase();
+
+        const bookings = getBookings();
+
+        const approvedBookings = bookings.filter(function(booking) {
+            const bookingEmail = (booking.userEmail || booking.studentEmail || "").toLowerCase();
+
+            return bookingEmail === currentEmail && booking.status === "Approved";
+        });
+
+        relatedBooking.innerHTML = `<option value="">Select approved booking</option>`;
+
+        approvedBookings.forEach(function(booking) {
+            const option = document.createElement("option");
+
+            option.value = booking.id;
+            option.textContent = `${booking.housingName} - Room ${booking.roomNumber || "-"} (${booking.roomType || "-"})`;
+
+            relatedBooking.appendChild(option);
+        });
+    }
+
+    function updateMaintenanceSummary(requests) {
+        const pending = requests.filter(r => r.status === "Pending").length;
+        const progress = requests.filter(r => r.status === "In Progress").length;
+        const resolved = requests.filter(r => r.status === "Resolved").length;
+
+        document.getElementById("totalRequestsCount").textContent = requests.length;
+        document.getElementById("pendingRequestsCount").textContent = pending;
+        document.getElementById("progressRequestsCount").textContent = progress;
+        document.getElementById("resolvedRequestsCount").textContent = resolved;
+    }
+
+    function getStatusClass(status) {
+        if (status === "Pending") return "pending";
+        if (status === "In Progress") return "progress";
+        if (status === "Resolved") return "resolved";
+        return "pending";
+    }
+
+    function getPriorityClass(priority) {
+        if (priority === "Low") return "low";
+        if (priority === "Medium") return "medium";
+        if (priority === "High") return "high";
+        if (priority === "Urgent") return "urgent";
+        return "medium";
+    }
+
+    function renderStudentRequests() {
+        const list = document.getElementById("studentRequestList");
+        const empty = document.getElementById("emptyRequestsMessage");
+        const requests = getMaintenanceRequests();
+        const currentEmail = getCurrentUserEmailValue().toLowerCase();
+
+        list.innerHTML = "";
+
+        const myRequests = requests.filter(function(request) {
+            const requestEmail = (request.userEmail || request.residentEmail || "").toLowerCase();
+            return requestEmail === currentEmail;
+        });
+
+        if (myRequests.length === 0) {
+            empty.style.display = "block";
+            updateMaintenanceSummary([]);
+            return;
+        }
+
+        empty.style.display = "none";
+
+        myRequests.forEach(function(request) {
+            const card = document.createElement("div");
+            card.className = "request-item";
+
+            const priority = request.priority || "Medium";
+
+            card.innerHTML = `
+                <div class="request-info">
+                    <h3>${request.title || "Maintenance Request"}</h3>
+
+                    <p><i class="fa-solid fa-building"></i> Dorm: ${request.housingName || "-"}</p>
+                    <p><i class="fa-solid fa-door-open"></i> Room: ${request.roomNumber || "-"}</p>
+                    <p><i class="fa-solid fa-screwdriver-wrench"></i> Category: ${request.category || request.issueType || "-"}</p>
+                    <p><i class="fa-solid fa-triangle-exclamation"></i> Priority: <span class="priority ${getPriorityClass(priority)}">${priority}</span></p>
+                    <p><i class="fa-solid fa-calendar-days"></i> Submitted: ${request.submittedDate || request.createdAt || "-"}</p>
+                    <p><i class="fa-solid fa-file-lines"></i> ${request.description || "-"}</p>
+                    <p><i class="fa-solid fa-image"></i> Image: ${request.imageName || "No image uploaded"}</p>
+
+${
+    Array.isArray(request.images) && request.images.length > 0
+    ? `
+        <div class="maintenance-image-gallery">
+            ${request.images.map(function(image) {
+                return `<img src="${image.data}" alt="${image.name || 'Maintenance Image'}">`;
+            }).join("")}
+        </div>
+    `
+    : ""
+}
+                </div>
+
+                <span class="status ${getStatusClass(request.status)}">${request.status || "Pending"}</span>
+            `;
+
+            list.appendChild(card);
+        });
+
+        updateMaintenanceSummary(myRequests);
+    }
+
+
+    function previewMaintenanceImages(input) {
+    const files = Array.from(input.files);
+    const hiddenInput = document.getElementById("maintenanceImagesData");
+    const previewBox = document.getElementById("maintenanceImagesPreview");
+
+    if (files.length === 0) {
+        hiddenInput.value = "";
+        previewBox.innerHTML = "<span>No images selected</span>";
+        return;
+    }
+
+    const images = [];
+    previewBox.innerHTML = "";
+
+    files.forEach(function(file) {
+        if (!file.type.startsWith("image/")) {
+            alert("Please upload image files only.");
+            input.value = "";
+            hiddenInput.value = "";
+            previewBox.innerHTML = "<span>No images selected</span>";
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            images.push({
+                name: file.name,
+                data: e.target.result
+            });
+
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            img.alt = file.name;
+
+            previewBox.appendChild(img);
+
+            hiddenInput.value = JSON.stringify(images);
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
+function getUploadedMaintenanceImages() {
+    let images = [];
+
+    try {
+        images = JSON.parse(document.getElementById("maintenanceImagesData").value || "[]");
+    } catch (error) {
+        images = [];
+    }
+
+    if (!Array.isArray(images)) {
+        images = [];
+    }
+
+    return images;
+}
+
+    document.getElementById("maintenanceForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const bookingId = Number(document.getElementById("relatedBooking").value);
+        const currentEmail = getCurrentUserEmailValue().toLowerCase();
+
+        if (!bookingId) {
+            alert("Please select an approved booking.");
+            return;
+        }
+
+        const bookings = getBookings();
+
+        const selectedBooking = bookings.find(function(booking) {
+            const bookingEmail = (booking.userEmail || booking.studentEmail || "").toLowerCase();
+
+            return Number(booking.id) === Number(bookingId)
+                && bookingEmail === currentEmail
+                && booking.status === "Approved";
+        });
+
+        if (!selectedBooking) {
+            alert("Selected booking not found or not approved.");
+            return;
+        }
+
+        const title = document.getElementById("requestTitle").value.trim();
+        const category = document.getElementById("maintenanceCategory").value;
+        const priority = document.getElementById("priority").value;
+        const description = document.getElementById("description").value.trim();
+        const uploadedImages = getUploadedMaintenanceImages();
+
+        if (!title || !category || !priority || !description) {
+            alert("Please fill all required fields.");
+            return;
+        }
+
+        const requests = getMaintenanceRequests();
+
+        const today = formatDateToday();
+
+        const newRequest = {
+            id: Date.now(),
+
+            bookingId: selectedBooking.id,
+
+            userName: getCurrentUserNameValue(),
+            residentName: getCurrentUserNameValue(),
+
+            userEmail: getCurrentUserEmailValue(),
+            residentEmail: getCurrentUserEmailValue(),
+
+            housingId: selectedBooking.housingId,
+            housingName: selectedBooking.housingName,
+
+            roomId: selectedBooking.roomId || "",
+            roomNumber: selectedBooking.roomNumber || "",
+            roomType: selectedBooking.roomType || "",
+
+            title: title,
+            category: category,
+            issueType: category,
+            priority: priority,
+            description: description,
+
+           imageName: uploadedImages.length > 0 ? uploadedImages[0].name : "",
+images: uploadedImages,
+
+            status: "Pending",
+            submittedDate: today,
+            createdAt: today
+        };
+
+        requests.unshift(newRequest);
+        saveMaintenanceRequests(requests);
+
+        addNotification(
+            getCurrentUserEmailValue(),
+            "maintenance",
+            "Maintenance Request Submitted",
+            "Your maintenance request for " + selectedBooking.housingName + " has been submitted and is pending review."
+        );
+
+        this.reset();
+document.getElementById("maintenanceImagesData").value = "";
+document.getElementById("maintenanceImagesPreview").innerHTML = "<span>No images selected</span>";
+
+loadApprovedBookings();
+renderStudentRequests();
+
+        alert("Maintenance request submitted successfully.");
+    });
+
+    loadApprovedBookings();
+    renderStudentRequests();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | UniNest</title>
+
+    <link rel="stylesheet" href="about.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+
+<body>
+
+<header class="navbar">
+    <a href="home.html" class="logo">UniNest</a>
+
+    <nav>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="about.html" class="active">About</a></li>
+            <li><a href="login.html" class="login-link">Login</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="hero">
+    <div class="hero-content">
+        <span class="hero-badge">About UniNest</span>
+        <h1>Your Trusted Student Housing Platform</h1>
+        <p>UniNest helps students and employees find safe, comfortable, and affordable accommodation near universities in Lebanon.</p>
+    </div>
+</section>
+
+<section class="about">
+    <div class="about-text">
+        <h2>Who We Are</h2>
+        <p>
+            UniNest is a modern housing platform created to make the dorm search process easier, safer, and more organized.
+            Users can browse available dorms, book rooms, track payments, submit maintenance requests, and share reviews.
+        </p>
+    </div>
+
+    <div class="features">
+
+        <div class="box">
+            <i class="fa-solid fa-house"></i>
+            <h3>Safe Housing</h3>
+            <p>We provide organized dorm listings with clear room details, prices, and availability.</p>
+        </div>
+
+        <div class="box">
+            <i class="fa-solid fa-location-dot"></i>
+            <h3>Best Locations</h3>
+            <p>Students can find housing options near their universities and preferred cities.</p>
+        </div>
+
+        <div class="box">
+            <i class="fa-solid fa-dollar-sign"></i>
+            <h3>Affordable Options</h3>
+            <p>UniNest helps users compare prices and choose accommodation based on their budget.</p>
+        </div>
+
+    </div>
+</section>
+
+<section class="mission-section">
+    <div class="mission-card">
+        <i class="fa-solid fa-bullseye"></i>
+        <h2>Our Mission</h2>
+        <p>
+            Our mission is to simplify student housing management by connecting residents with suitable dorms,
+            while giving administrators tools to manage bookings, payments, reviews, and maintenance requests.
+        </p>
+    </div>
+
+    <div class="mission-card">
+        <i class="fa-solid fa-eye"></i>
+        <h2>Our Vision</h2>
+        <p>
+            UniNest aims to become a reliable digital platform for university housing, improving the experience
+            for both residents and dorm administrators.
+        </p>
+    </div>
+</section>
+
+<section class="why-section">
+    <h2>Why Choose UniNest?</h2>
+
+    <div class="why-grid">
+        <div>
+            <i class="fa-solid fa-bed"></i>
+            <span>Easy dorm booking</span>
+        </div>
+
+        <div>
+            <i class="fa-solid fa-credit-card"></i>
+            <span>Payment tracking</span>
+        </div>
+
+        <div>
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <span>Maintenance requests</span>
+        </div>
+
+        <div>
+            <i class="fa-solid fa-star"></i>
+            <span>Resident reviews</span>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>&copy; 2026 UniNest. All rights reserved.</p>
+</footer>
+
+<script>
+    function updateNavbar() {
+        const role = localStorage.getItem("loggedInRole");
+        const user_type = localStorage.getItem("loggedInUserType") || role;
+        const navLinks = document.getElementById("navLinks");
+
+        if (user_type === "student" || user_type === "employee") {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html">Housings</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+                <li><a href="student-dashboard.html">Dashboard</a></li>
+                <li><a href="my-bookings.html">My Bookings</a></li>
+                <li><a href="notifications.html">Notifications</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link">Logout</a></li>
+            `;
+        } else if (role === "admin") {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link">Logout</a></li>
+            `;
+        }
+    }
+
+    updateNavbar();
+</script>
+
+</body>
+</html>

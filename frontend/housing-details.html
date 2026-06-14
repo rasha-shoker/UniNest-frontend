@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Dorm Details</title>
+
+    <link rel="stylesheet" href="housing-details.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo">
+        <h2>UniNest</h2>
+    </div>
+
+    <nav>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="housings.html" class="active">Dorms</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="register.html" class="register-btn">Register</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="page-header">
+    <div class="page-header-content">
+        <h1 id="detailsTitle">Dorm Details</h1>
+        <p>View dorm information, rooms, facilities, ratings, and reviews before booking.</p>
+    </div>
+</section>
+
+<section class="housing-details-section">
+    <div class="housing-details-container">
+
+        <div class="housing-gallery">
+            <div class="main-image">
+                <img id="detailsImage" src="images/aub1.jpg" alt="Dorm Image">
+            </div>
+
+            <div class="small-images" id="smallImagesContainer"></div>
+        </div>
+
+        <div class="housing-details-info">
+
+            <span id="detailsType" class="housing-badge"></span>
+
+            <h2 id="detailsName"></h2>
+
+            <p><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong> <span id="detailsLocation"></span></p>
+            <p><i class="fa-solid fa-school"></i> <strong>Near:</strong> <span id="detailsUniversity"></span></p>
+            <p><i class="fa-solid fa-venus-mars"></i> <strong>Gender:</strong> <span id="detailsGender"></span></p>
+            <p><i class="fa-solid fa-route"></i> <strong>Distance:</strong> <span id="detailsDistance"></span></p>
+            <p><i class="fa-solid fa-circle-check"></i> <strong>Availability:</strong> <span id="detailsAvailability"></span></p>
+            <p><i class="fa-solid fa-star"></i> <strong>Rating:</strong> <span id="detailsRating"></span></p>
+            <p><i class="fa-solid fa-user-check"></i> <strong>Eligibility:</strong> <span id="detailsEligibility"></span></p>
+
+            <p class="housing-description" id="detailsDescription"></p>
+
+            <div class="visitor-note" id="visitorNote">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>
+                    Visitors can view dorm details. Login or registration is required to submit a booking request.
+                </span>
+            </div>
+
+            <div class="room-types">
+                <h3>Available Rooms</h3>
+                <div id="roomsContainer"></div>
+            </div>
+
+            <div class="details-actions">
+                <button type="button" class="btn primary-btn" onclick="bookHousing()">Book Selected Room</button>
+                <a href="housings.html" class="btn secondary-btn">Back to Dorms</a>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<section class="facilities-section">
+    <div class="section-title">
+        <h2>Room Facilities</h2>
+        <p>Facilities available in this dorm or its rooms.</p>
+    </div>
+
+    <div class="facilities-container" id="facilitiesContainer"></div>
+</section>
+
+<section class="reviews-section">
+    <div class="section-title">
+        <h2>Resident Reviews</h2>
+        <p>Read ratings and comments submitted by residents.</p>
+    </div>
+
+    <div class="reviews-container" id="reviewsContainer"></div>
+
+    <div class="empty-reviews-message" id="emptyReviewsMessage" style="display:none;">
+        <p>No reviews yet for this dorm.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+
+        <div class="footer-box">
+            <h3>UniNest</h3>
+            <p>
+                A modern dorm booking platform that helps students and employees find safe,
+                comfortable, and affordable accommodation.
+            </p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html">Dorms</a></li>
+                <li><a href="about.html">About</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-box">
+            <h3>Contact Info</h3>
+            <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+            <p><i class="fa-solid fa-phone"></i> +961 76 741 699</p>
+            <p><i class="fa-solid fa-phone"></i> +961 81 894 380</p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+                <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+    </div>
+</footer>
+
+<script src="housings-data.js"></script>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+
+    const idFromUrl = params.get("id");
+    const idFromStorage = localStorage.getItem("selectedDormId") || localStorage.getItem("selectedHousingId");
+
+    const dorm_id = Number(idFromUrl || idFromStorage);
+
+    let selectedRoomId = "";
+    let selectedRoomType = "";
+    let selectedRoomPrice = "";
+    let selectedRoomNumber = "";
+    let selectedRoomAvailableFrom = "";
+    let selectedRoomAvailableTo = "";
+
+    function getDorms() {
+        const savedDorms = JSON.parse(localStorage.getItem("dorms"));
+        const savedHousings = JSON.parse(localStorage.getItem("housings"));
+
+        if (savedDorms && Array.isArray(savedDorms)) {
+            return savedDorms.map(normalizeDorm);
+        }
+
+        if (savedHousings && Array.isArray(savedHousings)) {
+            const normalizedDorms = savedHousings.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof dormsData !== "undefined" && Array.isArray(dormsData)) {
+            const normalizedDorms = dormsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        if (typeof housingsData !== "undefined" && Array.isArray(housingsData)) {
+            const normalizedDorms = housingsData.map(normalizeDorm);
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+            return normalizedDorms;
+        }
+
+        return [];
+    }
+
+    function normalizeDorm(dorm) {
+        return {
+            ...dorm,
+
+            dorm_id: dorm.dorm_id || dorm.id,
+            dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
+
+            university_name: dorm.university_name || dorm.university || "",
+            city: dorm.city || "",
+            area: dorm.area || dorm.location || "",
+            street: dorm.street || "",
+            building_number: dorm.building_number || dorm.buildingNumber || "",
+            gps_location: dorm.gps_location || dorm.mapLink || "",
+
+            dorm_description: dorm.dorm_description || dorm.description || "",
+            eligibility_requirements: dorm.eligibility_requirements || dorm.eligibility || "Available for students and employees",
+
+            contact_email: dorm.contact_email || "",
+            contact_phone: dorm.contact_phone || dorm.contact || "+961 70 000 000",
+
+            rating: dorm.rating || 0,
+            created_at: dorm.created_at || "",
+            admin_id: dorm.admin_id || 1,
+
+            image_url: dorm.image_url || dorm.image || dorm.housingImage || "images/aub1.jpg",
+            images: dorm.images || [],
+
+            dorm_type: dorm.dorm_type || dorm.type || "Dorm",
+            gender: dorm.gender || "Male / Female",
+            distance: dorm.distance || "Near campus",
+            availability_status: dorm.availability_status || dorm.status || dorm.availability || "Available",
+
+            main_room_type: dorm.main_room_type || dorm.roomType || "",
+            base_price: dorm.base_price || dorm.price || 0,
+
+            rooms: Array.isArray(dorm.rooms) ? dorm.rooms.map(function(room) {
+                return {
+                    ...room,
+
+                    room_id: room.room_id || room.roomId,
+                    dorm_id: room.dorm_id || dorm.dorm_id || dorm.id,
+
+                    room_number: room.room_number || room.roomNumber || "",
+                    room_type: room.room_type || room.type || "",
+                    room_capacity: Number(room.room_capacity || room.capacity || 1),
+
+                    current_occupancy: Number(room.current_occupancy || room.currentOccupancy || 0),
+                    occupancy_limit: Number(room.occupancy_limit || room.occupancyLimit || room.capacity || room.room_capacity || 1),
+
+                    room_price: Number(room.room_price || room.price || 0),
+                    availability_status: room.availability_status || room.status || "Available",
+
+                    available_from: room.available_from || room.availableFrom || "Not specified",
+                    available_to: room.available_to || room.availableTo || "Not specified",
+
+                    image_url: room.image_url || room.image || "",
+                    facilities: room.facilities || []
+                };
+            }) : [],
+
+            facilities: dorm.facilities || []
+        };
+    }
+
+    function getReviews() {
+        return JSON.parse(localStorage.getItem("reviews")) || [];
+    }
+
+    function getVisibleReviewsForDorm(currentDormId) {
+        const reviews = getReviews();
+
+        return reviews.filter(function(review) {
+            const reviewDormId = Number(review.dorm_id || review.housingId || review.dormId);
+            const reviewStatus = review.review_status || review.status || "Visible";
+
+            return reviewDormId === Number(currentDormId) && reviewStatus !== "Hidden";
+        });
+    }
+
+    function calculateAverageRating(reviews) {
+        if (reviews.length === 0) {
+            return 0;
+        }
+
+        const total = reviews.reduce(function(sum, review) {
+            return sum + Number(review.rating || 0);
+        }, 0);
+
+        return (total / reviews.length).toFixed(1);
+    }
+
+    function renderStars(rating) {
+        const value = Math.round(Number(rating) || 0);
+        let stars = "";
+
+        for (let i = 1; i <= 5; i++) {
+            if (i <= value) {
+                stars += '<i class="fa-solid fa-star star-filled"></i>';
+            } else {
+                stars += '<i class="fa-regular fa-star star-empty"></i>';
+            }
+        }
+
+        return stars;
+    }
+
+    function isResidentLoggedInForBooking() {
+        const role = localStorage.getItem("loggedInRole");
+        const user_type = localStorage.getItem("loggedInUserType") || role;
+        const resident_id = localStorage.getItem("loggedInResidentId");
+        const email = localStorage.getItem("loggedInUserEmail");
+        const user = localStorage.getItem("loggedInUser");
+
+        return (
+            (user_type === "student" || user_type === "employee") &&
+            (resident_id || email || user)
+        );
+    }
+
+    const dorms = getDorms();
+
+    const dorm = dorms.find(function(item) {
+        return Number(item.dorm_id || item.id) === Number(dorm_id);
+    });
+
+    function updateNavbar() {
+        const role = localStorage.getItem("loggedInRole");
+        const user_type = localStorage.getItem("loggedInUserType") || role;
+        const resident_id = localStorage.getItem("loggedInResidentId");
+        const email = localStorage.getItem("loggedInUserEmail");
+        const user = localStorage.getItem("loggedInUser");
+
+        const navLinks = document.getElementById("navLinks");
+
+        const isResidentLoggedIn =
+            (user_type === "student" || user_type === "employee") &&
+            (resident_id || email || user);
+
+        const isAdminLoggedIn =
+            user_type === "admin" || role === "admin";
+
+        if (isResidentLoggedIn) {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Dorms</a></li>
+                <li><a href="student-dashboard.html">Dashboard</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            `;
+        } else if (isAdminLoggedIn) {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Dorms</a></li>
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            `;
+        } else {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Dorms</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html" class="register-btn">Register</a></li>
+            `;
+        }
+    }
+
+    function updateVisitorNote() {
+        const visitorNote = document.getElementById("visitorNote");
+
+        if (!visitorNote) {
+            return;
+        }
+
+        if (isResidentLoggedInForBooking()) {
+            visitorNote.style.display = "none";
+        } else {
+            visitorNote.style.display = "flex";
+        }
+    }
+
+    function getFacilityIcon(facility) {
+        const text = String(facility).toLowerCase();
+
+        if (text.includes("wi")) return "fa-wifi";
+        if (text.includes("laundry")) return "fa-shirt";
+        if (text.includes("kitchen")) return "fa-kitchen-set";
+        if (text.includes("safe")) return "fa-shield-halved";
+        if (text.includes("air")) return "fa-snowflake";
+        if (text.includes("parking")) return "fa-square-parking";
+        if (text.includes("study")) return "fa-book";
+
+        return "fa-circle-check";
+    }
+
+    function renderDormDetails() {
+        if (!dorm) {
+            document.getElementById("detailsTitle").textContent = "Dorm Not Found";
+            document.getElementById("detailsName").textContent = "Dorm Not Found";
+            document.getElementById("detailsDescription").textContent = "The dorm you are looking for does not exist.";
+            document.getElementById("detailsType").textContent = "";
+            document.getElementById("detailsImage").src = "images/aub1.jpg";
+            document.getElementById("roomsContainer").innerHTML = "";
+            document.getElementById("facilitiesContainer").innerHTML = "";
+            document.getElementById("reviewsContainer").innerHTML = "";
+            return;
+        }
+
+        localStorage.setItem("selectedDormId", dorm.dorm_id);
+        localStorage.setItem("selectedHousingId", dorm.dorm_id);
+
+        const dormReviews = getVisibleReviewsForDorm(dorm.dorm_id);
+        const averageRating = calculateAverageRating(dormReviews);
+
+        const image = dorm.image_url || "images/aub1.jpg";
+
+        document.getElementById("detailsTitle").textContent = dorm.dorm_name || "Dorm Details";
+        document.getElementById("detailsImage").src = image;
+        document.getElementById("detailsImage").alt = dorm.dorm_name || "Dorm Image";
+
+        document.getElementById("detailsType").textContent = dorm.dorm_type || "Dorm";
+        document.getElementById("detailsName").textContent = dorm.dorm_name || "";
+        document.getElementById("detailsLocation").textContent = dorm.area || dorm.city || "-";
+        document.getElementById("detailsUniversity").textContent = dorm.university_name || "Nearby university";
+        document.getElementById("detailsGender").textContent = dorm.gender || "Male / Female";
+        document.getElementById("detailsDistance").textContent = dorm.distance || "Near campus";
+        document.getElementById("detailsAvailability").textContent = dorm.availability_status || "Available";
+
+        if (dormReviews.length > 0) {
+            document.getElementById("detailsRating").innerHTML = `
+                <span class="rating-stars">${renderStars(averageRating)}</span>
+                <span class="rating-number">${averageRating} / 5 (${dormReviews.length} reviews)</span>
+            `;
+        } else {
+            const defaultRating = dorm.rating || "0.0";
+
+            document.getElementById("detailsRating").innerHTML = `
+                <span class="rating-stars">${renderStars(defaultRating)}</span>
+                <span class="rating-number">${defaultRating} / 5 (0 reviews)</span>
+            `;
+        }
+
+        document.getElementById("detailsEligibility").textContent = dorm.eligibility_requirements || "Available for students and employees";
+        document.getElementById("detailsDescription").textContent = dorm.dorm_description || "No description available.";
+
+        renderGallery();
+        renderRooms();
+        renderFacilities();
+        renderReviews();
+        updateVisitorNote();
+    }
+
+    function getImageUrl(image, fallbackImage) {
+        if (!image) {
+            return fallbackImage;
+        }
+
+        if (typeof image === "string") {
+            return image;
+        }
+
+        return image.image_url || image.data || fallbackImage;
+    }
+
+    function renderGallery() {
+        const smallImagesContainer = document.getElementById("smallImagesContainer");
+        smallImagesContainer.innerHTML = "";
+
+        const mainImage = dorm.image_url || "images/aub1.jpg";
+
+        const images = dorm.images && dorm.images.length > 0
+            ? dorm.images
+            : [mainImage, mainImage, mainImage];
+
+        images.forEach(function(image) {
+            const imageUrl = getImageUrl(image, mainImage);
+
+            const img = document.createElement("img");
+
+            img.src = imageUrl;
+            img.alt = dorm.dorm_name || "Dorm Image";
+
+            img.onclick = function() {
+                document.getElementById("detailsImage").src = imageUrl;
+            };
+
+            smallImagesContainer.appendChild(img);
+        });
+    }
+
+    function renderRooms() {
+        const roomsContainer = document.getElementById("roomsContainer");
+        roomsContainer.innerHTML = "";
+
+        if (dorm.rooms && dorm.rooms.length > 0) {
+            dorm.rooms.forEach(function(room, index) {
+                const div = document.createElement("div");
+                div.className = "room-box";
+
+                const room_id = room.room_id || `${dorm.dorm_id}-${index + 1}`;
+                const room_number = room.room_number || `R-${dorm.dorm_id}-${index + 1}`;
+                const room_capacity = room.room_capacity || "Not specified";
+                const occupancy_limit = room.occupancy_limit || room_capacity || "Not specified";
+                const availability_status = room.availability_status || dorm.availability_status || "Available";
+                const room_type = room.room_type || dorm.main_room_type || "Room";
+                const room_price = Number(room.room_price || dorm.base_price || 0);
+
+                const available_from = room.available_from || "Not specified";
+                const available_to = room.available_to || "Not specified";
+
+                const roomFacilities = Array.isArray(room.facilities) && room.facilities.length > 0
+                    ? room.facilities.join(", ")
+                    : "No room facilities listed";
+
+                const roomImage = room.image_url || "";
+
+                const isFull = availability_status === "Full";
+
+                div.innerHTML = `
+                    <div>
+                        ${
+                            roomImage
+                            ? `<img src="${roomImage}" alt="Room Image" class="room-detail-image">`
+                            : ""
+                        }
+
+                        <p><strong>${room_type}</strong></p>
+                        <p>Room Number: ${room_number}</p>
+                        <p>Capacity: ${room_capacity}</p>
+                        <p>Occupancy Limit: ${occupancy_limit}</p>
+                        <p>Status: <span class="${isFull ? "room-full" : "room-available"}">${availability_status}</span></p>
+                        <p>Available From: ${available_from}</p>
+                        <p>Available To: ${available_to}</p>
+                        <p>Facilities: ${roomFacilities}</p>
+                    </div>
+
+                    <div class="room-price-action">
+                        <p><strong>$${room_price} / month</strong></p>
+                        <button 
+                            type="button" 
+                            class="select-room-btn ${isFull ? "disabled-room-btn" : ""}" 
+                            ${isFull ? "disabled" : ""}
+                            onclick="selectRoom('${room_id}', '${room_type}', '${room_price}', '${room_number}', '${available_from}', '${available_to}', this)">
+                            ${isFull ? "Full" : "Select"}
+                        </button>
+                    </div>
+                `;
+
+                roomsContainer.appendChild(div);
+            });
+        } else if (dorm.main_room_type && dorm.base_price) {
+            const div = document.createElement("div");
+            div.className = "room-box";
+
+            const fallbackRoomId = `${dorm.dorm_id}-1`;
+            const fallbackRoomNumber = `R-${dorm.dorm_id}-1`;
+            const fallbackPrice = Number(dorm.base_price || 0);
+            const fallbackStatus = dorm.availability_status || "Available";
+            const fallbackAvailableFrom = "Not specified";
+            const fallbackAvailableTo = "Not specified";
+
+            div.innerHTML = `
+                <div>
+                    <p><strong>${dorm.main_room_type}</strong></p>
+                    <p>Room Number: ${fallbackRoomNumber}</p>
+                    <p>Capacity: Not specified</p>
+                    <p>Occupancy Limit: Not specified</p>
+                    <p>Status: ${fallbackStatus}</p>
+                    <p>Available From: ${fallbackAvailableFrom}</p>
+                    <p>Available To: ${fallbackAvailableTo}</p>
+                </div>
+
+                <div class="room-price-action">
+                    <p><strong>$${fallbackPrice} / month</strong></p>
+                    <button 
+                        type="button" 
+                        class="select-room-btn" 
+                        onclick="selectRoom('${fallbackRoomId}', '${dorm.main_room_type}', '${fallbackPrice}', '${fallbackRoomNumber}', '${fallbackAvailableFrom}', '${fallbackAvailableTo}', this)">
+                        Select
+                    </button>
+                </div>
+            `;
+
+            roomsContainer.appendChild(div);
+        } else {
+            roomsContainer.innerHTML = "<p>No rooms available for this dorm.</p>";
+        }
+    }
+
+    function renderFacilities() {
+        const facilitiesContainer = document.getElementById("facilitiesContainer");
+        facilitiesContainer.innerHTML = "";
+
+        if (dorm.facilities && dorm.facilities.length > 0) {
+            dorm.facilities.forEach(function(facility) {
+                const div = document.createElement("div");
+                div.className = "facility-box";
+
+                div.innerHTML = `
+                    <i class="fa-solid ${getFacilityIcon(facility)}"></i>
+                    <h3>${facility}</h3>
+                `;
+
+                facilitiesContainer.appendChild(div);
+            });
+        } else {
+            facilitiesContainer.innerHTML = `
+                <div class="facility-box">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <h3>No facilities listed</h3>
+                </div>
+            `;
+        }
+    }
+
+    function renderReviews() {
+        const reviewsContainer = document.getElementById("reviewsContainer");
+        const emptyReviewsMessage = document.getElementById("emptyReviewsMessage");
+
+        reviewsContainer.innerHTML = "";
+
+        const dormReviews = getVisibleReviewsForDorm(dorm.dorm_id);
+
+        if (dormReviews.length === 0) {
+            emptyReviewsMessage.style.display = "block";
+
+            reviewsContainer.innerHTML = `
+                <div class="review-card">
+                    <div class="review-header">
+                        <h3>No reviews yet</h3>
+                        <span><i class="fa-solid fa-star"></i> 0.0 / 5</span>
+                    </div>
+                    <p>Be the first resident to review this dorm after completing a booking.</p>
+                </div>
+            `;
+
+            return;
+        }
+
+        emptyReviewsMessage.style.display = "none";
+
+        dormReviews.forEach(function(review) {
+            const div = document.createElement("div");
+            div.className = "review-card";
+
+            div.innerHTML = `
+                <div class="review-header">
+                    <h3>${review.resident_name || review.residentName || review.userName || "Resident"}</h3>
+                    <span class="review-stars">
+                        ${renderStars(review.rating)}
+                        ${review.rating} / 5
+                    </span>
+                </div>
+
+                <p>${review.review_comment || review.comment || ""}</p>
+
+                <small>
+                    <i class="fa-solid fa-calendar-days"></i>
+                    ${review.created_at || review.createdAt || review.date || ""}
+                </small>
+            `;
+
+            reviewsContainer.appendChild(div);
+        });
+    }
+
+    function selectRoom(room_id, room_type, room_price, room_number, available_from, available_to, button) {
+        selectedRoomId = room_id;
+        selectedRoomType = room_type;
+        selectedRoomPrice = room_price;
+        selectedRoomNumber = room_number;
+        selectedRoomAvailableFrom = available_from;
+        selectedRoomAvailableTo = available_to;
+
+        document.querySelectorAll(".select-room-btn").forEach(function(btn) {
+            if (!btn.disabled) {
+                btn.classList.remove("selected-room");
+                btn.textContent = "Select";
+            }
+        });
+
+        button.classList.add("selected-room");
+        button.textContent = "Selected";
+    }
+
+    function bookHousing() {
+        if (!dorm) {
+            alert("Dorm not found.");
+            return;
+        }
+
+        const user_type = localStorage.getItem("loggedInUserType") || localStorage.getItem("loggedInRole");
+
+        if (user_type === "admin") {
+            alert("Admin cannot submit booking requests.");
+            return;
+        }
+
+        if (!isResidentLoggedInForBooking()) {
+    localStorage.setItem("redirectAfterLogin", "booking");
+    alert("Please login or register before booking.");
+    window.location.href = "login.html";
+    return;
+}
+
+        if (!selectedRoomId || !selectedRoomType || !selectedRoomPrice) {
+            alert("Please select an available room first.");
+            return;
+        }
+
+        const resident_name = localStorage.getItem("loggedInUser") || "";
+        const resident_id = localStorage.getItem("loggedInResidentId") || "";
+        const email = localStorage.getItem("loggedInUserEmail") || "";
+
+        const bookingId = Date.now();
+
+        const pendingBooking = {
+            booking_id: bookingId,
+
+            resident_id: resident_id,
+            resident_name: resident_name,
+            email: email,
+
+            dorm_id: dorm.dorm_id,
+            dorm_name: dorm.dorm_name,
+            dorm_image: dorm.image_url || "images/aub1.jpg",
+
+            university_name: dorm.university_name || "",
+            city: dorm.city || "",
+            area: dorm.area || "",
+
+            room_id: selectedRoomId,
+            room_number: selectedRoomNumber,
+            room_type: selectedRoomType,
+            room_price: Number(selectedRoomPrice),
+
+            available_from: selectedRoomAvailableFrom,
+            available_to: selectedRoomAvailableTo,
+
+            check_in_date: "",
+            check_out_date: "",
+            total_price: 0,
+
+            booking_status: "Pending",
+            admin_note: "",
+            admin_id: null,
+
+            document_status: "Pending",
+            payment_status: "Pending",
+
+            created_at: new Date().toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }),
+
+            // Compatibility مع الصفحات القديمة مؤقتًا
+            id: bookingId,
+            userName: resident_name,
+            studentName: resident_name,
+            residentName: resident_name,
+
+            userEmail: email,
+            studentEmail: email,
+            residentEmail: email,
+
+            housingId: dorm.dorm_id,
+            housingName: dorm.dorm_name,
+            housingImage: dorm.image_url || "images/aub1.jpg",
+            university: dorm.university_name || "",
+            location: dorm.area || dorm.city || "",
+
+            roomId: selectedRoomId,
+            roomNumber: selectedRoomNumber,
+            roomType: selectedRoomType,
+            price: Number(selectedRoomPrice),
+
+            availableFrom: selectedRoomAvailableFrom,
+            availableTo: selectedRoomAvailableTo,
+
+            checkInDate: "",
+            checkOutDate: "",
+            totalCost: 0,
+
+            status: "Pending",
+            documentStatus: "Pending",
+            paymentStatus: "Pending"
+        };
+
+        localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
+
+        window.location.href = "booking.html";
+    }
+
+    updateNavbar();
+    renderDormDetails();
+</script>
+
+</body>
+</html>

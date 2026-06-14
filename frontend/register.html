@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | UniNest</title>
+
+    <link rel="stylesheet" href="register.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<div class="register-wrapper">
+
+    <div class="register-brand">
+        <a href="home.html" class="brand-logo">
+            <i class="fa-solid fa-building-user"></i>
+            UniNest
+        </a>
+
+        <h1>Create Your Account</h1>
+        <p>Join UniNest to book dorms, manage payments, submit maintenance requests, and review your housing experience.</p>
+
+        <div class="brand-features">
+            <div>
+                <i class="fa-solid fa-user-graduate"></i>
+                <span>For students and employees</span>
+            </div>
+
+            <div>
+                <i class="fa-solid fa-house"></i>
+                <span>Find nearby dorms easily</span>
+            </div>
+
+            <div>
+                <i class="fa-solid fa-bell"></i>
+                <span>Receive booking notifications</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="register-container">
+        <div class="register-card">
+
+            <div class="register-page-header">
+                <h2>Register</h2>
+                <p>Create your UniNest resident account</p>
+            </div>
+
+            <form id="registerForm">
+
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="fullname" placeholder="Enter your full name" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-phone"></i>
+                        <input type="text" id="phone" placeholder="Example: 71-123456" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="role">Register As</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-users"></i>
+                        <select id="role" required>
+                            <option value="">Select role</option>
+                            <option value="student">Student</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="studentFields" class="role-fields" style="display:none;">
+                    <div class="form-group">
+                        <label for="university">University</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-school"></i>
+                            <input type="text" id="university" placeholder="Example: AUB, LAU, LU">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="major">Major</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-book"></i>
+                            <input type="text" id="major" placeholder="Enter your major">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="employeeFields" class="role-fields" style="display:none;">
+                    <div class="form-group">
+                        <label for="company">Company</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-building"></i>
+                            <input type="text" id="company" placeholder="Enter your company name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobTitle">Job Title</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-briefcase"></i>
+                            <input type="text" id="jobTitle" placeholder="Enter your job title">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="password" placeholder="Enter your password" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="input-box">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                </div>
+
+                <button type="submit">
+                    <i class="fa-solid fa-user-plus"></i>
+                    Register
+                </button>
+            </form>
+
+            <div class="register-links">
+                <p>
+                    Already have an account?
+                    <a href="login.html">Login</a>
+                </p>
+
+                <p>
+                    <a href="home.html">Back to Home</a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const roleInput = document.getElementById("role");
+    const studentFields = document.getElementById("studentFields");
+    const employeeFields = document.getElementById("employeeFields");
+
+    function formatDateToday() {
+        return new Date().toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    function splitFullName(fullName) {
+        const parts = fullName.trim().split(" ").filter(part => part !== "");
+
+        const first_name = parts[0] || "";
+        const last_name = parts.length > 1 ? parts.slice(1).join(" ") : "";
+
+        return {
+            first_name: first_name,
+            last_name: last_name
+        };
+    }
+
+    roleInput.addEventListener("change", function() {
+        const user_type = roleInput.value;
+
+        if (user_type === "student") {
+            studentFields.style.display = "block";
+            employeeFields.style.display = "none";
+        } else if (user_type === "employee") {
+            studentFields.style.display = "none";
+            employeeFields.style.display = "block";
+        } else {
+            studentFields.style.display = "none";
+            employeeFields.style.display = "none";
+        }
+    });
+
+    document.getElementById("registerForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const fullName = document.getElementById("fullname").value.trim();
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        const phone = document.getElementById("phone").value.trim();
+        const user_type = document.getElementById("role").value;
+
+        const university_name = document.getElementById("university").value.trim();
+        const major = document.getElementById("major").value.trim();
+
+        const company_name = document.getElementById("company").value.trim();
+        const job_position = document.getElementById("jobTitle").value.trim();
+
+        const password = document.getElementById("password").value.trim();
+        const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+        if (!fullName || !email || !phone || !user_type || !password || !confirmPassword) {
+            alert("Please fill all required fields.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+
+        const phoneRegex = /^\d{2}-\d{6}$/;
+
+        if (!phoneRegex.test(phone)) {
+            alert("Phone number must be like this: 71-123456");
+            return;
+        }
+
+        if (user_type === "student" && (!university_name || !major)) {
+            alert("Please fill university and major fields.");
+            return;
+        }
+
+        if (user_type === "employee" && (!company_name || !job_position)) {
+            alert("Please fill company and job title fields.");
+            return;
+        }
+
+        if (password.length < 6) {
+            alert("Password must be at least 6 characters.");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            alert("Passwords do not match.");
+            return;
+        }
+
+        let users = JSON.parse(localStorage.getItem("users")) || [];
+
+        const userExists = users.find(function(user) {
+            return (user.email || "").toLowerCase() === email;
+        });
+
+        if (userExists || email === "admin@uninest.com") {
+            alert("This account already exists. Please login.");
+            return;
+        }
+
+        const nameParts = splitFullName(fullName);
+
+        const newResident = {
+            resident_id: Date.now(),
+
+            first_name: nameParts.first_name,
+            last_name: nameParts.last_name,
+
+            email: email,
+            password: password,
+            phone: phone,
+
+            user_type: user_type,
+
+            university_name: user_type === "student" ? university_name : "",
+            major: user_type === "student" ? major : "",
+
+            company_name: user_type === "employee" ? company_name : "",
+            job_position: user_type === "employee" ? job_position : "",
+
+            profile_image: "",
+
+            created_at: formatDateToday(),
+            updated_at: ""
+        };
+
+        users.push(newResident);
+
+        localStorage.setItem("users", JSON.stringify(users));
+
+        alert("Registered successfully! You can now login.");
+        window.location.href = "login.html";
+    });
+</script>
+
+</body>
+</html>

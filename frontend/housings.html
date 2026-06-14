@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNest | Dorms</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="auth.js"></script>
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo">
+        <h2>UniNest</h2>
+    </div>
+
+    <nav>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="home.html">Home</a></li>
+            <li><a href="housings.html" class="active">Dorms</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="register.html" class="register-btn">Register</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="page-header">
+    <div class="page-header-content">
+        <h1>Explore Student Dorms</h1>
+        <p>
+            Browse safe, comfortable, and affordable dorms near top universities in Lebanon.
+        </p>
+    </div>
+</section>
+
+<section class="housing-filter-section">
+    <div class="filter-box">
+        <h2>Find Your Ideal Dorm</h2>
+
+        <form class="filter-form" id="filterForm">
+            <div class="form-group">
+                <label for="university">University</label>
+                <select id="university">
+                    <option value="">All Universities</option>
+                    <option value="MU">MU</option>
+                    <option value="LU">LU</option>
+                    <option value="UA">UA</option>
+                    <option value="AUB">AUB</option>
+                    <option value="LAU">LAU</option>
+                    <option value="USJ">USJ</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="city">City / Location</label>
+                <select id="city">
+                    <option value="">All Cities</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="roomTypeFilter">Room Type</label>
+                <select id="roomTypeFilter">
+                    <option value="">All Room Types</option>
+                    <option value="Single Room">Single Room</option>
+                    <option value="Double Room">Double Room</option>
+                    <option value="Triple Room">Triple Room</option>
+                    <option value="Shared Room">Shared Room</option>
+                    <option value="Studio">Studio</option>
+                    <option value="Apartment">Apartment</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Availability</label>
+                <select id="status">
+                    <option value="">All</option>
+                    <option value="Available">Available</option>
+                    <option value="Full">Full</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="minPrice">Min Price</label>
+                <input type="number" id="minPrice" placeholder="Example: 100">
+            </div>
+
+            <div class="form-group">
+                <label for="maxPrice">Max Price</label>
+                <input type="number" id="maxPrice" placeholder="Example: 300">
+            </div>
+
+            <div class="form-group search-btn-group">
+                <button type="submit" class="btn primary-btn">Search Now</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="available-housings-section">
+    <div class="section-title">
+        <h2>Available Dorms</h2>
+        <p>Choose a dorm and view its details before booking.</p>
+    </div>
+
+    <div class="available-housings-grid" id="availableHousingsGrid"></div>
+
+    <div class="empty-housings-message" id="emptyHousingsMessage" style="display:none;">
+        <h3>No dorms found</h3>
+        <p>Try changing your search filters.</p>
+    </div>
+</section>
+
+<section class="why-choose-us">
+    <div class="section-title">
+        <h2>What Makes Our Dorms Special?</h2>
+        <p>Each dorm option is selected to offer comfort, security, and convenience.</p>
+    </div>
+
+    <div class="features-container">
+        <div class="feature-box">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h3>Safe Environment</h3>
+            <p>All listed accommodations prioritize resident safety and secure living conditions.</p>
+        </div>
+
+        <div class="feature-box">
+            <i class="fa-solid fa-wifi"></i>
+            <h3>Modern Facilities</h3>
+            <p>Enjoy services like Wi-Fi, study areas, laundry rooms, and shared kitchens.</p>
+        </div>
+
+        <div class="feature-box">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <h3>Prime Locations</h3>
+            <p>Stay close to your university or workplace and save transportation time.</p>
+        </div>
+
+        <div class="feature-box">
+            <i class="fa-solid fa-wallet"></i>
+            <h3>Affordable Prices</h3>
+            <p>Find options that fit different budgets without sacrificing comfort.</p>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+
+        <div class="footer-box">
+            <h3>UniNest</h3>
+            <p>
+                A modern dorm booking platform that helps students and employees find safe,
+                comfortable, and affordable accommodation.
+            </p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html">Dorms</a></li>
+                <li><a href="about.html">About</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-box">
+            <h3>Contact Info</h3>
+            <p><i class="fa-solid fa-envelope"></i> support@uninest.com</p>
+            <p><i class="fa-solid fa-phone"></i> +961 70 123 456</p>
+            <p><i class="fa-solid fa-location-dot"></i> Beirut, Lebanon</p>
+        </div>
+
+        <div class="footer-box">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+                <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2026 UniNest. All Rights Reserved.</p>
+    </div>
+</footer>
+
+<script src="housings-data.js"></script>
+
+<script>
+    const universitySelect = document.getElementById("university");
+    const citySelect = document.getElementById("city");
+    const roomTypeFilter = document.getElementById("roomTypeFilter");
+    const statusSelect = document.getElementById("status");
+    const minPriceInput = document.getElementById("minPrice");
+    const maxPriceInput = document.getElementById("maxPrice");
+    const filterForm = document.getElementById("filterForm");
+
+    const grid = document.getElementById("availableHousingsGrid");
+    const emptyHousingsMessage = document.getElementById("emptyHousingsMessage");
+    const navLinks = document.getElementById("navLinks");
+
+    const universityCities = {
+        MU: ["Beirut"],
+        LU: ["Hadath", "Fanar", "Ras Maska"],
+        UA: ["Hadath", "Zahle", "Zgharta"],
+        AUB: ["Beirut"],
+        LAU: ["Beirut", "Byblos"],
+        USJ: ["Beirut"]
+    };
+
+    function updateNavbar() {
+        const user_type = localStorage.getItem("loggedInUserType") || localStorage.getItem("loggedInRole");
+
+        if (user_type === "student" || user_type === "employee") {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Dorms</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            `;
+        } else if (user_type === "admin") {
+            navLinks.innerHTML = `
+                <li><a href="home.html">Home</a></li>
+                <li><a href="housings.html" class="active">Dorms</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            `;
+        }
+    }
+
+    function updateCityOptions() {
+        const selectedUniversity = universitySelect.value;
+
+        citySelect.innerHTML = '<option value="">All Cities</option>';
+
+        if (!selectedUniversity) {
+            return;
+        }
+
+        const cities = universityCities[selectedUniversity] || [];
+
+        cities.forEach(function(city) {
+            const option = document.createElement("option");
+            option.value = city;
+            option.textContent = city;
+            citySelect.appendChild(option);
+        });
+    }
+
+    function normalizeDorm(dorm) {
+        return {
+            ...dorm,
+
+            dorm_id: dorm.dorm_id || dorm.id,
+            dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
+
+            university_name: dorm.university_name || dorm.university || "",
+            city: dorm.city || "",
+            area: dorm.area || dorm.location || "",
+            street: dorm.street || "",
+            building_number: dorm.building_number || dorm.buildingNumber || "",
+            gps_location: dorm.gps_location || dorm.mapLink || "",
+
+            dorm_description: dorm.dorm_description || dorm.description || "",
+            eligibility_requirements: dorm.eligibility_requirements || dorm.eligibility || "",
+
+            contact_email: dorm.contact_email || "",
+            contact_phone: dorm.contact_phone || dorm.contact || "",
+
+            image_url: dorm.image_url || dorm.image || dorm.housingImage || "images/aub1.jpg",
+
+            availability_status: dorm.availability_status || dorm.status || dorm.availability || "Available",
+
+            main_room_type: dorm.main_room_type || dorm.roomType || "",
+            base_price: dorm.base_price || dorm.price || 0,
+
+            rooms: Array.isArray(dorm.rooms) ? dorm.rooms.map(function(room) {
+                return {
+                    ...room,
+
+                    room_id: room.room_id || room.roomId,
+                    dorm_id: room.dorm_id || dorm.dorm_id || dorm.id,
+
+                    room_number: room.room_number || room.roomNumber || "",
+                    room_type: room.room_type || room.type || "",
+                    room_capacity: Number(room.room_capacity || room.capacity || 1),
+
+                    current_occupancy: Number(room.current_occupancy || room.currentOccupancy || 0),
+                    occupancy_limit: Number(room.occupancy_limit || room.occupancyLimit || room.capacity || room.room_capacity || 1),
+
+                    room_price: Number(room.room_price || room.price || 0),
+                    availability_status: room.availability_status || room.status || "Available"
+                };
+            }) : [],
+
+            facilities: dorm.facilities || []
+        };
+    }
+
+    function getDorms() {
+        const savedDorms = JSON.parse(localStorage.getItem("dorms"));
+        const savedHousings = JSON.parse(localStorage.getItem("housings"));
+
+        if (savedDorms && Array.isArray(savedDorms)) {
+            return savedDorms.map(normalizeDorm);
+        }
+
+        if (savedHousings && Array.isArray(savedHousings)) {
+            const normalizedOldDorms = savedHousings.map(normalizeDorm);
+
+            localStorage.setItem("dorms", JSON.stringify(normalizedOldDorms));
+            return normalizedOldDorms;
+        }
+
+        if (typeof dormsData !== "undefined" && Array.isArray(dormsData)) {
+            const normalizedDorms = dormsData.map(normalizeDorm);
+
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+
+            // Compatibility مع الصفحات القديمة مؤقتًا
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+
+            return normalizedDorms;
+        }
+
+        if (typeof housingsData !== "undefined" && Array.isArray(housingsData)) {
+            const normalizedDorms = housingsData.map(normalizeDorm);
+
+            localStorage.setItem("dorms", JSON.stringify(normalizedDorms));
+            localStorage.setItem("housings", JSON.stringify(normalizedDorms));
+
+            return normalizedDorms;
+        }
+
+        return [];
+    }
+
+    function normalizeRoomType(room_type) {
+        if (!room_type) {
+            return "";
+        }
+
+        const value = String(room_type).trim().toLowerCase();
+
+        if (value === "single" || value === "single room") {
+            return "Single Room";
+        }
+
+        if (value === "double" || value === "double room") {
+            return "Double Room";
+        }
+
+        if (value === "triple" || value === "triple room") {
+            return "Triple Room";
+        }
+
+        if (value === "shared" || value === "shared room") {
+            return "Shared Room";
+        }
+
+        if (value === "studio") {
+            return "Studio";
+        }
+
+        if (value === "apartment") {
+            return "Apartment";
+        }
+
+        return room_type;
+    }
+
+    function getStartingPrice(dorm) {
+        const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
+
+        if (rooms.length > 0) {
+            const prices = rooms
+                .map(function(room) {
+                    return Number(room.room_price || room.price || 0);
+                })
+                .filter(function(price) {
+                    return price > 0;
+                });
+
+            if (prices.length > 0) {
+                return Math.min(...prices);
+            }
+        }
+
+        return Number(dorm.base_price || dorm.room_price || dorm.price || 0);
+    }
+
+    function dormMatchesRoomType(dorm, selectedRoomType) {
+        const mainRoomType = normalizeRoomType(dorm.main_room_type || dorm.room_type || dorm.roomType || "");
+
+        if (mainRoomType === selectedRoomType) {
+            return true;
+        }
+
+        const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
+
+        return rooms.some(function(room) {
+            return normalizeRoomType(room.room_type || room.type || "") === selectedRoomType;
+        });
+    }
+
+    function dormMatchesPriceRange(dorm, minPrice, maxPrice) {
+        const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
+
+        if (rooms.length > 0) {
+            return rooms.some(function(room) {
+                const price = Number(room.room_price || room.price || 0);
+
+                if (price <= 0) {
+                    return false;
+                }
+
+                if (minPrice > 0 && price < minPrice) {
+                    return false;
+                }
+
+                if (maxPrice > 0 && price > maxPrice) {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        const price = getStartingPrice(dorm);
+
+        if (minPrice > 0 && price < minPrice) {
+            return false;
+        }
+
+        if (maxPrice > 0 && price > maxPrice) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function getFilteredDorms() {
+        const selectedUniversity = universitySelect.value;
+        const selectedCity = citySelect.value;
+        const selectedRoomType = roomTypeFilter.value;
+        const selectedStatus = statusSelect.value;
+        const minPrice = Number(minPriceInput.value);
+        const maxPrice = Number(maxPriceInput.value);
+
+        let dorms = getDorms();
+
+        if (selectedUniversity) {
+            dorms = dorms.filter(function(dorm) {
+                return dorm.university_name === selectedUniversity;
+            });
+        }
+
+        if (selectedCity) {
+            dorms = dorms.filter(function(dorm) {
+                return dorm.city === selectedCity || dorm.area === selectedCity;
+            });
+        }
+
+        if (selectedRoomType) {
+            dorms = dorms.filter(function(dorm) {
+                return dormMatchesRoomType(dorm, selectedRoomType);
+            });
+        }
+
+        if (selectedStatus) {
+            dorms = dorms.filter(function(dorm) {
+                return dorm.availability_status === selectedStatus;
+            });
+        }
+
+        if (minPrice > 0 || maxPrice > 0) {
+            dorms = dorms.filter(function(dorm) {
+                return dormMatchesPriceRange(dorm, minPrice, maxPrice);
+            });
+        }
+
+        return dorms;
+    }
+
+    function renderAvailableDorms() {
+        const dorms = getFilteredDorms();
+
+        grid.innerHTML = "";
+
+        if (dorms.length === 0) {
+            emptyHousingsMessage.style.display = "block";
+            return;
+        }
+
+        emptyHousingsMessage.style.display = "none";
+
+        dorms.forEach(function(dorm) {
+            const card = document.createElement("div");
+            card.className = "housing-card";
+
+            const dorm_id = dorm.dorm_id;
+            const image = dorm.image_url || "images/aub1.jpg";
+            const dorm_name = dorm.dorm_name || "Dorm Name";
+            const location = dorm.area || dorm.city || "-";
+            const university_name = dorm.university_name || "-";
+            const startingPrice = getStartingPrice(dorm);
+            const availability_status = dorm.availability_status || "Available";
+            const room_type = normalizeRoomType(
+                dorm.main_room_type ||
+                (dorm.rooms && dorm.rooms[0] ? dorm.rooms[0].room_type : "") ||
+                "-"
+            );
+            const facilities = dorm.facilities || [];
+
+            card.innerHTML = `
+                <img src="${image}" alt="${dorm_name}">
+
+                <div class="housing-info">
+                    <div class="housing-title-row">
+                        <h3>${dorm_name}</h3>
+                        <span class="housing-status ${availability_status === "Available" ? "available" : "full"}">${availability_status}</span>
+                    </div>
+
+                    <p><i class="fa-solid fa-location-dot"></i> ${location}</p>
+                    <p><i class="fa-solid fa-school"></i> ${university_name}</p>
+                    <p><i class="fa-solid fa-bed"></i> ${room_type}</p>
+                    <p><i class="fa-solid fa-dollar-sign"></i> Starting from $${startingPrice}/month</p>
+
+                    <div class="housing-facilities">
+                        ${
+                            facilities.slice(0, 3).map(function(facility) {
+                                return `<span>${facility}</span>`;
+                            }).join("")
+                        }
+                    </div>
+
+                    <button class="card-btn" onclick="viewDetails(${dorm_id})">View Details</button>
+                </div>
+            `;
+
+            grid.appendChild(card);
+        });
+    }
+
+    function viewDetails(dorm_id) {
+        localStorage.setItem("selectedDormId", dorm_id);
+
+        // Compatibility مع الصفحات القديمة مؤقتًا
+        localStorage.setItem("selectedHousingId", dorm_id);
+
+        window.location.href = "housing-details.html?id=" + dorm_id;
+    }
+
+    universitySelect.addEventListener("change", function() {
+        updateCityOptions();
+        renderAvailableDorms();
+    });
+
+    citySelect.addEventListener("change", renderAvailableDorms);
+    roomTypeFilter.addEventListener("change", renderAvailableDorms);
+    statusSelect.addEventListener("change", renderAvailableDorms);
+    minPriceInput.addEventListener("input", renderAvailableDorms);
+    maxPriceInput.addEventListener("input", renderAvailableDorms);
+
+    filterForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const minPrice = Number(minPriceInput.value);
+        const maxPrice = Number(maxPriceInput.value);
+
+        if (minPrice > 0 && maxPrice > 0 && minPrice > maxPrice) {
+            alert("Minimum price cannot be greater than maximum price.");
+            return;
+        }
+
+        renderAvailableDorms();
+    });
+
+    updateNavbar();
+    updateCityOptions();
+    renderAvailableDorms();
+</script>
+
+</body>
+</html>
