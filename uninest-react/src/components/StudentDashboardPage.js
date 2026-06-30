@@ -1,4 +1,11 @@
+import { useEffect, useState } from "react";
 import "./StudentDashboardPage.css";
+import {
+  getBookings,
+  getPayments,
+  getMaintenanceRequests,
+  getResidents,
+} from "../api";
 
 function StudentDashboardPage() {
   const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
@@ -11,14 +18,17 @@ function StudentDashboardPage() {
     localStorage.getItem("loggedInRole") ||
     "student";
 
-  const getDormImage = (imagePath) => {
-    const path = imagePath || "images/aub1.jpg";
-    const fileName = path.replace("images/", "");
+  const [resident, setResident] = useState(null);
+  const [myBookings, setMyBookings] = useState([]);
+  const [myPayments, setMyPayments] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  const getDormImage = () => {
     try {
-      return require(`../assets/images/${fileName}`);
-    } catch {
       return require("../assets/images/aub1.jpg");
+    } catch {
+      return "";
     }
   };
 
@@ -35,205 +45,107 @@ function StudentDashboardPage() {
     window.location.href = "/";
   };
 
-  const getResidents = () => {
-    const residents = JSON.parse(localStorage.getItem("residents"));
-    const users = JSON.parse(localStorage.getItem("users"));
-
-    if (residents && Array.isArray(residents)) {
-      return residents.map(normalizeResident);
-    }
-
-    if (users && Array.isArray(users)) {
-      return users.map(normalizeResident);
-    }
-
-    return [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+    if (value === "in_progress") return "In Progress";
+
+    return "Pending";
   };
 
-  const getPayments = () => {
-    return JSON.parse(localStorage.getItem("payments")) || [];
-  };
-
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
-  };
-
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const normalizeResident = (resident) => {
-    const firstName = resident.first_name || resident.firstName || "";
-    const lastName = resident.last_name || resident.lastName || "";
-
-    const fullName =
-      (firstName + " " + lastName).trim() ||
-      resident.fullName ||
-      resident.name ||
-      loggedInUserName;
-
+  const normalizeResident = (item) => {
     return {
-      ...resident,
-      resident_id: resident.resident_id || resident.id,
-      first_name: firstName,
-      last_name: lastName,
-      full_name: fullName,
-      email: resident.email || "",
-      phone: resident.phone || "",
-      user_type: resident.user_type || resident.role || "student",
-      university_name: resident.university_name || resident.university || "",
-      major: resident.major || "",
-      company_name: resident.company_name || resident.company || "",
-      job_position: resident.job_position || resident.jobTitle || "",
+      ...item,
+      resident_id: item.resident_id || item.id,
+      user_id: item.user_id || "",
+      full_name: item.full_name || loggedInUserName,
+      email: item.email || item.user?.email || "",
+      phone: item.phone || "",
+      role: item.role || loggedInUserType,
+      university: item.university || "",
+      major: item.major || "",
+      company: item.company || item.company_name || "",
     };
   };
 
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const residentData = booking.resident || {};
+
     return {
       ...booking,
-
       booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || residentData.resident_id || "",
+      email: booking.email || residentData.email || "",
 
-      resident_id: booking.resident_id || "",
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || "",
 
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "",
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+      room_price: Number(booking.room_price || room.room_price || 0),
 
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "",
+      check_in_date: booking.check_in_date || "-",
+      check_out_date: booking.check_out_date || "-",
+      total_price: Number(booking.total_price || 0),
 
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
-      dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
-
-      university_name: booking.university_name || booking.university || "",
-      city: booking.city || "",
-      area: booking.area || booking.location || "",
-
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-      room_price: Number(booking.room_price || booking.price || 0),
-
-      check_in_date: booking.check_in_date || booking.checkInDate || "-",
-      check_out_date: booking.check_out_date || booking.checkOutDate || "-",
-
-      total_price: Number(booking.total_price || booking.totalCost || 0),
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-      payment_status: booking.payment_status || booking.paymentStatus || "Pending",
-
-      created_at:
-        booking.created_at ||
-        booking.createdAt ||
-        booking.bookingDate ||
-        booking.checkInDate ||
-        "",
+      booking_status: booking.booking_status || "pending",
+      created_at: booking.created_at || "",
     };
   };
 
   const normalizePayment = (payment) => {
+    const booking = payment.booking || {};
+    const room = booking.room || {};
+    const dorm = room.dorm || {};
+
     return {
       ...payment,
-
-      payment_id: payment.payment_id || payment.paymentId || payment.id,
-      booking_id: payment.booking_id || payment.bookingId,
-
-      resident_id: payment.resident_id || "",
-      resident_name: payment.resident_name || payment.userName || payment.studentName || "",
-      email: payment.email || payment.userEmail || payment.studentEmail || "",
-
-      dorm_id: payment.dorm_id || payment.housingId,
-      dorm_name: payment.dorm_name || payment.housingName || "Dorm",
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || booking.booking_id,
 
       amount: Number(payment.amount || 0),
-      payment_method: payment.payment_method || payment.method || "",
-      payment_status: payment.payment_status || payment.status || "Pending",
-      payment_date: payment.payment_date || payment.paymentDate || "",
+      payment_method: payment.payment_method || "",
+      payment_status: payment.payment_status || "pending",
+      created_at: payment.created_at || "",
+
+      dorm_name: payment.dorm_name || dorm.dorm_name || "Dorm",
     };
   };
 
   const normalizeMaintenanceRequest = (request) => {
+    const booking = request.booking || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || {};
+
     return {
       ...request,
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+      booking_id: request.booking_id || booking.booking_id,
+      room_id: request.room_id || room.room_id || "",
+      room_number: request.room_number || room.room_number || "",
+      room_type: request.room_type || room.room_type || "",
 
-      request_id: request.request_id || request.id,
-      booking_id: request.booking_id || request.bookingId,
-
-      resident_id: request.resident_id || "",
-
-      resident_name:
-        request.resident_name ||
-        request.residentName ||
-        request.userName ||
-        request.studentName ||
-        "",
-
-      email:
-        request.email ||
-        request.userEmail ||
-        request.studentEmail ||
-        request.residentEmail ||
-        "",
-
-      dorm_id: request.dorm_id || request.housingId,
-      dorm_name: request.dorm_name || request.housingName || request.currentHousing || "Dorm",
-
-      request_title: request.request_title || request.title || "Maintenance Request",
-      request_status: request.request_status || request.status || "Pending",
-      request_date:
-        request.request_date ||
-        request.submittedDate ||
-        request.createdAt ||
-        request.date ||
-        "",
+      dorm_name: request.dorm_name || dorm.dorm_name || "Dorm",
+      request_description:
+        request.request_description || "Maintenance Request",
+      request_status: request.request_status || "pending",
+      created_at: request.created_at || "",
     };
-  };
-
-  const normalizeNotification = (notification) => {
-    return {
-      ...notification,
-
-      notification_id: notification.notification_id || notification.id,
-
-      resident_id: notification.resident_id || "",
-      email: notification.email || notification.userEmail || "",
-
-      title: notification.title || "Notification",
-      message: notification.message || "-",
-      notification_type:
-        notification.notification_type || notification.type || "notification",
-
-      is_read:
-        notification.is_read !== undefined
-          ? notification.is_read
-          : notification.isRead || false,
-
-      created_at: notification.created_at || notification.date || "",
-    };
-  };
-
-  const isPaid = (value) => {
-    return value === "Completed" || value === "Paid";
-  };
-
-  const isMineByResidentOrEmail = (item) => {
-    const itemResidentId = String(item.resident_id || "");
-    const itemEmail = String(item.email || "").toLowerCase();
-
-    return itemResidentId === String(loggedInResidentId) || itemEmail === loggedInUserEmail;
   };
 
   const sortNewest = (items, idField) => {
@@ -242,89 +154,123 @@ function StudentDashboardPage() {
     });
   };
 
-  const getMyBookings = () => {
-    return sortNewest(
-      getBookings().map(normalizeBooking).filter(isMineByResidentOrEmail),
-      "booking_id"
-    );
-  };
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
 
-  const getMyPayments = () => {
-    return sortNewest(
-      getPayments().map(normalizePayment).filter(isMineByResidentOrEmail),
-      "payment_id"
-    );
-  };
+      const [
+        residentsResponse,
+        bookingsResponse,
+        paymentsResponse,
+        requestsResponse,
+      ] = await Promise.all([
+        getResidents().catch(() => []),
+        getBookings().catch(() => []),
+        getPayments().catch(() => []),
+        getMaintenanceRequests().catch(() => []),
+      ]);
 
-  const getMyMaintenanceRequests = () => {
-    return sortNewest(
-      getMaintenanceRequests()
+      const residentsList = Array.isArray(residentsResponse)
+        ? residentsResponse
+        : residentsResponse.data || [];
+
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
+
+      const requestsList = Array.isArray(requestsResponse)
+        ? requestsResponse
+        : requestsResponse.data || [];
+
+      const normalizedResidents = residentsList.map(normalizeResident);
+
+      const currentResident = normalizedResidents.find((item) => {
+        const sameId =
+          String(item.resident_id || "") === String(loggedInResidentId);
+        const sameEmail = String(item.email || "").toLowerCase() === loggedInUserEmail;
+
+        return sameId || sameEmail;
+      });
+
+      const normalizedBookings = bookingsList.map(normalizeBooking);
+
+      const userBookings = normalizedBookings.filter((booking) => {
+        const sameId =
+          String(booking.resident_id || "") === String(loggedInResidentId);
+        const sameEmail =
+          String(booking.email || "").toLowerCase() === loggedInUserEmail;
+
+        return sameId || sameEmail;
+      });
+
+      const userBookingIds = userBookings.map((booking) =>
+        Number(booking.booking_id)
+      );
+
+      const userPayments = paymentsList.map(normalizePayment).filter((payment) => {
+        return userBookingIds.includes(Number(payment.booking_id));
+      });
+
+      const userRequests = requestsList
         .map(normalizeMaintenanceRequest)
-        .filter(isMineByResidentOrEmail),
-      "request_id"
-    );
+        .filter((request) => {
+          return userBookingIds.includes(Number(request.booking_id));
+        });
+
+      setResident(currentResident || null);
+      setMyBookings(sortNewest(userBookings, "booking_id"));
+      setMyPayments(sortNewest(userPayments, "payment_id"));
+      setMyRequests(sortNewest(userRequests, "maintenance_request_id"));
+    } catch (error) {
+      console.error("Failed to load dashboard:", error);
+      alert("Could not load dashboard data from backend.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getMyNotifications = () => {
-    return sortNewest(
-      getNotifications().map(normalizeNotification).filter(isMineByResidentOrEmail),
-      "notification_id"
-    );
-  };
-
-  const residents = getResidents();
-
-  const resident = residents.find((item) => {
-    const sameId = String(item.resident_id || "") === String(loggedInResidentId);
-    const sameEmail = (item.email || "").toLowerCase() === loggedInUserEmail;
-
-    return sameId || sameEmail;
-  });
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   const fullName = resident?.full_name || loggedInUserName;
-  const finalUserType = resident?.user_type || loggedInUserType;
+  const finalUserType = resident?.role || loggedInUserType;
 
   let affiliation = "-";
 
   if (finalUserType === "student") {
-    affiliation = resident?.university_name || "-";
+    affiliation = resident?.university || "-";
   } else if (finalUserType === "employee") {
-    affiliation = resident?.company_name || "-";
+    affiliation = resident?.company || "-";
   }
 
-  const myBookings = getMyBookings();
-  const myPayments = getMyPayments();
-  const myRequests = getMyMaintenanceRequests();
-  const myNotifications = getMyNotifications();
-
   const approvedBookings = myBookings.filter(
-    (booking) => booking.booking_status === "Approved"
+    (booking) => normalizeStatus(booking.booking_status) === "approved"
   ).length;
 
   const pendingBookings = myBookings.filter(
-    (booking) => booking.booking_status === "Pending"
+    (booking) => normalizeStatus(booking.booking_status) === "pending"
   ).length;
 
-  const completedPayments = myPayments.filter((payment) =>
-    isPaid(payment.payment_status)
-  ).length;
-
-  const unreadNotifications = myNotifications.filter(
-    (notification) => notification.is_read === false
-  ).length;
+  const completedPayments = myPayments.filter((payment) => {
+    const status = normalizeStatus(payment.payment_status);
+    return status === "paid" || status === "completed";
+  }).length;
 
   const activeBooking = myBookings.find((booking) => {
-    return (
-      booking.booking_status === "Approved" ||
-      booking.booking_status === "Pending"
-    );
+    const status = normalizeStatus(booking.booking_status);
+    return status === "approved" || status === "pending";
   });
 
   const recentActivities = [];
 
   myBookings.slice(0, 2).forEach((booking) => {
     recentActivities.push({
-      text: `Booking ${booking.booking_status || "Pending"} for ${
+      text: `Booking ${displayStatus(booking.booking_status)} for ${
         booking.dorm_name || "Dorm"
       }`,
       dotClass: "blue-dot",
@@ -333,7 +279,7 @@ function StudentDashboardPage() {
 
   myPayments.slice(0, 1).forEach((payment) => {
     recentActivities.push({
-      text: `Payment ${payment.payment_status || "Completed"}: $${
+      text: `Payment ${displayStatus(payment.payment_status)}: $${
         payment.amount || 0
       } for ${payment.dorm_name || "Dorm"}`,
       dotClass: "green-dot",
@@ -342,9 +288,9 @@ function StudentDashboardPage() {
 
   myRequests.slice(0, 2).forEach((request) => {
     recentActivities.push({
-      text: `Maintenance request "${
-        request.request_title || "Request"
-      }" is ${request.request_status || "Pending"}`,
+      text: `Maintenance request is ${displayStatus(
+        request.request_status
+      )}`,
       dotClass: "purple-dot",
     });
   });
@@ -426,260 +372,234 @@ function StudentDashboardPage() {
           </div>
         </div>
 
-        <section className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon navy">
-              <i className="fa-solid fa-list"></i>
-            </div>
-            <div>
-              <h3>{myBookings.length}</h3>
-              <p>Total Bookings</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon blue">
-              <i className="fa-solid fa-bed"></i>
-            </div>
-            <div>
-              <h3>{approvedBookings}</h3>
-              <p>Approved Bookings</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon cyan">
-              <i className="fa-solid fa-clock"></i>
-            </div>
-            <div>
-              <h3>{pendingBookings}</h3>
-              <p>Pending Bookings</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon green">
-              <i className="fa-solid fa-credit-card"></i>
-            </div>
-            <div>
-              <h3>{completedPayments}</h3>
-              <p>Completed Payments</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon orange">
-              <i className="fa-solid fa-screwdriver-wrench"></i>
-            </div>
-            <div>
-              <h3>{myRequests.length}</h3>
-              <p>Maintenance Requests</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon purple">
-              <i className="fa-solid fa-bell"></i>
-            </div>
-            <div>
-              <h3>{unreadNotifications}</h3>
-              <p>Unread Notifications</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="dashboard-grid">
-          <div className="dashboard-card large-card">
-            <div className="card-header">
-              <h2>Current Booking</h2>
-
-              <span
-                className={`status-badge ${
-                  activeBooking
-                    ? (activeBooking.booking_status || "Pending").toLowerCase()
-                    : "rejected"
-                }`}
-              >
-                {activeBooking ? activeBooking.booking_status : "No Booking"}
-              </span>
-            </div>
-
-            <div className="booking-info">
-              <div className="booking-image">
-                <img
-                  src={getDormImage(activeBooking?.dorm_image)}
-                  alt={activeBooking?.dorm_name || "Housing"}
-                />
+        {loading ? (
+          <section className="dashboard-card">
+            <h2>Loading dashboard...</h2>
+          </section>
+        ) : (
+          <>
+            <section className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon navy">
+                  <i className="fa-solid fa-list"></i>
+                </div>
+                <div>
+                  <h3>{myBookings.length}</h3>
+                  <p>Total Bookings</p>
+                </div>
               </div>
 
-              <div className="booking-details">
-                <h3>{activeBooking?.dorm_name || "No booking yet"}</h3>
+              <div className="stat-card">
+                <div className="stat-icon blue">
+                  <i className="fa-solid fa-bed"></i>
+                </div>
+                <div>
+                  <h3>{approvedBookings}</h3>
+                  <p>Approved Bookings</p>
+                </div>
+              </div>
 
-                <p>
-                  <i className="fa-solid fa-location-dot"></i>{" "}
-                  {activeBooking?.area || activeBooking?.city || "-"}
-                </p>
+              <div className="stat-card">
+                <div className="stat-icon cyan">
+                  <i className="fa-solid fa-clock"></i>
+                </div>
+                <div>
+                  <h3>{pendingBookings}</h3>
+                  <p>Pending Bookings</p>
+                </div>
+              </div>
 
-                <p>
-                  <i className="fa-solid fa-door-open"></i>{" "}
-                  {activeBooking
-                    ? `${activeBooking.room_type || "-"} - Room ${
-                        activeBooking.room_number || "-"
-                      }`
-                    : "-"}
-                </p>
+              <div className="stat-card">
+                <div className="stat-icon green">
+                  <i className="fa-solid fa-credit-card"></i>
+                </div>
+                <div>
+                  <h3>{completedPayments}</h3>
+                  <p>Completed Payments</p>
+                </div>
+              </div>
 
-                <p>
-                  <i className="fa-solid fa-dollar-sign"></i>{" "}
-                  {activeBooking
-                    ? `$${activeBooking.room_price || 0} / month`
-                    : "-"}
-                </p>
+              <div className="stat-card">
+                <div className="stat-icon orange">
+                  <i className="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <div>
+                  <h3>{myRequests.length}</h3>
+                  <p>Maintenance Requests</p>
+                </div>
+              </div>
 
-                <p>
-                  <i className="fa-solid fa-calendar-check"></i>{" "}
-                  {activeBooking
-                    ? `Check-in: ${activeBooking.check_in_date || "-"}`
-                    : "-"}
-                </p>
+              <div className="stat-card">
+                <div className="stat-icon purple">
+                  <i className="fa-solid fa-bell"></i>
+                </div>
+                <div>
+                  <h3>0</h3>
+                  <p>Unread Notifications</p>
+                </div>
+              </div>
+            </section>
 
-                <p>
-                  <i className="fa-solid fa-credit-card"></i>{" "}
-                  {activeBooking
-                    ? `Payment: ${activeBooking.payment_status || "Pending"}`
-                    : "-"}
-                </p>
+            <section className="dashboard-grid">
+              <div className="dashboard-card large-card">
+                <div className="card-header">
+                  <h2>Current Booking</h2>
 
-                <div className="booking-actions">
-                  <a href="/my-bookings" className="primary-btn">
-                    View Details
+                  <span
+                    className={`status-badge ${
+                      activeBooking
+                        ? normalizeStatus(activeBooking.booking_status)
+                        : "rejected"
+                    }`}
+                  >
+                    {activeBooking
+                      ? displayStatus(activeBooking.booking_status)
+                      : "No Booking"}
+                  </span>
+                </div>
+
+                <div className="booking-info">
+                  <div className="booking-image">
+                    <img src={getDormImage()} alt="Dorm" />
+                  </div>
+
+                  <div className="booking-details">
+                    <h3>{activeBooking?.dorm_name || "No booking yet"}</h3>
+
+                    <p>
+                      <i className="fa-solid fa-location-dot"></i>{" "}
+                      {activeBooking?.city || "-"}
+                      {activeBooking?.area ? ` - ${activeBooking.area}` : ""}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-door-open"></i>{" "}
+                      {activeBooking
+                        ? `${activeBooking.room_type || "-"} - Room ${
+                            activeBooking.room_number || "-"
+                          }`
+                        : "-"}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-dollar-sign"></i>{" "}
+                      {activeBooking
+                        ? `$${activeBooking.room_price || 0} / month`
+                        : "-"}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-calendar-check"></i>{" "}
+                      {activeBooking
+                        ? `Check-in: ${activeBooking.check_in_date || "-"}`
+                        : "-"}
+                    </p>
+
+                    <div className="booking-actions">
+                      <a href="/my-bookings" className="primary-btn">
+                        View Details
+                      </a>
+
+                      <a href="/maintenance" className="secondary-btn">
+                        Request Maintenance
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <h2>Quick Actions</h2>
+                </div>
+
+                <div className="quick-actions">
+                  <a href="/housings" className="action-box">
+                    <i className="fa-solid fa-magnifying-glass"></i>
+                    <span>Find Dorm</span>
                   </a>
 
-                  <a href="/maintenance" className="secondary-btn">
-                    Request Maintenance
+                  <a href="/my-bookings" className="action-box">
+                    <i className="fa-solid fa-bed"></i>
+                    <span>My Bookings</span>
+                  </a>
+
+                  <a href="/payment" className="action-box">
+                    <i className="fa-solid fa-credit-card"></i>
+                    <span>Payments</span>
+                  </a>
+
+                  <a href="/maintenance" className="action-box">
+                    <i className="fa-solid fa-screwdriver-wrench"></i>
+                    <span>Maintenance</span>
+                  </a>
+
+                  <a href="/notifications" className="action-box">
+                    <i className="fa-solid fa-bell"></i>
+                    <span>Notifications</span>
+                  </a>
+
+                  <a href="/profile" className="action-box">
+                    <i className="fa-solid fa-user-pen"></i>
+                    <span>Edit Profile</span>
                   </a>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>Quick Actions</h2>
-            </div>
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <h2>Recent Activity</h2>
+                </div>
 
-            <div className="quick-actions">
-              <a href="/housings" className="action-box">
-                <i className="fa-solid fa-magnifying-glass"></i>
-                <span>Find Dorm</span>
-              </a>
-
-              <a href="/my-bookings" className="action-box">
-                <i className="fa-solid fa-bed"></i>
-                <span>My Bookings</span>
-              </a>
-
-              <a href="/payment" className="action-box">
-                <i className="fa-solid fa-credit-card"></i>
-                <span>Payments</span>
-              </a>
-
-              <a href="/maintenance" className="action-box">
-                <i className="fa-solid fa-screwdriver-wrench"></i>
-                <span>Maintenance</span>
-              </a>
-
-              <a href="/notifications" className="action-box">
-                <i className="fa-solid fa-bell"></i>
-                <span>Notifications</span>
-              </a>
-
-              <a href="/profile" className="action-box">
-                <i className="fa-solid fa-user-pen"></i>
-                <span>Edit Profile</span>
-              </a>
-            </div>
-          </div>
-
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>Recent Activity</h2>
-            </div>
-
-            <ul className="activity-list">
-              {recentActivities.length === 0 ? (
-                <li>
-                  <span className="dot blue-dot"></span> No recent activity yet
-                </li>
-              ) : (
-                recentActivities.map((activity, index) => (
-                  <li key={index}>
-                    <span className={`dot ${activity.dotClass}`}></span>{" "}
-                    {activity.text}
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>Recent Notifications</h2>
-              <a href="/notifications" className="small-link">
-                View All
-              </a>
-            </div>
-
-            <ul className="activity-list">
-              {myNotifications.length === 0 ? (
-                <li>
-                  <span className="dot blue-dot"></span> No notifications yet
-                </li>
-              ) : (
-                myNotifications.slice(0, 4).map((notification) => {
-                  const dotClass = notification.is_read ? "blue-dot" : "green-dot";
-
-                  return (
-                    <li key={notification.notification_id}>
-                      <span className={`dot ${dotClass}`}></span>{" "}
-                      <strong>{notification.title || "Notification"}:</strong>{" "}
-                      {notification.message || "-"}
+                <ul className="activity-list">
+                  {recentActivities.length === 0 ? (
+                    <li>
+                      <span className="dot blue-dot"></span> No recent activity
+                      yet
                     </li>
-                  );
-                })
-              )}
-            </ul>
-          </div>
+                  ) : (
+                    recentActivities.map((activity, index) => (
+                      <li key={index}>
+                        <span className={`dot ${activity.dotClass}`}></span>{" "}
+                        {activity.text}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
 
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>Profile Summary</h2>
-            </div>
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <h2>Profile Summary</h2>
+                </div>
 
-            <div className="profile-summary">
-              <p>
-                <strong>Name:</strong> {fullName}
-              </p>
+                <div className="profile-summary">
+                  <p>
+                    <strong>Name:</strong> {fullName}
+                  </p>
 
-              <p>
-                <strong>Email:</strong> {loggedInUserEmail || "-"}
-              </p>
+                  <p>
+                    <strong>Email:</strong> {loggedInUserEmail || "-"}
+                  </p>
 
-              <p>
-                <strong>Role:</strong>{" "}
-                {finalUserType.charAt(0).toUpperCase() + finalUserType.slice(1)}
-              </p>
+                  <p>
+                    <strong>Role:</strong>{" "}
+                    {finalUserType.charAt(0).toUpperCase() +
+                      finalUserType.slice(1)}
+                  </p>
 
-              <p>
-                <strong>University / Company:</strong> {affiliation}
-              </p>
+                  <p>
+                    <strong>University / Company:</strong> {affiliation}
+                  </p>
 
-              <p>
-                <strong>Status:</strong> Active Resident
-              </p>
-            </div>
-          </div>
-        </section>
+                  <p>
+                    <strong>Status:</strong> Active Resident
+                  </p>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

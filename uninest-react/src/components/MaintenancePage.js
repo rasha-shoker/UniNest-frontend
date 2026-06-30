@@ -1,5 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./MaintenancePage.css";
+import {
+  getBookings,
+  getMaintenanceRequests,
+  createMaintenanceRequest,
+} from "../api";
 
 function MaintenancePage() {
   const [relatedBooking, setRelatedBooking] = useState("");
@@ -8,15 +13,14 @@ function MaintenancePage() {
   const [priority, setPriority] = useState("");
   const [description, setDescription] = useState("");
   const [uploadedImages, setUploadedImages] = useState([]);
-  const [refresh, setRefresh] = useState(0);
+  const [approvedBookings, setApprovedBookings] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const getCurrentUserEmailValue = () => {
-    return localStorage.getItem("loggedInUserEmail") || "";
-  };
-
-  const getCurrentUserNameValue = () => {
-    return localStorage.getItem("loggedInUser") || "Resident";
-  };
+  const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+  const loggedInUserEmail = localStorage.getItem("loggedInUserEmail") || "";
+  const loggedInUserName = localStorage.getItem("loggedInUser") || "Resident";
 
   const logout = (event) => {
     event.preventDefault();
@@ -31,132 +35,26 @@ function MaintenancePage() {
     window.location.href = "/";
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+  const displayMaintenanceStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "in_progress") return "In Progress";
+    if (value === "completed") return "Resolved";
+    if (value === "resolved") return "Resolved";
+
+    return "Pending";
   };
-
-  const saveMaintenanceRequests = (requests) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(requests));
-  };
-
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const addNotification = (userEmail, type, title, message) => {
-    if (!userEmail) return;
-
-    const notifications = getNotifications();
-
-    const newNotification = {
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      userEmail: userEmail,
-      type: type,
-      title: title,
-      message: message,
-      isRead: false,
-      date: formatDateToday(),
-
-      notification_id: Date.now() + Math.floor(Math.random() * 1000),
-      email: userEmail,
-      notification_type: type,
-      is_read: false,
-      created_at: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
-  };
-
-  const normalizeBooking = (booking) => {
-    return {
-      ...booking,
-
-      id: booking.id || booking.booking_id,
-      booking_id: booking.booking_id || booking.id,
-
-      userEmail:
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        booking.email ||
-        "",
-
-      studentEmail:
-        booking.studentEmail ||
-        booking.userEmail ||
-        booking.residentEmail ||
-        booking.email ||
-        "",
-
-      status: booking.status || booking.booking_status || "Pending",
-      booking_status: booking.booking_status || booking.status || "Pending",
-
-      housingId: booking.housingId || booking.dorm_id,
-      housingName: booking.housingName || booking.dorm_name || "Dorm Name",
-
-      roomId: booking.roomId || booking.room_id || "",
-      roomNumber: booking.roomNumber || booking.room_number || "",
-      roomType: booking.roomType || booking.room_type || "",
-    };
-  };
-
-  const currentEmail = getCurrentUserEmailValue().toLowerCase();
-
-  const approvedBookings = getBookings()
-    .map(normalizeBooking)
-    .filter((booking) => {
-      const bookingEmail = (
-        booking.userEmail ||
-        booking.studentEmail ||
-        ""
-      ).toLowerCase();
-
-      return bookingEmail === currentEmail && booking.status === "Approved";
-    });
-
-  const myRequests = getMaintenanceRequests().filter((request) => {
-    const requestEmail = (
-      request.userEmail ||
-      request.residentEmail ||
-      request.email ||
-      ""
-    ).toLowerCase();
-
-    return requestEmail === currentEmail;
-  });
-
-  const totalRequests = myRequests.length;
-  const pendingRequests = myRequests.filter(
-    (request) => request.status === "Pending"
-  ).length;
-  const progressRequests = myRequests.filter(
-    (request) => request.status === "In Progress"
-  ).length;
-  const resolvedRequests = myRequests.filter(
-    (request) => request.status === "Resolved"
-  ).length;
 
   const getStatusClass = (status) => {
-    if (status === "Pending") return "pending";
-    if (status === "In Progress") return "progress";
-    if (status === "Resolved") return "resolved";
+    const value = normalizeStatus(status);
+
+    if (value === "in_progress") return "progress";
+    if (value === "completed" || value === "resolved") return "resolved";
+
     return "pending";
   };
 
@@ -167,6 +65,107 @@ function MaintenancePage() {
     if (priorityValue === "Urgent") return "urgent";
     return "medium";
   };
+
+  const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
+    return {
+      ...booking,
+      booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      email: booking.email || resident.email || "",
+      booking_status: booking.booking_status || "pending",
+
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+    };
+  };
+
+  const normalizeMaintenanceRequest = (request) => {
+    const booking = request.booking || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || {};
+
+    return {
+      ...request,
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+      booking_id: request.booking_id || booking.booking_id,
+      room_id: request.room_id || room.room_id || "",
+      room_number: request.room_number || room.room_number || "",
+      room_type: request.room_type || room.room_type || "",
+
+      dorm_id: request.dorm_id || dorm.dorm_id || "",
+      dorm_name: request.dorm_name || dorm.dorm_name || "Dorm Name",
+
+      request_description: request.request_description || "",
+      request_status: request.request_status || "pending",
+      created_at: request.created_at || "",
+    };
+  };
+
+  const loadMaintenanceData = async () => {
+    try {
+      setLoading(true);
+
+      const [bookingsResponse, requestsResponse] = await Promise.all([
+        getBookings(),
+        getMaintenanceRequests().catch(() => []),
+      ]);
+
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const requestsList = Array.isArray(requestsResponse)
+        ? requestsResponse
+        : requestsResponse.data || [];
+
+      const currentResidentId = String(loggedInResidentId);
+      const currentEmail = loggedInUserEmail.toLowerCase();
+
+      const userBookings = bookingsList.map(normalizeBooking).filter((booking) => {
+        const bookingResidentId = String(booking.resident_id || "");
+        const bookingEmail = String(booking.email || "").toLowerCase();
+
+        return (
+          bookingResidentId === currentResidentId || bookingEmail === currentEmail
+        );
+      });
+
+      const approved = userBookings.filter((booking) => {
+        return normalizeStatus(booking.booking_status) === "approved";
+      });
+
+      const userBookingIds = userBookings.map((booking) =>
+        Number(booking.booking_id)
+      );
+
+      const userRequests = requestsList
+        .map(normalizeMaintenanceRequest)
+        .filter((request) => {
+          return userBookingIds.includes(Number(request.booking_id));
+        });
+
+      setApprovedBookings(approved);
+      setMyRequests(userRequests);
+    } catch (error) {
+      console.error("Failed to load maintenance data:", error);
+      alert("Could not load maintenance data from backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMaintenanceData();
+  }, []);
 
   const previewMaintenanceImages = (event) => {
     const files = Array.from(event.target.files);
@@ -203,7 +202,7 @@ function MaintenancePage() {
     });
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const bookingId = Number(relatedBooking);
@@ -214,7 +213,7 @@ function MaintenancePage() {
     }
 
     const selectedBooking = approvedBookings.find((booking) => {
-      return Number(booking.id) === Number(bookingId);
+      return Number(booking.booking_id) === Number(bookingId);
     });
 
     if (!selectedBooking) {
@@ -227,80 +226,56 @@ function MaintenancePage() {
       return;
     }
 
-    const requests = getMaintenanceRequests();
-    const today = formatDateToday();
+    const fullDescription = `
+Title: ${requestTitle}
+Category: ${maintenanceCategory}
+Priority: ${priority}
 
-    const newRequest = {
-      id: Date.now(),
+Description:
+${description}
+    `.trim();
 
-      request_id: Date.now(),
-      booking_id: selectedBooking.booking_id || selectedBooking.id,
-      bookingId: selectedBooking.id,
+    try {
+      setSubmitting(true);
 
-      userName: getCurrentUserNameValue(),
-      residentName: getCurrentUserNameValue(),
-      resident_name: getCurrentUserNameValue(),
+      await createMaintenanceRequest({
+        booking_id: selectedBooking.booking_id,
+        room_id: selectedBooking.room_id,
+        maintenance_id: null,
+        request_description: fullDescription,
+        request_status: "pending",
+      });
 
-      userEmail: getCurrentUserEmailValue(),
-      residentEmail: getCurrentUserEmailValue(),
-      email: getCurrentUserEmailValue(),
+      setRelatedBooking("");
+      setRequestTitle("");
+      setMaintenanceCategory("");
+      setPriority("");
+      setDescription("");
+      setUploadedImages([]);
 
-      housingId: selectedBooking.housingId,
-      housingName: selectedBooking.housingName,
-
-      dorm_id: selectedBooking.housingId,
-      dorm_name: selectedBooking.housingName,
-
-      roomId: selectedBooking.roomId || "",
-      roomNumber: selectedBooking.roomNumber || "",
-      roomType: selectedBooking.roomType || "",
-
-      room_id: selectedBooking.roomId || "",
-      room_number: selectedBooking.roomNumber || "",
-      room_type: selectedBooking.roomType || "",
-
-      title: requestTitle,
-      request_title: requestTitle,
-
-      category: maintenanceCategory,
-      issueType: maintenanceCategory,
-
-      priority: priority,
-      description: description,
-
-      imageName: uploadedImages.length > 0 ? uploadedImages[0].name : "",
-      images: uploadedImages,
-
-      status: "Pending",
-      request_status: "Pending",
-
-      submittedDate: today,
-      createdAt: today,
-      request_date: today,
-    };
-
-    requests.unshift(newRequest);
-    saveMaintenanceRequests(requests);
-
-    addNotification(
-      getCurrentUserEmailValue(),
-      "maintenance",
-      "Maintenance Request Submitted",
-      "Your maintenance request for " +
-        selectedBooking.housingName +
-        " has been submitted and is pending review."
-    );
-
-    setRelatedBooking("");
-    setRequestTitle("");
-    setMaintenanceCategory("");
-    setPriority("");
-    setDescription("");
-    setUploadedImages([]);
-    setRefresh(refresh + 1);
-
-    alert("Maintenance request submitted successfully.");
+      alert("Maintenance request submitted successfully.");
+      loadMaintenanceData();
+    } catch (error) {
+      console.error("Maintenance submit failed:", error);
+      alert(
+        "Maintenance request could not be submitted. Make sure POST /maintenance-requests exists in Laravel."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const totalRequests = myRequests.length;
+  const pendingRequests = myRequests.filter(
+    (request) => normalizeStatus(request.request_status) === "pending"
+  ).length;
+  const progressRequests = myRequests.filter(
+    (request) => normalizeStatus(request.request_status) === "in_progress"
+  ).length;
+  const resolvedRequests = myRequests.filter((request) => {
+    const status = normalizeStatus(request.request_status);
+    return status === "completed" || status === "resolved";
+  }).length;
 
   return (
     <div className="maintenance-layout">
@@ -392,9 +367,9 @@ function MaintenancePage() {
                   <option value="">Select approved booking</option>
 
                   {approvedBookings.map((booking) => (
-                    <option key={booking.id} value={booking.id}>
-                      {booking.housingName} - Room {booking.roomNumber || "-"} (
-                      {booking.roomType || "-"})
+                    <option key={booking.booking_id} value={booking.booking_id}>
+                      {booking.dorm_name} - Room {booking.room_number || "-"} (
+                      {booking.room_type || "-"})
                     </option>
                   ))}
                 </select>
@@ -413,9 +388,7 @@ function MaintenancePage() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="maintenanceCategory">
-                  Maintenance Category
-                </label>
+                <label htmlFor="maintenanceCategory">Maintenance Category</label>
 
                 <select
                   id="maintenanceCategory"
@@ -493,8 +466,8 @@ function MaintenancePage() {
                 </div>
               </div>
 
-              <button type="submit" className="submit-btn">
-                Submit Request
+              <button type="submit" className="submit-btn" disabled={submitting}>
+                {submitting ? "Submitting..." : "Submit Request"}
               </button>
             </form>
           </div>
@@ -534,85 +507,57 @@ function MaintenancePage() {
             </div>
 
             <div className="request-list">
-              {myRequests.map((request) => {
-                const requestPriority = request.priority || "Medium";
-
-                return (
-                  <div className="request-item" key={request.id}>
-                    <div className="request-info">
-                      <h3>{request.title || "Maintenance Request"}</h3>
-
-                      <p>
-                        <i className="fa-solid fa-building"></i> Dorm:{" "}
-                        {request.housingName || request.dorm_name || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-door-open"></i> Room:{" "}
-                        {request.roomNumber || request.room_number || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-screwdriver-wrench"></i>{" "}
-                        Category: {request.category || request.issueType || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-triangle-exclamation"></i>{" "}
-                        Priority:{" "}
-                        <span
-                          className={`priority ${getPriorityClass(
-                            requestPriority
-                          )}`}
-                        >
-                          {requestPriority}
-                        </span>
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-calendar-days"></i> Submitted:{" "}
-                        {request.submittedDate || request.createdAt || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-file-lines"></i>{" "}
-                        {request.description || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-image"></i> Image:{" "}
-                        {request.imageName || "No image uploaded"}
-                      </p>
-
-                      {Array.isArray(request.images) &&
-                        request.images.length > 0 && (
-                          <div className="maintenance-image-gallery">
-                            {request.images.map((image, index) => (
-                              <img
-                                key={index}
-                                src={image.data}
-                                alt={image.name || "Maintenance"}
-                              />
-                            ))}
-                          </div>
-                        )}
-                    </div>
-
-                    <span
-                      className={`status ${getStatusClass(
-                        request.status || "Pending"
-                      )}`}
-                    >
-                      {request.status || "Pending"}
-                    </span>
-                  </div>
-                );
-              })}
-
-              {myRequests.length === 0 && (
+              {loading ? (
+                <div className="empty-requests-message">
+                  <p>Loading maintenance requests...</p>
+                </div>
+              ) : myRequests.length === 0 ? (
                 <div className="empty-requests-message">
                   <p>No maintenance requests yet.</p>
                 </div>
+              ) : (
+                myRequests.map((request) => {
+                  const requestText = request.request_description || "-";
+
+                  return (
+                    <div
+                      className="request-item"
+                      key={request.maintenance_request_id}
+                    >
+                      <div className="request-info">
+                        <h3>Maintenance Request</h3>
+
+                        <p>
+                          <i className="fa-solid fa-building"></i> Dorm:{" "}
+                          {request.dorm_name || "-"}
+                        </p>
+
+                        <p>
+                          <i className="fa-solid fa-door-open"></i> Room:{" "}
+                          {request.room_number || "-"}
+                        </p>
+
+                        <p>
+                          <i className="fa-solid fa-file-lines"></i>{" "}
+                          {requestText}
+                        </p>
+
+                        <p>
+                          <i className="fa-solid fa-calendar-days"></i>{" "}
+                          Submitted: {request.created_at || "-"}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`status ${getStatusClass(
+                          request.request_status
+                        )}`}
+                      >
+                        {displayMaintenanceStatus(request.request_status)}
+                      </span>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

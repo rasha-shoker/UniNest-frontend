@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./ReviewPage.css";
+import { getBookings, getPayments, getReviews, createReview } from "../api";
 
 function ReviewPage() {
   const params = new URLSearchParams(window.location.search);
@@ -10,11 +11,15 @@ function ReviewPage() {
   const loggedInRole = localStorage.getItem("loggedInRole") || "";
   const loggedInUserType =
     localStorage.getItem("loggedInUserType") || loggedInRole;
-  const loggedInResidentId =
-    localStorage.getItem("loggedInResidentId") || "";
+  const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
 
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const logout = (event) => {
     event.preventDefault();
@@ -29,189 +34,130 @@ function ReviewPage() {
     window.location.href = "/";
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
-  };
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
 
-  const saveReviews = (reviews) => {
-    localStorage.setItem("reviews", JSON.stringify(reviews));
-  };
+    if (value === "approved") return "Approved";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const addNotification = (residentId, notificationType, title, message) => {
-    if (!residentId && !loggedInUserEmail) return;
-
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
-
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: residentId || "",
-      title: title,
-      message: message,
-      notification_type: notificationType,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: notificationId,
-      userEmail: loggedInUserEmail,
-      type: notificationType,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
+    return "Pending";
   };
 
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...booking,
-
       booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      email: booking.email || resident.email || "",
 
-      resident_id: booking.resident_id || "",
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "",
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || "",
 
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "",
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
 
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
+      check_in_date: booking.check_in_date || "-",
+      check_out_date: booking.check_out_date || "-",
 
-      university_name: booking.university_name || booking.university || "",
-      city: booking.city || "",
-      area: booking.area || booking.location || "",
-
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-
-      check_in_date: booking.check_in_date || booking.checkInDate || "-",
-      check_out_date: booking.check_out_date || booking.checkOutDate || "-",
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-      payment_status:
-        booking.payment_status || booking.paymentStatus || "Pending",
+      booking_status: booking.booking_status || "pending",
     };
   };
 
-  const normalizeReview = (review) => {
-    return {
-      ...review,
+  const loadReviewData = async () => {
+    try {
+      setLoading(true);
 
-      review_id: review.review_id || review.id,
-      booking_id: review.booking_id || review.bookingId,
+      const [bookingsResponse, paymentsResponse, reviewsResponse] =
+        await Promise.all([
+          getBookings(),
+          getPayments().catch(() => []),
+          getReviews().catch(() => []),
+        ]);
 
-      resident_id: review.resident_id || "",
-      resident_name:
-        review.resident_name ||
-        review.residentName ||
-        review.userName ||
-        "",
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
 
-      email: review.email || review.userEmail || review.residentEmail || "",
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
 
-      dorm_id: review.dorm_id || review.housingId,
-      dorm_name: review.dorm_name || review.housingName || "",
+      const reviewsList = Array.isArray(reviewsResponse)
+        ? reviewsResponse
+        : reviewsResponse.data || [];
 
-      rating: Number(review.rating || 0),
-      review_comment: review.review_comment || review.comment || "",
-      review_status: review.review_status || review.status || "Visible",
-      created_at: review.created_at || review.createdAt || review.date || "",
-    };
+      const currentResidentId = String(loggedInResidentId);
+      const currentEmail = loggedInUserEmail.toLowerCase();
+
+      const normalizedBookings = bookingsList.map(normalizeBooking);
+
+      const foundBooking = normalizedBookings.find((booking) => {
+        const bookingResidentId = String(booking.resident_id || "");
+        const bookingEmail = String(booking.email || "").toLowerCase();
+
+        return (
+          Number(booking.booking_id) === Number(bookingId) &&
+          (bookingResidentId === currentResidentId ||
+            bookingEmail === currentEmail)
+        );
+      });
+
+      setSelectedBooking(foundBooking || null);
+      setPayments(paymentsList);
+      setReviews(reviewsList);
+    } catch (error) {
+      console.error("Failed to load review data:", error);
+      alert("Could not load review data from backend.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const isPaidBooking = (booking) => {
-    const paymentStatus = booking.payment_status || "Pending";
-    return paymentStatus === "Completed" || paymentStatus === "Paid";
-  };
+  useEffect(() => {
+    loadReviewData();
+  }, []);
 
-  const getSelectedBooking = () => {
-    const bookings = getBookings().map(normalizeBooking);
-    const currentEmail = loggedInUserEmail.toLowerCase();
-    const currentResidentId = String(loggedInResidentId);
+  const paymentForBooking = payments.find((payment) => {
+    return Number(payment.booking_id) === Number(bookingId);
+  });
 
-    return bookings.find((booking) => {
-      const bookingEmail = (booking.email || "").toLowerCase();
-      const bookingResidentId = String(booking.resident_id || "");
+  const paymentStatus = paymentForBooking?.payment_status || "pending";
 
-      return (
-        Number(booking.booking_id) === Number(bookingId) &&
-        (bookingResidentId === currentResidentId ||
-          bookingEmail === currentEmail)
-      );
-    });
-  };
-
-  const selectedBooking = getSelectedBooking();
-
-  const userAlreadyReviewed = () => {
-    const reviews = getReviews().map(normalizeReview);
-    const currentEmail = loggedInUserEmail.toLowerCase();
-    const currentResidentId = String(loggedInResidentId);
-
-    return reviews.some((review) => {
-      const reviewEmail = (review.email || "").toLowerCase();
-      const reviewResidentId = String(review.resident_id || "");
-
-      return (
-        Number(review.booking_id) === Number(bookingId) &&
-        (reviewResidentId === currentResidentId ||
-          reviewEmail === currentEmail)
-      );
-    });
-  };
+  const alreadyReviewed = reviews.some((review) => {
+    return (
+      Number(review.resident_id) === Number(loggedInResidentId) &&
+      Number(review.dorm_id) === Number(selectedBooking?.dorm_id)
+    );
+  });
 
   const canWriteReview =
     bookingId &&
     selectedBooking &&
     (loggedInUserType === "student" || loggedInUserType === "employee") &&
-    selectedBooking.booking_status === "Approved" &&
-    isPaidBooking(selectedBooking) &&
-    !userAlreadyReviewed();
+    normalizeStatus(selectedBooking.booking_status) === "approved" &&
+    (normalizeStatus(paymentStatus) === "paid" ||
+      normalizeStatus(paymentStatus) === "completed") &&
+    !alreadyReviewed;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const currentBooking = getSelectedBooking();
-
-    if (!currentBooking) {
+    if (!selectedBooking) {
       alert("Booking not found.");
-      window.location.href = "/my-bookings";
-      return;
-    }
-
-    if (userAlreadyReviewed()) {
-      alert("You already submitted a review for this booking.");
       window.location.href = "/my-bookings";
       return;
     }
@@ -227,66 +173,24 @@ function ReviewPage() {
       return;
     }
 
-    const reviews = getReviews();
+    try {
+      setSubmitting(true);
 
-    const reviewId = Date.now();
-    const createdAt = formatDateToday();
+      await createReview({
+        resident_id: Number(loggedInResidentId),
+        dorm_id: Number(selectedBooking.dorm_id),
+        rating: Number(rating),
+        review_comment: comment.trim(),
+      });
 
-    const newReview = {
-      review_id: reviewId,
-      booking_id: currentBooking.booking_id,
-
-      resident_id: loggedInResidentId || currentBooking.resident_id || "",
-      resident_name: loggedInUser,
-      email: loggedInUserEmail,
-
-      dorm_id: currentBooking.dorm_id,
-      dorm_name: currentBooking.dorm_name,
-
-      room_id: currentBooking.room_id || "",
-      room_number: currentBooking.room_number || "",
-      room_type: currentBooking.room_type || "",
-
-      rating: Number(rating),
-      review_comment: comment.trim(),
-
-      review_status: "Visible",
-      created_at: createdAt,
-
-      id: reviewId,
-      bookingId: currentBooking.booking_id,
-
-      housingId: currentBooking.dorm_id,
-      housingName: currentBooking.dorm_name,
-
-      userName: loggedInUser,
-      residentName: loggedInUser,
-
-      userEmail: loggedInUserEmail,
-      residentEmail: loggedInUserEmail,
-
-      roomNumber: currentBooking.room_number || "",
-      roomType: currentBooking.room_type || "",
-
-      comment: comment.trim(),
-      status: "Visible",
-      createdAt: createdAt,
-    };
-
-    reviews.unshift(newReview);
-    saveReviews(reviews);
-
-    addNotification(
-      loggedInResidentId || currentBooking.resident_id,
-      "review",
-      "Review Submitted",
-      "Your review for " +
-        currentBooking.dorm_name +
-        " has been submitted successfully."
-    );
-
-    alert("Review submitted successfully.");
-    window.location.href = `/housing-details?id=${currentBooking.dorm_id}`;
+      alert("Review submitted successfully.");
+      window.location.href = `/housing-details?id=${selectedBooking.dorm_id}`;
+    } catch (error) {
+      console.error("Review submit failed:", error);
+      alert("Review could not be submitted. Make sure POST /reviews exists.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -349,7 +253,7 @@ function ReviewPage() {
       </aside>
 
       <main className="review-main">
-       <div className="review-topbar">
+        <div className="review-topbar">
           <div>
             <h1>Write Review</h1>
             <p>Rate your dorm experience and share your feedback.</p>
@@ -364,7 +268,9 @@ function ReviewPage() {
           <div className="review-summary-card">
             <h2>Booking Summary</h2>
 
-            {!selectedBooking ? (
+            {loading ? (
+              <div className="review-warning">Loading booking...</div>
+            ) : !selectedBooking ? (
               <div className="review-warning">
                 Please choose a paid booking from My Bookings to review.
               </div>
@@ -379,13 +285,8 @@ function ReviewPage() {
                 <p>
                   <i className="fa-solid fa-location-dot"></i>{" "}
                   <strong>Location:</strong>{" "}
-                  {selectedBooking.area || selectedBooking.city || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-school"></i>{" "}
-                  <strong>University:</strong>{" "}
-                  {selectedBooking.university_name || "-"}
+                  {selectedBooking.city || "-"}
+                  {selectedBooking.area ? ` - ${selectedBooking.area}` : ""}
                 </p>
 
                 <p>
@@ -414,14 +315,13 @@ function ReviewPage() {
 
                 <p>
                   <i className="fa-solid fa-credit-card"></i>{" "}
-                  <strong>Payment:</strong>{" "}
-                  {selectedBooking.payment_status || "Pending"}
+                  <strong>Payment:</strong> {displayStatus(paymentStatus)}
                 </p>
 
                 {!canWriteReview && (
                   <div className="review-warning">
                     You can review only approved and paid bookings. Also, one
-                    review is allowed per booking.
+                    review is allowed per dorm.
                   </div>
                 )}
               </>
@@ -465,19 +365,19 @@ function ReviewPage() {
                 ></textarea>
               </div>
 
-             <div className="review-actions">
-  <button
-    type="submit"
-    className="review-submit-btn"
-    disabled={!canWriteReview}
-  >
-    Submit Review
-  </button>
+              <div className="review-actions">
+                <button
+                  type="submit"
+                  className="review-submit-btn"
+                  disabled={!canWriteReview || submitting}
+                >
+                  {submitting ? "Submitting..." : "Submit Review"}
+                </button>
 
-  <a href="/my-bookings" className="secondary-link">
-    Back to My Bookings
-  </a>
-</div>
+                <a href="/my-bookings" className="secondary-link">
+                  Back to My Bookings
+                </a>
+              </div>
             </form>
           </div>
         </section>
