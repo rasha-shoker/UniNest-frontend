@@ -1,31 +1,117 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
 
-export async function getDorms() {
-  const response = await fetch(`${API_BASE_URL}/dorms`);
+async function request(endpoint, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch dorms");
+    throw new Error(`Request failed: ${endpoint}`);
   }
 
   return response.json();
 }
 
-export async function getRooms() {
-  const response = await fetch(`${API_BASE_URL}/rooms`);
+export { API_BASE_URL };
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch rooms");
-  }
-
-  return response.json();
+// Dorms
+export function getDorms() {
+  return request("/dorms");
 }
 
-export async function getBookings() {
-  const response = await fetch(`${API_BASE_URL}/bookings`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch bookings");
-  }
-
-  return response.json();
+export function getDorm(dorm_id) {
+  return request(`/dorms/${dorm_id}`);
 }
+
+// Rooms
+export function getRooms() {
+  return request("/rooms");
+}
+
+export function getRoom(room_id) {
+  return request(`/rooms/${room_id}`);
+}
+
+// Bookings
+export function getBookings() {
+  return request("/bookings");
+}
+
+export function createBooking(data) {
+  return request("/bookings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Residents
+export function getResidents() {
+  return request("/residents");
+}
+
+// Payments
+export function getPayments() {
+  return request("/payments");
+}
+
+// Documents
+export function getDocuments() {
+  return request("/documents");
+}
+
+// Maintenance
+export function getMaintenanceRequests() {
+  return request("/maintenance-requests");
+}
+
+export function createMaintenanceRequest(data) {
+  return request("/maintenance-requests", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getMaintenanceStaff() {
+  return request("/maintenance-staff");
+}
+
+// Reviews
+export function getReviews() {
+  return request("/reviews");
+}
+
+export function createReview(data) {
+  return request("/reviews", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Images
+export function getImages() {
+  return request("/images");
+}
+
+export const api = {
+  getDorms,
+  getDorm,
+  getRooms,
+  getRoom,
+  getBookings,
+  createBooking,
+  getResidents,
+  getPayments,
+  getDocuments,
+  getMaintenanceRequests,
+  createMaintenanceRequest,
+  getMaintenanceStaff,
+  getReviews,
+  createReview,
+  getImages,
+};
