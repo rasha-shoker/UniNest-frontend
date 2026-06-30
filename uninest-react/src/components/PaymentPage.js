@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./PaymentPage.css";
+import { createPayment, getBookings, getPayments } from "../api";
 
 function PaymentPage() {
   const params = new URLSearchParams(window.location.search);
@@ -12,9 +13,14 @@ function PaymentPage() {
     localStorage.getItem("loggedInUserType") || loggedInRole;
   const loggedInResidentId = localStorage.getItem("loggedInResidentId");
 
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [userPayments, setUserPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [paymentMethod, setPaymentMethod] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const logout = (event) => {
     event.preventDefault();
@@ -29,184 +35,150 @@ function PaymentPage() {
     window.location.href = "/";
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const saveBookings = (bookings) => {
-    localStorage.setItem("studentBookings", JSON.stringify(bookings));
-  };
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
 
-  const getPayments = () => {
-    return JSON.parse(localStorage.getItem("payments")) || [];
-  };
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
 
-  const savePayments = (payments) => {
-    localStorage.setItem("payments", JSON.stringify(payments));
-  };
-
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const addNotification = (residentId, notificationType, title, message) => {
-    if (!residentId && !loggedInUserEmail) return;
-
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
-
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: residentId || "",
-      title: title,
-      message: message,
-      notification_type: notificationType,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: notificationId,
-      userEmail: loggedInUserEmail || "",
-      type: notificationType,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
+    return "Pending";
   };
 
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...booking,
 
       booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      resident_name: booking.resident_name || resident.full_name || "",
+      email: booking.email || resident.email || "",
 
-      resident_id: booking.resident_id || "",
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "",
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
 
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "",
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || "",
 
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
-      dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+      room_price: Number(booking.room_price || room.room_price || 0),
 
-      university_name: booking.university_name || booking.university || "",
-      city: booking.city || "",
-      area: booking.area || booking.location || "",
+      check_in_date: booking.check_in_date || "-",
+      check_out_date: booking.check_out_date || "-",
+      total_price: Number(booking.total_price || 0),
 
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-      room_price: Number(booking.room_price || booking.price || 0),
-
-      check_in_date: booking.check_in_date || booking.checkInDate || "-",
-      check_out_date: booking.check_out_date || booking.checkOutDate || "-",
-
-      total_price: Number(
-        booking.total_price || booking.totalCost || booking.price || 0
-      ),
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-      document_status:
-        booking.document_status || booking.documentStatus || "Pending",
-
-      payment_status:
-        booking.payment_status || booking.paymentStatus || "Pending",
-
-      payment_method:
-        booking.payment_method || booking.paymentMethod || "Not paid yet",
-
-      payment_date: booking.payment_date || booking.paymentDate || "",
-      created_at: booking.created_at || booking.createdAt || "",
+      booking_status: booking.booking_status || "pending",
+      created_at: booking.created_at || "",
     };
   };
 
   const normalizePayment = (payment) => {
+    const booking = payment.booking || {};
+    const bookingRoom = booking.room || {};
+    const dorm = bookingRoom.dorm || {};
+
     return {
       ...payment,
 
-      payment_id: payment.payment_id || payment.paymentId,
-      booking_id: payment.booking_id || payment.bookingId,
-
-      resident_id: payment.resident_id || "",
-      resident_name:
-        payment.resident_name ||
-        payment.userName ||
-        payment.studentName ||
-        loggedInUser ||
-        "",
-
-      email:
-        payment.email ||
-        payment.userEmail ||
-        payment.studentEmail ||
-        loggedInUserEmail ||
-        "",
-
-      dorm_id: payment.dorm_id || payment.housingId,
-      dorm_name: payment.dorm_name || payment.housingName || "Dorm Name",
-
-      room_id: payment.room_id || payment.roomId || "",
-      room_number: payment.room_number || payment.roomNumber || "",
-      room_type: payment.room_type || payment.roomType || "",
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || booking.booking_id,
 
       amount: Number(payment.amount || 0),
-      payment_method: payment.payment_method || payment.method || "-",
-      payment_status: payment.payment_status || payment.status || "Completed",
-      payment_date: payment.payment_date || payment.paymentDate || "-",
+      payment_method: payment.payment_method || "-",
+      payment_status: payment.payment_status || "pending",
+      created_at: payment.created_at || "-",
+
+      dorm_name: payment.dorm_name || dorm.dorm_name || "Dorm Name",
+      room_number: payment.room_number || bookingRoom.room_number || "-",
+      room_type: payment.room_type || bookingRoom.room_type || "-",
     };
   };
 
-  const getSelectedBooking = () => {
-    const bookings = getBookings();
+  const loadPaymentPageData = async () => {
+    try {
+      setLoading(true);
 
-    return bookings.map(normalizeBooking).find((booking) => {
-      const bookingEmail = (booking.email || "").toLowerCase();
-      const bookingResidentId = String(booking.resident_id || "");
+      const [bookingsResponse, paymentsResponse] = await Promise.all([
+        getBookings(),
+        getPayments().catch(() => []),
+      ]);
 
-      return (
-        Number(booking.booking_id) === Number(bookingId) &&
-        (bookingResidentId === String(loggedInResidentId) ||
-          bookingEmail === loggedInUserEmail.toLowerCase())
-      );
-    });
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
+
+      const currentEmail = loggedInUserEmail.toLowerCase();
+      const currentResidentId = String(loggedInResidentId || "");
+
+      const normalizedBookings = bookingsList.map(normalizeBooking);
+
+      const foundBooking = normalizedBookings.find((booking) => {
+        const bookingEmail = String(booking.email || "").toLowerCase();
+        const bookingResidentId = String(booking.resident_id || "");
+
+        return (
+          Number(booking.booking_id) === Number(bookingId) &&
+          (bookingResidentId === currentResidentId ||
+            bookingEmail === currentEmail)
+        );
+      });
+
+      const normalizedPayments = paymentsList.map(normalizePayment);
+
+      const filteredPayments = normalizedPayments.filter((payment) => {
+        const paymentBooking = normalizedBookings.find((booking) => {
+          return Number(booking.booking_id) === Number(payment.booking_id);
+        });
+
+        if (!paymentBooking) {
+          return false;
+        }
+
+        const paymentBookingResidentId = String(paymentBooking.resident_id || "");
+        const paymentBookingEmail = String(paymentBooking.email || "").toLowerCase();
+
+        return (
+          paymentBookingResidentId === currentResidentId ||
+          paymentBookingEmail === currentEmail
+        );
+      });
+
+      setSelectedBooking(foundBooking || null);
+      setUserPayments(filteredPayments);
+    } catch (error) {
+      console.error("Failed to load payment data:", error);
+      alert("Could not load payment data from backend.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const selectedBooking = getSelectedBooking();
+  useEffect(() => {
+    loadPaymentPageData();
+  }, []);
 
-  const payments = getPayments().map(normalizePayment);
-
-  const userPayments = payments.filter((payment) => {
-    const paymentEmail = (payment.email || "").toLowerCase();
-    const paymentResidentId = String(payment.resident_id || "");
-
-    return (
-      paymentResidentId === String(loggedInResidentId) ||
-      paymentEmail === loggedInUserEmail.toLowerCase()
-    );
+  const paymentForSelectedBooking = userPayments.find((payment) => {
+    return Number(payment.booking_id) === Number(bookingId);
   });
+
+  const selectedPaymentStatus =
+    paymentForSelectedBooking?.payment_status || "pending";
 
   const amount = Number(
     selectedBooking?.total_price || selectedBooking?.room_price || 0
@@ -218,12 +190,10 @@ function PaymentPage() {
     setCardNumber(value);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const currentBooking = getSelectedBooking();
-
-    if (!currentBooking) {
+    if (!selectedBooking) {
       alert("Booking not found.");
       window.location.href = "/my-bookings";
       return;
@@ -250,114 +220,42 @@ function PaymentPage() {
       return;
     }
 
-    const paymentAmount = Number(currentBooking.total_price || currentBooking.room_price || 0);
-
-    const alreadyPaid = getPayments()
-      .map(normalizePayment)
-      .some((payment) => {
-        return (
-          Number(payment.booking_id) === Number(currentBooking.booking_id) &&
-          (payment.payment_status === "Completed" ||
-            payment.payment_status === "Paid")
-        );
-      });
-
-    if (alreadyPaid) {
+    if (
+      normalizeStatus(selectedPaymentStatus) === "paid" ||
+      normalizeStatus(selectedPaymentStatus) === "completed"
+    ) {
       alert("This booking has already been paid.");
       window.location.href = "/my-bookings";
       return;
     }
 
-    const paymentId = Date.now();
-    const paymentDate = formatDateToday();
+    try {
+      setSubmitting(true);
 
-    const paymentRecord = {
-      payment_id: paymentId,
-      booking_id: currentBooking.booking_id,
-      amount: paymentAmount,
-      payment_method: paymentMethod,
-      payment_status: "Completed",
-      payment_date: paymentDate,
+      await createPayment({
+        booking_id: selectedBooking.booking_id,
+        amount: amount,
+        payment_method: paymentMethod,
+        payment_status: "paid",
+      });
 
-      resident_id: loggedInResidentId || currentBooking.resident_id || "",
-      resident_name: loggedInUser,
-      email: loggedInUserEmail,
-
-      dorm_id: currentBooking.dorm_id,
-      dorm_name: currentBooking.dorm_name,
-
-      room_id: currentBooking.room_id || "",
-      room_number: currentBooking.room_number || "",
-      room_type: currentBooking.room_type || "",
-
-      paymentId: paymentId,
-      bookingId: currentBooking.booking_id,
-
-      userName: loggedInUser,
-      studentName: loggedInUser,
-
-      userEmail: loggedInUserEmail,
-      studentEmail: loggedInUserEmail,
-
-      housingId: currentBooking.dorm_id,
-      housingName: currentBooking.dorm_name,
-      roomId: currentBooking.room_id || "",
-      roomNumber: currentBooking.room_number || "",
-      roomType: currentBooking.room_type || "",
-
-      method: paymentMethod,
-      status: "Completed",
-      paymentDate: paymentDate,
-    };
-
-    const savedPayments = getPayments();
-    savedPayments.push(paymentRecord);
-    savePayments(savedPayments);
-
-    const updatedBookings = getBookings().map((booking) => {
-      const normalized = normalizeBooking(booking);
-
-      if (Number(normalized.booking_id) === Number(currentBooking.booking_id)) {
-        return {
-          ...booking,
-
-          payment_status: "Completed",
-          payment_date: paymentDate,
-          payment_method: paymentMethod,
-
-          paymentStatus: "Completed",
-          paymentDate: paymentDate,
-          paymentMethod: paymentMethod,
-        };
-      }
-
-      return booking;
-    });
-
-    saveBookings(updatedBookings);
-
-    addNotification(
-      loggedInResidentId || currentBooking.resident_id,
-      "payment",
-      "Payment Completed Successfully",
-      "Your payment of $" +
-        paymentAmount +
-        " for " +
-        currentBooking.dorm_name +
-        " has been completed successfully."
-    );
-
-    alert("Payment completed successfully.");
-    window.location.href = "/my-bookings";
+      alert("Payment completed successfully.");
+      window.location.href = "/my-bookings";
+    } catch (error) {
+      console.error("Payment failed:", error);
+      alert("Payment could not be completed. Make sure POST /payments exists.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const canShowPaymentForm =
     bookingId &&
     selectedBooking &&
     (loggedInUserType === "student" || loggedInUserType === "employee") &&
-    selectedBooking.booking_status === "Approved" &&
-    selectedBooking.payment_status !== "Completed" &&
-    selectedBooking.payment_status !== "Paid";
+    normalizeStatus(selectedBooking.booking_status) === "approved" &&
+    normalizeStatus(selectedPaymentStatus) !== "paid" &&
+    normalizeStatus(selectedPaymentStatus) !== "completed";
 
   return (
     <div className="payment-page payment-layout">
@@ -434,7 +332,9 @@ function PaymentPage() {
           <div className="payment-summary-card">
             <h2>Booking Summary</h2>
 
-            {!selectedBooking ? (
+            {loading ? (
+              <div className="payment-warning">Loading payment details...</div>
+            ) : !selectedBooking ? (
               <div className="payment-warning">
                 Please choose an approved booking from My Bookings to pay.
               </div>
@@ -442,19 +342,15 @@ function PaymentPage() {
               <>
                 <p>
                   <i className="fa-solid fa-building"></i>{" "}
-                  <strong>Dorm:</strong> {selectedBooking.dorm_name || "Dorm Name"}
+                  <strong>Dorm:</strong>{" "}
+                  {selectedBooking.dorm_name || "Dorm Name"}
                 </p>
 
                 <p>
                   <i className="fa-solid fa-location-dot"></i>{" "}
                   <strong>Location:</strong>{" "}
-                  {selectedBooking.area || selectedBooking.city || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-school"></i>{" "}
-                  <strong>University:</strong>{" "}
-                  {selectedBooking.university_name || "-"}
+                  {selectedBooking.city || "-"}
+                  {selectedBooking.area ? ` - ${selectedBooking.area}` : ""}
                 </p>
 
                 <p>
@@ -489,19 +385,13 @@ function PaymentPage() {
                 <p>
                   <i className="fa-solid fa-circle-check"></i>{" "}
                   <strong>Booking Status:</strong>{" "}
-                  {selectedBooking.booking_status || "Pending"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-file-circle-check"></i>{" "}
-                  <strong>Document Status:</strong>{" "}
-                  {selectedBooking.document_status || "Pending"}
+                  {displayStatus(selectedBooking.booking_status)}
                 </p>
 
                 <p>
                   <i className="fa-solid fa-credit-card"></i>{" "}
                   <strong>Payment Status:</strong>{" "}
-                  {selectedBooking.payment_status || "Pending"}
+                  {displayStatus(selectedPaymentStatus)}
                 </p>
 
                 {!canShowPaymentForm && (
@@ -569,16 +459,16 @@ function PaymentPage() {
                 <p>Payment Amount</p>
                 <h3>${amount}</h3>
                 <small>
-                  Payment status will be saved as Completed after submission.
+                  Payment status will be saved as Paid after submission.
                 </small>
               </div>
 
               <button
                 type="submit"
                 className="primary-btn"
-                disabled={!canShowPaymentForm}
+                disabled={!canShowPaymentForm || submitting}
               >
-                Confirm Payment
+                {submitting ? "Processing..." : "Confirm Payment"}
               </button>
             </form>
           </div>
@@ -623,12 +513,16 @@ function PaymentPage() {
                     </p>
                     <p>
                       <i className="fa-solid fa-calendar-days"></i> Date:{" "}
-                      {payment.payment_date}
+                      {payment.created_at}
                     </p>
                   </div>
 
-                  <span className="payment-status completed">
-                    {payment.payment_status || "Completed"}
+                  <span
+                    className={`payment-status ${normalizeStatus(
+                      payment.payment_status
+                    )}`}
+                  >
+                    {displayStatus(payment.payment_status)}
                   </span>
                 </div>
               ))

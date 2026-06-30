@@ -12,7 +12,8 @@ async function request(endpoint, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${endpoint}`);
+    const errorText = await response.text();
+    throw new Error(errorText || `Request failed: ${endpoint}`);
   }
 
   return response.json();
@@ -43,9 +44,20 @@ export function getBookings() {
   return request("/bookings");
 }
 
+export function getBooking(booking_id) {
+  return request(`/bookings/${booking_id}`);
+}
+
 export function createBooking(data) {
   return request("/bookings", {
     method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateBooking(booking_id, data) {
+  return request(`/bookings/${booking_id}`, {
+    method: "PATCH",
     body: JSON.stringify(data),
   });
 }
@@ -60,9 +72,23 @@ export function getPayments() {
   return request("/payments");
 }
 
+export function createPayment(data) {
+  return request("/payments", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // Documents
 export function getDocuments() {
   return request("/documents");
+}
+
+export function createDocument(data) {
+  return request("/documents", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 // Maintenance
@@ -97,21 +123,3 @@ export function createReview(data) {
 export function getImages() {
   return request("/images");
 }
-
-export const api = {
-  getDorms,
-  getDorm,
-  getRooms,
-  getRoom,
-  getBookings,
-  createBooking,
-  getResidents,
-  getPayments,
-  getDocuments,
-  getMaintenanceRequests,
-  createMaintenanceRequest,
-  getMaintenanceStaff,
-  getReviews,
-  createReview,
-  getImages,
-};

@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./MyBookingsPage.css";
+import { getBookings, getDocuments, getPayments, updateBooking } from "../api";
 
 function MyBookingsPage() {
-  const [refresh, setRefresh] = useState(0);
+  const [bookings, setBookings] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const getCurrentUserEmailValue = () => {
     return localStorage.getItem("loggedInUserEmail") || "";
@@ -12,213 +16,193 @@ function MyBookingsPage() {
     return localStorage.getItem("loggedInResidentId") || "";
   };
 
-  const getAllBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const saveBookings = (bookings) => {
-    localStorage.setItem("studentBookings", JSON.stringify(bookings));
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+
+    return "Pending";
   };
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
+  const getStatusClass = (status) => {
+    return normalizeStatus(status);
   };
 
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const getDormImage = (imagePath) => {
-    const path = imagePath || "images/aub1.jpg";
-    const fileName = path.replace("images/", "");
-
+  const getDormImage = () => {
     try {
-      return require(`../assets/images/${fileName}`);
-    } catch {
       return require("../assets/images/aub1.jpg");
+    } catch {
+      return "";
     }
-  };
-
-  const addNotification = (residentId, notificationType, title, message) => {
-    if (!residentId && !getCurrentUserEmailValue()) {
-      return;
-    }
-
-    const notifications = getNotifications();
-
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
-
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: residentId || "",
-      title: title,
-      message: message,
-      notification_type: notificationType,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: notificationId,
-      userEmail: getCurrentUserEmailValue(),
-      type: notificationType,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
   };
 
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...booking,
 
       booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      resident_name: booking.resident_name || resident.full_name || "",
+      email: booking.email || resident.email || "",
 
-      resident_id: booking.resident_id || "",
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
 
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "",
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || "",
 
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "",
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+      room_price: Number(booking.room_price || room.room_price || 0),
 
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
-      dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
+      check_in_date: booking.check_in_date || "Not selected",
+      check_out_date: booking.check_out_date || "Not selected",
+      total_price: Number(booking.total_price || 0),
 
-      university_name: booking.university_name || booking.university || "",
-      city: booking.city || "",
-      area: booking.area || booking.location || "",
-
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-      room_price: Number(booking.room_price || booking.price || 0),
-
-      check_in_date:
-        booking.check_in_date ||
-        booking.checkInDate ||
-        booking.moveInDate ||
-        "Not selected",
-
-      check_out_date:
-        booking.check_out_date || booking.checkOutDate || "Not selected",
-
-      total_price: Number(booking.total_price || booking.totalCost || 0),
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-
-      document_type:
-        booking.document_type || booking.documentType || "Not uploaded",
-
-      document_status:
-        booking.document_status || booking.documentStatus || "Pending",
-
-      payment_status:
-        booking.payment_status || booking.paymentStatus || "Pending",
-
-      payment_method:
-        booking.payment_method || booking.paymentMethod || "Not paid yet",
-
-      created_at: booking.created_at || booking.createdAt || "Not specified",
+      booking_status: booking.booking_status || "pending",
+      admin_note: booking.admin_note || "",
+      created_at: booking.created_at || "Not specified",
     };
   };
 
-  const getUserBookings = () => {
-    const currentEmail = getCurrentUserEmailValue().toLowerCase();
-    const currentResidentId = String(getCurrentResidentIdValue());
-
-    const bookings = getAllBookings();
-
-    return bookings
-      .map(normalizeBooking)
-      .filter((booking) => {
-        const bookingEmail = (booking.email || "").toLowerCase();
-        const bookingResidentId = String(booking.resident_id || "");
-
-        return (
-          bookingResidentId === currentResidentId || bookingEmail === currentEmail
-        );
-      });
+  const getPaymentForBooking = (bookingId) => {
+    return payments.find((payment) => {
+      return Number(payment.booking_id) === Number(bookingId);
+    });
   };
 
-  const getStatusClass = (status) => {
-    return String(status || "Pending").toLowerCase();
+  const getDocumentForBooking = (bookingId) => {
+    return documents.find((document) => {
+      return Number(document.booking_id) === Number(bookingId);
+    });
   };
 
-  const cancelBooking = (bookingId) => {
+  const getPaymentStatusForBooking = (bookingId) => {
+    const payment = getPaymentForBooking(bookingId);
+
+    if (!payment) {
+      return "pending";
+    }
+
+    return payment.payment_status || "pending";
+  };
+
+  const getPaymentMethodForBooking = (bookingId) => {
+    const payment = getPaymentForBooking(bookingId);
+
+    if (!payment) {
+      return "Not paid yet";
+    }
+
+    return payment.payment_method || "Not paid yet";
+  };
+
+  const getDocumentStatusForBooking = (bookingId) => {
+    const document = getDocumentForBooking(bookingId);
+
+    if (!document) {
+      return "pending";
+    }
+
+    return document.document_status || "pending";
+  };
+
+  const getDocumentTypeForBooking = (bookingId) => {
+    const document = getDocumentForBooking(bookingId);
+
+    if (!document) {
+      return "Not uploaded";
+    }
+
+    return document.document_type || "Not uploaded";
+  };
+
+  const loadBookings = async () => {
+    try {
+      setLoading(true);
+
+      const [bookingsResponse, paymentsResponse, documentsResponse] =
+        await Promise.all([
+          getBookings(),
+          getPayments().catch(() => []),
+          getDocuments().catch(() => []),
+        ]);
+
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
+
+      const documentsList = Array.isArray(documentsResponse)
+        ? documentsResponse
+        : documentsResponse.data || [];
+
+      const currentEmail = getCurrentUserEmailValue().toLowerCase();
+      const currentResidentId = String(getCurrentResidentIdValue());
+
+      const userBookings = bookingsList
+        .map(normalizeBooking)
+        .filter((booking) => {
+          const bookingEmail = String(booking.email || "").toLowerCase();
+          const bookingResidentId = String(booking.resident_id || "");
+
+          return (
+            bookingResidentId === currentResidentId ||
+            bookingEmail === currentEmail
+          );
+        });
+
+      setBookings(userBookings);
+      setPayments(paymentsList);
+      setDocuments(documentsList);
+    } catch (error) {
+      console.error("Failed to load bookings:", error);
+      alert("Could not load bookings from backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  const cancelBooking = async (bookingId) => {
     const ok = window.confirm("Are you sure you want to cancel this booking?");
 
     if (!ok) {
       return;
     }
 
-    const currentEmail = getCurrentUserEmailValue().toLowerCase();
-    const currentResidentId = String(getCurrentResidentIdValue());
+    try {
+      await updateBooking(bookingId, {
+        booking_status: "cancelled",
+      });
 
-    const bookings = getAllBookings();
-
-    let cancelledBooking = null;
-
-    const updatedBookings = bookings.map((booking) => {
-      const normalized = normalizeBooking(booking);
-
-      const sameBooking = Number(normalized.booking_id) === Number(bookingId);
-
-      const sameResident =
-        String(normalized.resident_id || "") === currentResidentId ||
-        (normalized.email || "").toLowerCase() === currentEmail;
-
-      if (
-        sameBooking &&
-        sameResident &&
-        normalized.booking_status === "Pending"
-      ) {
-        cancelledBooking = {
-          ...booking,
-          booking_status: "Cancelled",
-          status: "Cancelled",
-        };
-
-        return cancelledBooking;
-      }
-
-      return booking;
-    });
-
-    saveBookings(updatedBookings);
-
-    if (cancelledBooking) {
-      const normalizedCancelled = normalizeBooking(cancelledBooking);
-
-      addNotification(
-        normalizedCancelled.resident_id || currentResidentId,
-        "booking",
-        "Booking Cancelled",
-        "Your booking request for " +
-          normalizedCancelled.dorm_name +
-          " has been cancelled."
+      alert("Booking cancelled successfully.");
+      loadBookings();
+    } catch (error) {
+      console.error("Cancel booking failed:", error);
+      alert(
+        "Booking could not be cancelled. Make sure PATCH /bookings/{id} exists in Laravel."
       );
     }
-
-    alert("Booking cancelled successfully.");
-    setRefresh(refresh + 1);
   };
 
   const logout = (event) => {
@@ -234,20 +218,18 @@ function MyBookingsPage() {
     window.location.href = "/";
   };
 
-  const bookings = getUserBookings();
-
   const totalBookings = bookings.length;
   const pendingBookings = bookings.filter(
-    (booking) => booking.booking_status === "Pending"
+    (booking) => normalizeStatus(booking.booking_status) === "pending"
   ).length;
   const approvedBookings = bookings.filter(
-    (booking) => booking.booking_status === "Approved"
+    (booking) => normalizeStatus(booking.booking_status) === "approved"
   ).length;
   const rejectedBookings = bookings.filter(
-    (booking) => booking.booking_status === "Rejected"
+    (booking) => normalizeStatus(booking.booking_status) === "rejected"
   ).length;
   const cancelledBookings = bookings.filter(
-    (booking) => booking.booking_status === "Cancelled"
+    (booking) => normalizeStatus(booking.booking_status) === "cancelled"
   ).length;
 
   return (
@@ -348,170 +330,11 @@ function MyBookingsPage() {
           </div>
         </section>
 
-        <section className="booking-cards">
-          {bookings.map((booking) => {
-            const bookingId = booking.booking_id;
-            const dormId = booking.dorm_id;
-
-            const bookingStatus = booking.booking_status || "Pending";
-            const documentStatus = booking.document_status || "Pending";
-            const paymentStatus = booking.payment_status || "Pending";
-
-            const checkInDate = booking.check_in_date || "Not selected";
-            const checkOutDate = booking.check_out_date || "Not selected";
-            const totalPrice = booking.total_price || 0;
-
-            return (
-              <div className="booking-card" key={bookingId}>
-                <div className="booking-card-image">
-                  <img
-                    src={getDormImage(booking.dorm_image)}
-                    alt={booking.dorm_name || "Dorm"}
-                  />
-                </div>
-
-                <div className="booking-card-content">
-                  <div className="booking-card-header">
-                    <h2>{booking.dorm_name || "Dorm Name"}</h2>
-
-                    <span
-                      className={`booking-status ${getStatusClass(
-                        bookingStatus
-                      )}`}
-                    >
-                      {bookingStatus}
-                    </span>
-                  </div>
-
-                  <div className="booking-meta">
-                    <p>
-                      <i className="fa-solid fa-location-dot"></i>{" "}
-                      {booking.area ||
-                        booking.city ||
-                        "Location not specified"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-school"></i> Near{" "}
-                      {booking.university_name || "Nearby university"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-door-open"></i> Room Number:{" "}
-                      {booking.room_number || "Not specified"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-bed"></i> Room Type:{" "}
-                      {booking.room_type || "Not specified"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-dollar-sign"></i> Price/month: $
-                      {booking.room_price || 0}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-calendar-check"></i> Check-in:{" "}
-                      {checkInDate}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-calendar-xmark"></i> Check-out:{" "}
-                      {checkOutDate}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-money-bill"></i> Total Cost: $
-                      {totalPrice}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-credit-card"></i> Payment
-                      Status: {paymentStatus}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-receipt"></i> Payment Method:{" "}
-                      {booking.payment_method || "Not paid yet"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-file"></i> Document:{" "}
-                      {booking.document_type || "Not uploaded"}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-file-circle-check"></i> Document
-                      Status: {documentStatus}
-                    </p>
-
-                    <p>
-                      <i className="fa-solid fa-clock"></i> Submitted:{" "}
-                      {booking.created_at || "Not specified"}
-                    </p>
-                  </div>
-
-                  <div className="booking-actions">
-                    <a
-                      href={`/housing-details?id=${dormId}`}
-                      className="view-btn"
-                    >
-                      View Dorm
-                    </a>
-
-                    {bookingStatus === "Pending" && (
-                      <button
-                        type="button"
-                        onClick={() => cancelBooking(bookingId)}
-                        className="cancel-btn"
-                      >
-                        Cancel Booking
-                      </button>
-                    )}
-
-                    {bookingStatus === "Approved" &&
-                      (paymentStatus === "Completed" ||
-                      paymentStatus === "Paid" ? (
-                        <>
-                          <button
-                            type="button"
-                            className="disabled-btn"
-                            disabled
-                          >
-                            Paid
-                          </button>
-
-                          <a
-                            href={`/review?bookingId=${bookingId}`}
-                            className="review-btn"
-                          >
-                            Write Review
-                          </a>
-                        </>
-                      ) : (
-                        <a
-                          href={`/payment?bookingId=${bookingId}`}
-                          className="success-btn"
-                        >
-                          Pay Now
-                        </a>
-                      ))}
-
-                    {(bookingStatus === "Rejected" ||
-                      bookingStatus === "Cancelled") && (
-                      <button type="button" className="disabled-btn" disabled>
-                        {bookingStatus}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-
-        {bookings.length === 0 && (
+        {loading ? (
+          <div className="empty-bookings">
+            <h3>Loading bookings...</h3>
+          </div>
+        ) : bookings.length === 0 ? (
           <div className="empty-bookings">
             <h3>No bookings yet</h3>
             <p>You have not submitted any dorm booking request yet.</p>
@@ -519,6 +342,175 @@ function MyBookingsPage() {
               Explore Dorms
             </a>
           </div>
+        ) : (
+          <section className="booking-cards">
+            {bookings.map((booking) => {
+              const bookingId = booking.booking_id;
+              const dormId = booking.dorm_id;
+
+              const bookingStatus = displayStatus(booking.booking_status);
+              const paymentStatus = displayStatus(
+                getPaymentStatusForBooking(bookingId)
+              );
+              const documentStatus = displayStatus(
+                getDocumentStatusForBooking(bookingId)
+              );
+
+              const paymentMethod = getPaymentMethodForBooking(bookingId);
+              const documentType = getDocumentTypeForBooking(bookingId);
+
+              const rawBookingStatus = normalizeStatus(booking.booking_status);
+              const rawPaymentStatus = normalizeStatus(
+                getPaymentStatusForBooking(bookingId)
+              );
+
+              return (
+                <div className="booking-card" key={bookingId}>
+                  <div className="booking-card-image">
+                    <img src={getDormImage()} alt={booking.dorm_name || "Dorm"} />
+                  </div>
+
+                  <div className="booking-card-content">
+                    <div className="booking-card-header">
+                      <h2>{booking.dorm_name || "Dorm Name"}</h2>
+
+                      <span
+                        className={`booking-status ${getStatusClass(
+                          booking.booking_status
+                        )}`}
+                      >
+                        {bookingStatus}
+                      </span>
+                    </div>
+
+                    <div className="booking-meta">
+                      <p>
+                        <i className="fa-solid fa-location-dot"></i>{" "}
+                        {booking.city || "-"}
+                        {booking.area ? ` - ${booking.area}` : ""}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-door-open"></i> Room Number:{" "}
+                        {booking.room_number || "Not specified"}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-bed"></i> Room Type:{" "}
+                        {booking.room_type || "Not specified"}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-dollar-sign"></i> Price/month:
+                        ${booking.room_price || 0}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-calendar-check"></i> Check-in:{" "}
+                        {booking.check_in_date}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-calendar-xmark"></i>{" "}
+                        Check-out: {booking.check_out_date}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-money-bill"></i> Total Cost:
+                        ${booking.total_price}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-credit-card"></i> Payment
+                        Status: {paymentStatus}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-receipt"></i> Payment Method:{" "}
+                        {paymentMethod}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-file"></i> Document:{" "}
+                        {documentType}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-file-circle-check"></i>{" "}
+                        Document Status: {documentStatus}
+                      </p>
+
+                      <p>
+                        <i className="fa-solid fa-clock"></i> Submitted:{" "}
+                        {booking.created_at || "Not specified"}
+                      </p>
+
+                      {booking.admin_note && (
+                        <p>
+                          <i className="fa-solid fa-note-sticky"></i> Admin
+                          Note: {booking.admin_note}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="booking-actions">
+                      <a
+                        href={`/housing-details?id=${dormId}`}
+                        className="view-btn"
+                      >
+                        View Dorm
+                      </a>
+
+                      {rawBookingStatus === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => cancelBooking(bookingId)}
+                          className="cancel-btn"
+                        >
+                          Cancel Booking
+                        </button>
+                      )}
+
+                      {rawBookingStatus === "approved" &&
+                        (rawPaymentStatus === "paid" ||
+                        rawPaymentStatus === "completed" ? (
+                          <>
+                            <button
+                              type="button"
+                              className="disabled-btn"
+                              disabled
+                            >
+                              Paid
+                            </button>
+
+                            <a
+                              href={`/review?bookingId=${bookingId}`}
+                              className="review-btn"
+                            >
+                              Write Review
+                            </a>
+                          </>
+                        ) : (
+                          <a
+                            href={`/payment?bookingId=${bookingId}`}
+                            className="success-btn"
+                          >
+                            Pay Now
+                          </a>
+                        ))}
+
+                      {(rawBookingStatus === "rejected" ||
+                        rawBookingStatus === "cancelled") && (
+                        <button type="button" className="disabled-btn" disabled>
+                          {bookingStatus}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
         )}
       </main>
     </div>
