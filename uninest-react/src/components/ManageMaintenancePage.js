@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ManageMaintenancePage.css";
+import {
+  getMaintenanceRequests,
+  updateMaintenanceRequest,
+  deleteMaintenanceRequest,
+} from "../api";
 
 function ManageMaintenancePage() {
   const navigate = useNavigate();
+
   const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
+
     if (role !== "admin") {
       navigate("/login");
       return;
@@ -16,147 +24,104 @@ function ManageMaintenancePage() {
     loadRequests();
   }, [navigate]);
 
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const saveMaintenanceRequests = (items) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(items));
-    setRequests(items);
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "in_progress") return "In Progress";
+    if (value === "completed") return "Resolved";
+    if (value === "resolved") return "Resolved";
+
+    return "Pending";
   };
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (items) => {
-    localStorage.setItem("notifications", JSON.stringify(items));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const addNotification = (
-    resident_id,
-    notification_type,
-    title,
-    message,
-    emailFallback
-  ) => {
-    if (!resident_id && !emailFallback) return;
-
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
-
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: resident_id || "",
-      title,
-      message,
-      notification_type,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: notificationId,
-      userEmail: emailFallback || "",
-      type: notification_type,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
+  const backendStatus = (status) => {
+    if (status === "In Progress") return "in_progress";
+    if (status === "Resolved") return "completed";
+    return "pending";
   };
 
   const normalizeRequest = (request) => {
+    const booking = request.booking || {};
+    const resident = booking.resident || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+
     return {
       ...request,
 
-      request_id: request.request_id || request.id,
-      booking_id: request.booking_id || request.bookingId,
-      staff_id: request.staff_id || request.staffId || null,
+      request_id:
+        request.maintenance_request_id || request.request_id || request.id,
 
-      resident_id: request.resident_id || "",
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+
+      booking_id: request.booking_id || booking.booking_id || "",
+      maintenance_id: request.maintenance_id || null,
+
+      resident_id: resident.resident_id || booking.resident_id || "",
       resident_name:
+        resident.full_name ||
+        resident.user?.full_name ||
         request.resident_name ||
         request.residentName ||
-        request.userName ||
-        request.studentName ||
         "Resident",
 
       email:
+        resident.email ||
+        resident.user?.email ||
         request.email ||
         request.residentEmail ||
-        request.userEmail ||
-        request.studentEmail ||
         "-",
 
-      dorm_id: request.dorm_id || request.housingId,
-      dorm_name: request.dorm_name || request.housingName || "-",
+      dorm_id: dorm.dorm_id || room.dorm_id || "",
+      dorm_name: dorm.dorm_name || request.dorm_name || "-",
 
-      room_id: request.room_id || request.roomId || "",
-      room_number: request.room_number || request.roomNumber || "-",
-      room_type: request.room_type || request.roomType || "-",
+      room_id: request.room_id || room.room_id || "",
+      room_number: room.room_number || request.room_number || "-",
+      room_type: room.room_type || request.room_type || "-",
 
-      request_title:
-        request.request_title || request.title || "Maintenance Request",
+      request_title: "Maintenance Request",
 
-      maintenance_category:
-        request.maintenance_category ||
-        request.category ||
-        request.issueType ||
-        "-",
-
-      issue_description: request.issue_description || request.description || "-",
+      maintenance_category: "-",
+      issue_description: request.request_description || request.description || "-",
       priority: request.priority || "Medium",
 
-      request_status: request.request_status || request.status || "Pending",
-      request_date:
-        request.request_date ||
-        request.submittedDate ||
-        request.createdAt ||
-        "-",
+      request_status: request.request_status || "pending",
+      request_date: request.created_at || request.request_date || "-",
 
-      updated_at: request.updated_at || request.updatedAt || "Not updated yet",
+      updated_at: request.updated_at || "Not updated yet",
 
-      images: Array.isArray(request.images)
-        ? request.images.map((image) => {
-            return {
-              ...image,
-              image_id:
-                image.image_id || Date.now() + Math.floor(Math.random() * 1000),
-              dorm_id: image.dorm_id || null,
-              room_id: image.room_id || null,
-              maintenance_request_id:
-                image.maintenance_request_id ||
-                request.request_id ||
-                request.id ||
-                null,
-              image_url: image.image_url || image.data || "",
-              uploaded_at:
-                image.uploaded_at ||
-                request.request_date ||
-                request.submittedDate ||
-                "",
-            };
-          })
-        : [],
+      images: Array.isArray(request.images) ? request.images : [],
     };
   };
 
-  const loadRequests = () => {
-    setRequests(getMaintenanceRequests());
+  const loadRequests = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getMaintenanceRequests();
+
+      const requestsList = Array.isArray(response) ? response : response.data || [];
+
+      setRequests(requestsList.map(normalizeRequest));
+    } catch (error) {
+      console.error("Maintenance load failed:", error);
+      alert("Could not load maintenance requests from backend.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusClass = (status) => {
-    if (status === "Pending") return "pending";
-    if (status === "In Progress") return "progress";
-    if (status === "Resolved") return "resolved";
+    const value = normalizeStatus(status);
+
+    if (value === "in_progress") return "progress";
+    if (value === "completed" || value === "resolved") return "resolved";
+
     return "pending";
   };
 
@@ -168,103 +133,64 @@ function ManageMaintenancePage() {
     return "medium";
   };
 
-  const updateRequestStatus = (requestId, newStatus) => {
-    const allRequests = getMaintenanceRequests();
-    let updatedRequest = null;
+  const updateRequestStatus = async (requestId, newStatus) => {
+    try {
+      await updateMaintenanceRequest(requestId, {
+        request_status: backendStatus(newStatus),
+      });
 
-    const updatedRequests = allRequests.map((request) => {
-      const normalized = normalizeRequest(request);
-
-      if (Number(normalized.request_id) === Number(requestId)) {
-        updatedRequest = {
-          ...request,
-          request_status: newStatus,
-          updated_at: formatDateToday(),
-
-          status: newStatus,
-          updatedAt: formatDateToday(),
-        };
-
-        return updatedRequest;
-      }
-
-      return request;
-    });
-
-    saveMaintenanceRequests(updatedRequests);
-
-    if (updatedRequest) {
-      const normalizedUpdated = normalizeRequest(updatedRequest);
-
-      let title = "";
-      let message = "";
-
-      if (newStatus === "In Progress") {
-        title = "Maintenance Request In Progress";
-        message = `Your maintenance request "${
-          normalizedUpdated.request_title || "Maintenance Request"
-        }" for ${normalizedUpdated.dorm_name || "your dorm"}, Room ${
-          normalizedUpdated.room_number || "-"
-        }, is now in progress.`;
-      }
-
-      if (newStatus === "Resolved") {
-        title = "Maintenance Request Resolved";
-        message = `Your maintenance request "${
-          normalizedUpdated.request_title || "Maintenance Request"
-        }" for ${normalizedUpdated.dorm_name || "your dorm"}, Room ${
-          normalizedUpdated.room_number || "-"
-        }, has been resolved.`;
-      }
-
-      addNotification(
-        normalizedUpdated.resident_id,
-        "maintenance",
-        title,
-        message,
-        normalizedUpdated.email
+      alert("Maintenance request status updated successfully.");
+      loadRequests();
+    } catch (error) {
+      console.error("Maintenance update failed:", error);
+      alert(
+        "Status could not be updated. We may need to fix PATCH /maintenance-requests/{id} later."
       );
     }
-
-    alert("Maintenance request status updated successfully.");
   };
 
-  const deleteRequest = (requestId) => {
+  const deleteRequest = async (requestId) => {
     const ok = window.confirm(
       "Are you sure you want to delete this maintenance request?"
     );
 
     if (!ok) return;
 
-    const updatedRequests = getMaintenanceRequests().filter((request) => {
-      const normalized = normalizeRequest(request);
-      return Number(normalized.request_id) !== Number(requestId);
-    });
-
-    saveMaintenanceRequests(updatedRequests);
-    alert("Maintenance request deleted successfully.");
+    try {
+      await deleteMaintenanceRequest(requestId);
+      alert("Maintenance request deleted successfully.");
+      loadRequests();
+    } catch (error) {
+      console.error("Maintenance delete failed:", error);
+      alert(
+        "Maintenance request could not be deleted. We may need to fix DELETE /maintenance-requests/{id} later."
+      );
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInRole");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
-  const normalizedRequests = requests.map(normalizeRequest);
-
-  const pendingCount = normalizedRequests.filter(
-    (request) => request.request_status === "Pending"
+  const pendingCount = requests.filter(
+    (request) => normalizeStatus(request.request_status) === "pending"
   ).length;
 
-  const progressCount = normalizedRequests.filter(
-    (request) => request.request_status === "In Progress"
+  const progressCount = requests.filter(
+    (request) => normalizeStatus(request.request_status) === "in_progress"
   ).length;
 
-  const resolvedCount = normalizedRequests.filter(
-    (request) => request.request_status === "Resolved"
-  ).length;
+  const resolvedCount = requests.filter((request) => {
+    const status = normalizeStatus(request.request_status);
+    return status === "completed" || status === "resolved";
+  }).length;
 
   return (
     <div className="manage-maintenance-page maintenance-layout">
@@ -335,7 +261,7 @@ function ManageMaintenancePage() {
 
         <section className="maintenance-stats">
           <div className="maintenance-stat-card">
-            <h3>{normalizedRequests.length}</h3>
+            <h3>{requests.length}</h3>
             <p>Total Requests</p>
           </div>
 
@@ -355,16 +281,21 @@ function ManageMaintenancePage() {
           </div>
         </section>
 
-        {normalizedRequests.length === 0 ? (
+        {loading ? (
+          <div className="empty-requests">
+            <h3>Loading maintenance requests...</h3>
+          </div>
+        ) : requests.length === 0 ? (
           <div className="empty-requests">
             <h3>No maintenance requests found</h3>
             <p>No resident maintenance requests have been submitted yet.</p>
           </div>
         ) : (
           <section className="request-list">
-            {normalizedRequests.map((request) => {
-              const requestId = request.request_id;
-              const requestStatus = request.request_status || "Pending";
+            {requests.map((request) => {
+              const requestId = request.maintenance_request_id;
+              const requestStatus = displayStatus(request.request_status);
+              const rawStatus = normalizeStatus(request.request_status);
               const priority = request.priority || "Medium";
 
               return (
@@ -400,12 +331,6 @@ function ManageMaintenancePage() {
                       </p>
 
                       <p>
-                        <i className="fa-solid fa-screwdriver-wrench"></i>{" "}
-                        <strong>Category:</strong>{" "}
-                        {request.maintenance_category || "-"}
-                      </p>
-
-                      <p>
                         <i className="fa-solid fa-triangle-exclamation"></i>{" "}
                         <strong>Priority:</strong>{" "}
                         <span className={`priority ${getPriorityClass(priority)}`}>
@@ -424,27 +349,6 @@ function ManageMaintenancePage() {
                         <strong>Updated:</strong>{" "}
                         {request.updated_at || "Not updated yet"}
                       </p>
-
-                      <p>
-                        <i className="fa-solid fa-image"></i>{" "}
-                        <strong>Images:</strong>{" "}
-                        {request.images.length > 0
-                          ? `${request.images.length} uploaded`
-                          : "No image uploaded"}
-                      </p>
-
-                      {Array.isArray(request.images) &&
-                        request.images.length > 0 && (
-                          <div className="maintenance-image-gallery">
-                            {request.images.map((image) => (
-                              <img
-                                key={image.image_id}
-                                src={image.image_url}
-                                alt="Maintenance"
-                              />
-                            ))}
-                          </div>
-                        )}
                     </div>
 
                     <div className="description-box">
@@ -458,13 +362,15 @@ function ManageMaintenancePage() {
 
                   <div className="request-side">
                     <span
-                      className={`status-badge ${getStatusClass(requestStatus)}`}
+                      className={`status-badge ${getStatusClass(
+                        request.request_status
+                      )}`}
                     >
                       {requestStatus}
                     </span>
 
                     <div className="request-actions">
-                      {requestStatus === "Pending" && (
+                      {rawStatus === "pending" && (
                         <>
                           <button
                             className="progress-btn"
@@ -486,7 +392,7 @@ function ManageMaintenancePage() {
                         </>
                       )}
 
-                      {requestStatus === "In Progress" && (
+                      {rawStatus === "in_progress" && (
                         <button
                           className="complete-btn"
                           onClick={() =>
@@ -497,7 +403,7 @@ function ManageMaintenancePage() {
                         </button>
                       )}
 
-                      {requestStatus === "Resolved" && (
+                      {(rawStatus === "completed" || rawStatus === "resolved") && (
                         <button className="disabled-btn" disabled>
                           Resolved
                         </button>

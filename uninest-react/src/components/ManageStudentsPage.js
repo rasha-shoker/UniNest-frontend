@@ -1,272 +1,195 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ManageStudentsPage.css";
+import {
+  getResidents,
+  createResident,
+  updateResident,
+  deleteResident as deleteResidentApi,
+  getBookings,
+  getPayments,
+  getMaintenanceRequests,
+  getReviews,
+} from "../api";
 
 function ManageStudentsPage() {
   const navigate = useNavigate();
 
   const [residents, setResidents] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [reviews, setReviews] = useState([]);
+
   const [roleFilter, setRoleFilter] = useState("All");
   const [searchValue, setSearchValue] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [editEmail, setEditEmail] = useState("");
+  const [editResidentId, setEditResidentId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: "",
+    full_name: "",
     email: "",
     phone: "",
-    user_type: "",
-    university_name: "",
+    role: "",
+    university: "",
     major: "",
-    company_name: "",
-    job_position: "",
-    resident_status: "Active",
+    company: "",
   });
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
+
     if (role !== "admin") {
       navigate("/login");
       return;
     }
 
-    loadResidents();
+    loadResidentsPageData();
   }, [navigate]);
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
 
   const normalizeUserType = (userType) => {
     const value = String(userType || "student").toLowerCase();
     return value === "employee" ? "employee" : "student";
   };
 
-  const splitFullName = (fullName) => {
-    const parts = fullName.trim().split(" ").filter((part) => part !== "");
-
-    return {
-      first_name: parts[0] || "",
-      last_name: parts.length > 1 ? parts.slice(1).join(" ") : "",
-    };
-  };
-
-  const getResidentFullName = (resident) => {
-    const firstName = resident.first_name || resident.firstName || "";
-    const lastName = resident.last_name || resident.lastName || "";
-    const fullName = `${firstName} ${lastName}`.trim();
-
-    return fullName || resident.fullName || resident.name || "Resident";
+  const displayRole = (role) => {
+    const value = normalizeUserType(role);
+    return value.charAt(0).toUpperCase() + value.slice(1);
   };
 
   const normalizeResident = (resident) => {
-    const oldFullName = resident.fullName || resident.name || "";
-    const splitName = splitFullName(oldFullName);
-
-    const first_name =
-      resident.first_name || resident.firstName || splitName.first_name || "";
-
-    const last_name =
-      resident.last_name || resident.lastName || splitName.last_name || "";
-
-    const user_type = normalizeUserType(resident.user_type || resident.role);
-
-    const residentId =
-      resident.resident_id ||
-      resident.id ||
-      Date.now() + Math.floor(Math.random() * 1000);
-
     return {
       ...resident,
-
-      resident_id: residentId,
-      first_name,
-      last_name,
-
-      email: resident.email || "",
-      password: resident.password || "123456",
+      resident_id: resident.resident_id || resident.id,
+      user_id: resident.user_id || "",
+      full_name:
+        resident.full_name ||
+        resident.user?.full_name ||
+        resident.name ||
+        "Resident",
+      email: resident.email || resident.user?.email || "",
       phone: resident.phone || "",
-
-      user_type,
-
-      university_name:
-        user_type === "student"
-          ? resident.university_name || resident.university || ""
-          : "",
-
-      major: user_type === "student" ? resident.major || "" : "",
-
-      company_name:
-        user_type === "employee"
-          ? resident.company_name || resident.company || ""
-          : "",
-
-      job_position:
-        user_type === "employee"
-          ? resident.job_position || resident.jobTitle || ""
-          : "",
-
-      profile_image: resident.profile_image || resident.profileImage || "",
-      resident_status: resident.resident_status || resident.status || "Active",
-      created_at: resident.created_at || resident.createdAt || formatDateToday(),
-      updated_at: resident.updated_at || resident.updatedAt || "",
-
-      id: residentId,
-      fullName: `${first_name} ${last_name}`.trim(),
-      name: `${first_name} ${last_name}`.trim(),
-      role: user_type,
-      university:
-        user_type === "student"
-          ? resident.university_name || resident.university || ""
-          : "",
-      company:
-        user_type === "employee"
-          ? resident.company_name || resident.company || ""
-          : "",
-      jobTitle:
-        user_type === "employee"
-          ? resident.job_position || resident.jobTitle || ""
-          : "",
-      profileImage: resident.profile_image || resident.profileImage || "",
-      status: resident.resident_status || resident.status || "Active",
-      createdAt: resident.created_at || resident.createdAt || formatDateToday(),
-      updatedAt: resident.updated_at || resident.updatedAt || "",
+      role: normalizeUserType(resident.role || resident.user_type),
+      university: resident.university || resident.university_name || "",
+      major: resident.major || "",
+      company: resident.company || resident.company_name || "",
+      created_at: resident.created_at || "",
     };
   };
 
-  const getResidentsData = () => {
-    const storedResidents = JSON.parse(localStorage.getItem("residents"));
-    const storedUsers = JSON.parse(localStorage.getItem("users"));
-
-    if (storedResidents && Array.isArray(storedResidents)) {
-      return storedResidents.map(normalizeResident);
-    }
-
-    if (storedUsers && Array.isArray(storedUsers)) {
-      const normalized = storedUsers.map(normalizeResident);
-      saveResidentsData(normalized);
-      return normalized;
-    }
-
-    return [];
-  };
-
-  const saveResidentsData = (items) => {
-    const normalized = items.map(normalizeResident);
-    localStorage.setItem("residents", JSON.stringify(normalized));
-    localStorage.setItem("users", JSON.stringify(normalized));
-    setResidents(normalized);
-  };
-
-  const loadResidents = () => {
-    setResidents(getResidentsData());
-  };
-
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
-  };
-
-  const saveBookings = (items) => {
-    localStorage.setItem("studentBookings", JSON.stringify(items));
-  };
-
-  const getPayments = () => {
-    return JSON.parse(localStorage.getItem("payments")) || [];
-  };
-
-  const savePayments = (items) => {
-    localStorage.setItem("payments", JSON.stringify(items));
-  };
-
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
-  };
-
-  const saveMaintenanceRequests = (items) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(items));
-  };
-
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
-  };
-
-  const saveReviews = (items) => {
-    localStorage.setItem("reviews", JSON.stringify(items));
-  };
-
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...booking,
       booking_id: booking.booking_id || booking.id,
-      resident_id: booking.resident_id || "",
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "",
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "",
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-      booking_status: booking.booking_status || booking.status || "Pending",
-      payment_status: booking.payment_status || booking.paymentStatus || "Pending",
-      created_at: booking.created_at || booking.createdAt || "",
+      resident_id: booking.resident_id || resident.resident_id || "",
+      email: booking.email || resident.email || resident.user?.email || "",
+
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+      booking_status: booking.booking_status || "pending",
+      created_at: booking.created_at || "",
     };
   };
 
   const normalizePayment = (payment) => {
+    const booking = payment.booking || {};
+
     return {
       ...payment,
-      resident_id: payment.resident_id || "",
-      resident_name:
-        payment.resident_name || payment.userName || payment.studentName || "",
-      email: payment.email || payment.userEmail || payment.studentEmail || "",
-      payment_status: payment.payment_status || payment.status || "Pending",
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || booking.booking_id,
+      payment_status: payment.payment_status || "pending",
+      amount: Number(payment.amount || 0),
     };
   };
 
   const normalizeMaintenanceRequest = (request) => {
+    const booking = request.booking || {};
+    const resident = booking.resident || {};
+
     return {
       ...request,
-      resident_id: request.resident_id || "",
-      resident_name:
-        request.resident_name ||
-        request.residentName ||
-        request.userName ||
-        request.studentName ||
-        "",
-      email:
-        request.email ||
-        request.userEmail ||
-        request.studentEmail ||
-        request.residentEmail ||
-        "",
-      request_status: request.request_status || request.status || "Pending",
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+      booking_id: request.booking_id || booking.booking_id,
+      resident_id: resident.resident_id || "",
+      email: resident.email || resident.user?.email || "",
+      request_status: request.request_status || "pending",
     };
   };
 
   const normalizeReview = (review) => {
+    const resident = review.resident || {};
+
     return {
       ...review,
-      resident_id: review.resident_id || "",
-      resident_name:
-        review.resident_name || review.residentName || review.userName || "",
-      email: review.email || review.userEmail || review.residentEmail || "",
+      review_id: review.review_id || review.id,
+      resident_id: review.resident_id || resident.resident_id || "",
+      email: resident.email || resident.user?.email || "",
     };
   };
 
+  const loadResidentsPageData = async () => {
+    try {
+      setLoading(true);
+
+      const [
+        residentsResponse,
+        bookingsResponse,
+        paymentsResponse,
+        maintenanceResponse,
+        reviewsResponse,
+      ] = await Promise.all([
+        getResidents(),
+        getBookings().catch(() => []),
+        getPayments().catch(() => []),
+        getMaintenanceRequests().catch(() => []),
+        getReviews().catch(() => []),
+      ]);
+
+      const residentsList = Array.isArray(residentsResponse)
+        ? residentsResponse
+        : residentsResponse.data || [];
+
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
+
+      const maintenanceList = Array.isArray(maintenanceResponse)
+        ? maintenanceResponse
+        : maintenanceResponse.data || [];
+
+      const reviewsList = Array.isArray(reviewsResponse)
+        ? reviewsResponse
+        : reviewsResponse.data || [];
+
+      setResidents(residentsList.map(normalizeResident));
+      setBookings(bookingsList.map(normalizeBooking));
+      setPayments(paymentsList.map(normalizePayment));
+      setMaintenanceRequests(maintenanceList.map(normalizeMaintenanceRequest));
+      setReviews(reviewsList.map(normalizeReview));
+    } catch (error) {
+      console.error("Residents load failed:", error);
+      alert("Could not load residents from backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isPaid = (value) => {
-    return value === "Completed" || value === "Paid";
+    const status = String(value || "").toLowerCase();
+    return status === "completed" || status === "paid";
   };
 
   const isSameResidentByIdOrEmail = (item, resident) => {
@@ -278,36 +201,44 @@ function ManageStudentsPage() {
     return itemResidentId === residentId || itemEmail === residentEmail;
   };
 
-  const getResidents = () => {
-    return residents.filter((resident) => {
-      const userType = normalizeUserType(resident.user_type);
-      return userType === "student" || userType === "employee";
-    });
-  };
+  const allResidents = residents.filter((resident) => {
+    const userType = normalizeUserType(resident.role);
+    return userType === "student" || userType === "employee";
+  });
 
   const getBookingsForResident = (resident) => {
-    return getBookings()
-      .map(normalizeBooking)
+    return bookings
       .filter((booking) => isSameResidentByIdOrEmail(booking, resident))
       .sort((a, b) => Number(b.booking_id || 0) - Number(a.booking_id || 0));
   };
 
   const getPaymentsForResident = (resident) => {
-    return getPayments()
-      .map(normalizePayment)
-      .filter((payment) => isSameResidentByIdOrEmail(payment, resident));
+    const residentBookings = getBookingsForResident(resident);
+    const residentBookingIds = residentBookings.map((booking) =>
+      Number(booking.booking_id)
+    );
+
+    return payments.filter((payment) => {
+      return residentBookingIds.includes(Number(payment.booking_id));
+    });
   };
 
   const getMaintenanceForResident = (resident) => {
-    return getMaintenanceRequests()
-      .map(normalizeMaintenanceRequest)
-      .filter((request) => isSameResidentByIdOrEmail(request, resident));
+    const residentBookings = getBookingsForResident(resident);
+    const residentBookingIds = residentBookings.map((booking) =>
+      Number(booking.booking_id)
+    );
+
+    return maintenanceRequests.filter((request) => {
+      return (
+        residentBookingIds.includes(Number(request.booking_id)) ||
+        isSameResidentByIdOrEmail(request, resident)
+      );
+    });
   };
 
   const getReviewsForResident = (resident) => {
-    return getReviews()
-      .map(normalizeReview)
-      .filter((review) => isSameResidentByIdOrEmail(review, resident));
+    return reviews.filter((review) => isSameResidentByIdOrEmail(review, resident));
   };
 
   const getLatestBookingForResident = (resident) => {
@@ -315,30 +246,24 @@ function ManageStudentsPage() {
     return myBookings.length > 0 ? myBookings[0] : null;
   };
 
-  const getResidentStatus = (resident) => {
-    return resident.resident_status || resident.status || "Active";
-  };
-
-  const allResidents = getResidents();
-
   const filteredResidents = useMemo(() => {
     let result = allResidents;
 
     if (roleFilter !== "All") {
-      result = result.filter(
-        (resident) => normalizeUserType(resident.user_type) === roleFilter
-      );
+      result = result.filter((resident) => {
+        return normalizeUserType(resident.role) === roleFilter;
+      });
     }
 
     const value = searchValue.trim().toLowerCase();
 
     if (value) {
       result = result.filter((resident) => {
-        const name = getResidentFullName(resident).toLowerCase();
+        const name = String(resident.full_name || "").toLowerCase();
         const email = String(resident.email || "").toLowerCase();
         const phone = String(resident.phone || "").toLowerCase();
-        const university = String(resident.university_name || "").toLowerCase();
-        const company = String(resident.company_name || "").toLowerCase();
+        const university = String(resident.university || "").toLowerCase();
+        const company = String(resident.company || "").toLowerCase();
 
         return (
           name.includes(value) ||
@@ -353,184 +278,74 @@ function ManageStudentsPage() {
     return result;
   }, [residents, roleFilter, searchValue]);
 
-  const studentsCount = allResidents.filter(
-    (resident) => normalizeUserType(resident.user_type) === "student"
-  ).length;
+  const studentsCount = allResidents.filter((resident) => {
+    return normalizeUserType(resident.role) === "student";
+  }).length;
 
-  const employeesCount = allResidents.filter(
-    (resident) => normalizeUserType(resident.user_type) === "employee"
-  ).length;
+  const employeesCount = allResidents.filter((resident) => {
+    return normalizeUserType(resident.role) === "employee";
+  }).length;
 
   const assignedCount = allResidents.filter((resident) => {
     const latestBooking = getLatestBookingForResident(resident);
-    return latestBooking && latestBooking.booking_status === "Approved";
+    return latestBooking && String(latestBooking.booking_status).toLowerCase() === "approved";
   }).length;
 
   const openAddResidentModal = () => {
-    setEditEmail("");
+    setEditResidentId("");
     setForm({
-      fullName: "",
+      full_name: "",
       email: "",
       phone: "",
-      user_type: "",
-      university_name: "",
+      role: "",
+      university: "",
       major: "",
-      company_name: "",
-      job_position: "",
-      resident_status: "Active",
+      company: "",
     });
     setShowModal(true);
   };
 
-  const openEditResidentModal = (email) => {
-    const resident = allResidents.find(
-      (item) => String(item.email || "").toLowerCase() === email.toLowerCase()
-    );
+  const openEditResidentModal = (residentId) => {
+    const resident = allResidents.find((item) => {
+      return Number(item.resident_id) === Number(residentId);
+    });
 
     if (!resident) {
       alert("Resident not found.");
       return;
     }
 
-    const userType = normalizeUserType(resident.user_type);
-
-    setEditEmail(resident.email);
+    setEditResidentId(resident.resident_id);
     setForm({
-      fullName: getResidentFullName(resident),
+      full_name: resident.full_name || "",
       email: resident.email || "",
       phone: resident.phone || "",
-      user_type: userType,
-      university_name: resident.university_name || "",
+      role: normalizeUserType(resident.role),
+      university: resident.university || "",
       major: resident.major || "",
-      company_name: resident.company_name || "",
-      job_position: resident.job_position || "",
-      resident_status: getResidentStatus(resident),
+      company: resident.company || "",
     });
 
     setShowModal(true);
   };
 
   const closeResidentModal = () => {
+    if (saving) return;
     setShowModal(false);
   };
 
-  const updateRelatedData = (resident, newName) => {
-    const residentId = String(resident.resident_id || "");
-    const targetEmail = String(resident.email || "").toLowerCase();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    const bookings = getBookings().map((booking) => {
-      const normalized = normalizeBooking(booking);
-
-      if (
-        String(normalized.resident_id || "") === residentId ||
-        String(normalized.email || "").toLowerCase() === targetEmail
-      ) {
-        return {
-          ...booking,
-          resident_name: newName,
-          email: targetEmail,
-          userName: newName,
-          studentName: newName,
-          residentName: newName,
-          userEmail: targetEmail,
-          studentEmail: targetEmail,
-          residentEmail: targetEmail,
-        };
-      }
-
-      return booking;
-    });
-
-    saveBookings(bookings);
-
-    const requests = getMaintenanceRequests().map((request) => {
-      const normalized = normalizeMaintenanceRequest(request);
-
-      if (
-        String(normalized.resident_id || "") === residentId ||
-        String(normalized.email || "").toLowerCase() === targetEmail
-      ) {
-        return {
-          ...request,
-          resident_name: newName,
-          email: targetEmail,
-          userName: newName,
-          studentName: newName,
-          residentName: newName,
-          userEmail: targetEmail,
-          studentEmail: targetEmail,
-          residentEmail: targetEmail,
-        };
-      }
-
-      return request;
-    });
-
-    saveMaintenanceRequests(requests);
-
-    const payments = getPayments().map((payment) => {
-      const normalized = normalizePayment(payment);
-
-      if (
-        String(normalized.resident_id || "") === residentId ||
-        String(normalized.email || "").toLowerCase() === targetEmail
-      ) {
-        return {
-          ...payment,
-          resident_name: newName,
-          email: targetEmail,
-          userName: newName,
-          studentName: newName,
-          userEmail: targetEmail,
-          studentEmail: targetEmail,
-        };
-      }
-
-      return payment;
-    });
-
-    savePayments(payments);
-
-    const reviews = getReviews().map((review) => {
-      const normalized = normalizeReview(review);
-
-      if (
-        String(normalized.resident_id || "") === residentId ||
-        String(normalized.email || "").toLowerCase() === targetEmail
-      ) {
-        return {
-          ...review,
-          resident_name: newName,
-          email: targetEmail,
-          userName: newName,
-          residentName: newName,
-          userEmail: targetEmail,
-          residentEmail: targetEmail,
-        };
-      }
-
-      return review;
-    });
-
-    saveReviews(reviews);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const oldEmail = editEmail.trim().toLowerCase();
-
-    const fullName = form.fullName.trim();
+    const fullName = form.full_name.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.trim();
-    const userType = form.user_type;
-    const universityName = form.university_name.trim();
+    const role = form.role;
+    const university = form.university.trim();
     const major = form.major.trim();
-    const companyName = form.company_name.trim();
-    const jobPosition = form.job_position.trim();
-    const residentStatus = form.resident_status;
+    const company = form.company.trim();
 
-    if (!fullName || !email || !phone || !userType) {
+    if (!fullName || !email || !phone || !role) {
       alert("Please fill all required fields.");
       return;
     }
@@ -549,123 +364,57 @@ function ManageStudentsPage() {
       return;
     }
 
-    if (userType === "student" && (!universityName || !major)) {
+    if (role === "student" && (!university || !major)) {
       alert("Please fill university and major fields.");
       return;
     }
 
-    if (userType === "employee" && (!companyName || !jobPosition)) {
-      alert("Please fill company and job title fields.");
+    if (role === "employee" && !company) {
+      alert("Please fill company field.");
       return;
     }
 
-    let allData = getResidentsData();
+    try {
+      setSaving(true);
 
-    const emailExists = allData.find((resident) => {
-      const residentEmail = String(resident.email || "").toLowerCase();
-      return residentEmail === email && residentEmail !== oldEmail;
-    });
-
-    if (emailExists) {
-      alert("This email is already used by another account.");
-      return;
-    }
-
-    const nameParts = splitFullName(fullName);
-
-    if (!oldEmail) {
-      const residentId = Date.now();
-
-      const newResident = normalizeResident({
-        resident_id: residentId,
-        first_name: nameParts.first_name,
-        last_name: nameParts.last_name,
+      const payload = {
+        full_name: fullName,
         email,
-        password: "123456",
         phone,
-        user_type: userType,
-        university_name: userType === "student" ? universityName : "",
-        major: userType === "student" ? major : "",
-        company_name: userType === "employee" ? companyName : "",
-        job_position: userType === "employee" ? jobPosition : "",
-        profile_image: "",
-        resident_status: residentStatus,
-        created_at: formatDateToday(),
-        updated_at: "",
-      });
+        role,
+        university: role === "student" ? university : "",
+        major: role === "student" ? major : "",
+        company: role === "employee" ? company : "",
+      };
 
-      allData.unshift(newResident);
-      saveResidentsData(allData);
-
-      alert("Resident added successfully. Default password is 123456.");
-    } else {
-      let updatedResident = null;
-
-      allData = allData.map((resident) => {
-        if (String(resident.email || "").toLowerCase() === oldEmail) {
-          const currentUserType = normalizeUserType(
-            resident.user_type || resident.role || userType
-          );
-
-          updatedResident = normalizeResident({
-            ...resident,
-            first_name: nameParts.first_name,
-            last_name: nameParts.last_name,
-            phone,
-            user_type: currentUserType,
-            university_name: currentUserType === "student" ? universityName : "",
-            major: currentUserType === "student" ? major : "",
-            company_name: currentUserType === "employee" ? companyName : "",
-            job_position: currentUserType === "employee" ? jobPosition : "",
-            resident_status: residentStatus,
-            updated_at: formatDateToday(),
-          });
-
-          return updatedResident;
-        }
-
-        return resident;
-      });
-
-      saveResidentsData(allData);
-
-      if (updatedResident) {
-        updateRelatedData(updatedResident, fullName);
-      }
-
-      alert("Resident updated successfully.");
-    }
-
-    closeResidentModal();
-  };
-
-  const toggleResidentStatus = (email) => {
-    const allData = getResidentsData();
-
-    const updated = allData.map((resident) => {
-      if (String(resident.email || "").toLowerCase() === email.toLowerCase()) {
-        const oldStatus = getResidentStatus(resident);
-        const newStatus = oldStatus === "Inactive" ? "Active" : "Inactive";
-
-        return normalizeResident({
-          ...resident,
-          resident_status: newStatus,
-          status: newStatus,
-          updated_at: formatDateToday(),
-          updatedAt: formatDateToday(),
+      if (!editResidentId) {
+        await createResident({
+          ...payload,
+          password: "123456",
         });
+
+        alert("Resident added successfully. Default password is 123456.");
+      } else {
+        await updateResident(editResidentId, payload);
+        alert("Resident updated successfully.");
       }
 
-      return resident;
-    });
-
-    saveResidentsData(updated);
+      closeResidentModal();
+      loadResidentsPageData();
+    } catch (error) {
+      console.error("Save resident failed:", error);
+      alert(
+        "Resident could not be saved. We may need to fix POST/PATCH /residents later."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const viewResidentDetails = (email) => {
-    const resident = allResidents.find(
-      (item) => String(item.email || "").toLowerCase() === email.toLowerCase()
-    );
+  const viewResidentDetails = (residentId) => {
+    const resident = allResidents.find((item) => {
+      return Number(item.resident_id) === Number(residentId);
+    });
 
     if (!resident) {
       alert("Resident not found.");
@@ -681,7 +430,7 @@ function ManageStudentsPage() {
     const details =
       "Resident Details\n\n" +
       "Name: " +
-      getResidentFullName(resident) +
+      (resident.full_name || "-") +
       "\n" +
       "Email: " +
       (resident.email || "-") +
@@ -690,10 +439,7 @@ function ManageStudentsPage() {
       (resident.phone || "-") +
       "\n" +
       "Role: " +
-      normalizeUserType(resident.user_type) +
-      "\n" +
-      "Status: " +
-      getResidentStatus(resident) +
+      displayRole(resident.role) +
       "\n\n" +
       "Current Dorm: " +
       (latestBooking ? latestBooking.dorm_name || "-" : "Not assigned") +
@@ -716,26 +462,33 @@ function ManageStudentsPage() {
     alert(details);
   };
 
-  const deleteResident = (email) => {
+  const deleteResident = async (residentId) => {
     const ok = window.confirm(
-      "Are you sure you want to delete this resident?\n\n" +
-        "This will remove the account only. Old bookings, payments, maintenance requests, and reviews will stay as historical records."
+      "Are you sure you want to delete this resident?"
     );
 
     if (!ok) return;
 
-    const updated = getResidentsData().filter((resident) => {
-      return String(resident.email || "").toLowerCase() !== email.toLowerCase();
-    });
-
-    saveResidentsData(updated);
-    alert("Resident deleted successfully.");
+    try {
+      await deleteResidentApi(residentId);
+      alert("Resident deleted successfully.");
+      loadResidentsPageData();
+    } catch (error) {
+      console.error("Delete resident failed:", error);
+      alert(
+        "Resident could not be deleted. It may have bookings connected to it."
+      );
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
@@ -840,7 +593,7 @@ function ManageStudentsPage() {
             <label>Filter by Role</label>
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={(event) => setRoleFilter(event.target.value)}
             >
               <option value="All">All Residents</option>
               <option value="student">Students</option>
@@ -854,12 +607,16 @@ function ManageStudentsPage() {
               type="text"
               placeholder="Search by name, email, phone, university, or company"
               value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              onChange={(event) => setSearchValue(event.target.value)}
             />
           </div>
         </section>
 
-        {filteredResidents.length === 0 ? (
+        {loading ? (
+          <div className="empty-students">
+            <h3>Loading residents...</h3>
+          </div>
+        ) : filteredResidents.length === 0 ? (
           <div className="empty-students">
             <h3>No residents found</h3>
             <p>No student or employee accounts match your search.</p>
@@ -867,9 +624,8 @@ function ManageStudentsPage() {
         ) : (
           <section className="student-list">
             {filteredResidents.map((resident) => {
-              const userType = normalizeUserType(resident.user_type);
-              const status = getResidentStatus(resident);
-              const fullName = getResidentFullName(resident);
+              const userType = normalizeUserType(resident.role);
+              const fullName = resident.full_name || "Resident";
               const email = resident.email || "-";
               const phone = resident.phone || "-";
 
@@ -879,19 +635,17 @@ function ManageStudentsPage() {
               const residentMaintenance = getMaintenanceForResident(resident);
               const residentReviews = getReviewsForResident(resident);
 
-              const approvedBookings = residentBookings.filter(
-                (booking) => booking.booking_status === "Approved"
-              ).length;
+              const approvedBookings = residentBookings.filter((booking) => {
+                return String(booking.booking_status).toLowerCase() === "approved";
+              }).length;
 
               const completedPayments = residentPayments.filter((payment) =>
                 isPaid(payment.payment_status)
               ).length;
 
               const openMaintenance = residentMaintenance.filter((request) => {
-                return (
-                  request.request_status === "Pending" ||
-                  request.request_status === "In Progress"
-                );
+                const status = String(request.request_status || "").toLowerCase();
+                return status === "pending" || status === "in_progress";
               }).length;
 
               const dorm = latestBooking
@@ -909,11 +663,13 @@ function ManageStudentsPage() {
                 : "No Booking";
 
               return (
-                <div className="student-card" key={resident.email}>
+                <div className="student-card" key={resident.resident_id}>
                   <div className="student-main">
                     <div className="student-title-row">
                       <h2>{fullName}</h2>
-                      <span className={`role-badge ${userType}`}>{userType}</span>
+                      <span className={`role-badge ${userType}`}>
+                        {displayRole(userType)}
+                      </span>
                     </div>
 
                     <div className="student-info-grid">
@@ -932,7 +688,7 @@ function ManageStudentsPage() {
                           <p>
                             <i className="fa-solid fa-school"></i>{" "}
                             <strong>University:</strong>{" "}
-                            {resident.university_name || "-"}
+                            {resident.university || "-"}
                           </p>
 
                           <p>
@@ -945,13 +701,7 @@ function ManageStudentsPage() {
                           <p>
                             <i className="fa-solid fa-building-user"></i>{" "}
                             <strong>Company:</strong>{" "}
-                            {resident.company_name || "-"}
-                          </p>
-
-                          <p>
-                            <i className="fa-solid fa-briefcase"></i>{" "}
-                            <strong>Job Title:</strong>{" "}
-                            {resident.job_position || "-"}
+                            {resident.company || "-"}
                           </p>
                         </>
                       )}
@@ -981,15 +731,19 @@ function ManageStudentsPage() {
                       <span>
                         <strong>{residentBookings.length}</strong> Bookings
                       </span>
+
                       <span>
                         <strong>{approvedBookings}</strong> Approved
                       </span>
+
                       <span>
                         <strong>{completedPayments}</strong> Payments
                       </span>
+
                       <span>
                         <strong>{openMaintenance}</strong> Open Maintenance
                       </span>
+
                       <span>
                         <strong>{residentReviews.length}</strong> Reviews
                       </span>
@@ -997,39 +751,26 @@ function ManageStudentsPage() {
                   </div>
 
                   <div className="student-side">
-                    <span
-                      className={`status-badge ${
-                        status === "Active" ? "active-status" : "inactive-status"
-                      }`}
-                    >
-                      {status}
-                    </span>
+                    <span className="status-badge active-status">Active</span>
 
                     <div className="student-actions">
                       <button
                         className="view-btn"
-                        onClick={() => viewResidentDetails(email)}
+                        onClick={() => viewResidentDetails(resident.resident_id)}
                       >
                         View Details
                       </button>
 
                       <button
                         className="edit-btn"
-                        onClick={() => openEditResidentModal(email)}
+                        onClick={() => openEditResidentModal(resident.resident_id)}
                       >
                         Edit
                       </button>
 
                       <button
-                        className="toggle-btn"
-                        onClick={() => toggleResidentStatus(email)}
-                      >
-                        {status === "Active" ? "Deactivate" : "Activate"}
-                      </button>
-
-                      <button
                         className="delete-btn"
-                        onClick={() => deleteResident(email)}
+                        onClick={() => deleteResident(resident.resident_id)}
                       >
                         Delete
                       </button>
@@ -1044,16 +785,21 @@ function ManageStudentsPage() {
 
       <div
         className={`modal-overlay ${showModal ? "show" : ""}`}
-        onClick={(e) => {
-          if (e.target.classList.contains("modal-overlay")) {
+        onClick={(event) => {
+          if (event.target.classList.contains("modal-overlay")) {
             closeResidentModal();
           }
         }}
       >
         <div className="modal-card">
           <div className="modal-header">
-            <h2>{editEmail ? "Edit Resident" : "Add Resident"}</h2>
-            <button className="close-btn" onClick={closeResidentModal}>
+            <h2>{editResidentId ? "Edit Resident" : "Add Resident"}</h2>
+
+            <button
+              type="button"
+              className="close-btn"
+              onClick={closeResidentModal}
+            >
               &times;
             </button>
           </div>
@@ -1065,9 +811,9 @@ function ManageStudentsPage() {
                 <input
                   type="text"
                   placeholder="Enter full name"
-                  value={form.fullName}
-                  onChange={(e) =>
-                    setForm({ ...form, fullName: e.target.value })
+                  value={form.full_name}
+                  onChange={(event) =>
+                    setForm({ ...form, full_name: event.target.value })
                   }
                   required
                 />
@@ -1079,8 +825,10 @@ function ManageStudentsPage() {
                   type="email"
                   placeholder="Enter email"
                   value={form.email}
-                  disabled={!!editEmail}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  disabled={!!editResidentId}
+                  onChange={(event) =>
+                    setForm({ ...form, email: event.target.value })
+                  }
                   required
                 />
               </div>
@@ -1091,7 +839,9 @@ function ManageStudentsPage() {
                   type="text"
                   placeholder="Example: 71-123456"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onChange={(event) =>
+                    setForm({ ...form, phone: event.target.value })
+                  }
                   required
                 />
               </div>
@@ -1099,10 +849,10 @@ function ManageStudentsPage() {
               <div className="form-group">
                 <label>Role</label>
                 <select
-                  value={form.user_type}
-                  disabled={!!editEmail}
-                  onChange={(e) =>
-                    setForm({ ...form, user_type: e.target.value })
+                  value={form.role}
+                  disabled={!!editResidentId}
+                  onChange={(event) =>
+                    setForm({ ...form, role: event.target.value })
                   }
                   required
                 >
@@ -1112,18 +862,18 @@ function ManageStudentsPage() {
                 </select>
               </div>
 
-              {form.user_type === "student" && (
+              {form.role === "student" && (
                 <>
                   <div className="form-group student-field">
                     <label>University</label>
                     <input
                       type="text"
                       placeholder="Example: AUB, LAU, LU"
-                      value={form.university_name}
-                      onChange={(e) =>
+                      value={form.university}
+                      onChange={(event) =>
                         setForm({
                           ...form,
-                          university_name: e.target.value,
+                          university: event.target.value,
                         })
                       }
                     />
@@ -1135,61 +885,34 @@ function ManageStudentsPage() {
                       type="text"
                       placeholder="Enter major"
                       value={form.major}
-                      onChange={(e) =>
-                        setForm({ ...form, major: e.target.value })
+                      onChange={(event) =>
+                        setForm({ ...form, major: event.target.value })
                       }
                     />
                   </div>
                 </>
               )}
 
-              {form.user_type === "employee" && (
-                <>
-                  <div className="form-group employee-field">
-                    <label>Company</label>
-                    <input
-                      type="text"
-                      placeholder="Enter company"
-                      value={form.company_name}
-                      onChange={(e) =>
-                        setForm({ ...form, company_name: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="form-group employee-field">
-                    <label>Job Title</label>
-                    <input
-                      type="text"
-                      placeholder="Enter job title"
-                      value={form.job_position}
-                      onChange={(e) =>
-                        setForm({ ...form, job_position: e.target.value })
-                      }
-                    />
-                  </div>
-                </>
+              {form.role === "employee" && (
+                <div className="form-group employee-field">
+                  <label>Company</label>
+                  <input
+                    type="text"
+                    placeholder="Enter company"
+                    value={form.company}
+                    onChange={(event) =>
+                      setForm({ ...form, company: event.target.value })
+                    }
+                  />
+                </div>
               )}
-
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={form.resident_status}
-                  onChange={(e) =>
-                    setForm({ ...form, resident_status: e.target.value })
-                  }
-                  required
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
             </div>
 
             <div className="modal-note">
               <p>
-                Default password for admin-created accounts is{" "}
-                <strong>123456</strong>.
+                Adding residents from admin may need backend adjustment because
+                your database uses <strong>user_id</strong> in the resident
+                table.
               </p>
             </div>
 
@@ -1198,12 +921,13 @@ function ManageStudentsPage() {
                 type="button"
                 className="cancel-btn"
                 onClick={closeResidentModal}
+                disabled={saving}
               >
                 Cancel
               </button>
 
-              <button type="submit" className="save-btn">
-                Save Resident
+              <button type="submit" className="save-btn" disabled={saving}>
+                {saving ? "Saving..." : "Save Resident"}
               </button>
             </div>
           </form>

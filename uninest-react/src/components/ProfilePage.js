@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./ProfilePage.css";
+import { getResidents, getBookings, updateResident } from "../api";
 
 function ProfilePage() {
   const currentEmail = (
@@ -8,139 +9,18 @@ function ProfilePage() {
 
   const currentResidentId = localStorage.getItem("loggedInResidentId") || "";
 
-  const getUsers = () => {
-    return JSON.parse(localStorage.getItem("users")) || [];
-  };
+  const [resident, setResident] = useState(null);
+  const [latestBooking, setLatestBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const saveUsers = (users) => {
-    localStorage.setItem("users", JSON.stringify(users));
-  };
-
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
-  };
-
-  const saveBookings = (bookings) => {
-    localStorage.setItem("studentBookings", JSON.stringify(bookings));
-  };
-
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
-  };
-
-  const saveMaintenanceRequests = (requests) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(requests));
-  };
-
-  const getPayments = () => {
-    return JSON.parse(localStorage.getItem("payments")) || [];
-  };
-
-  const savePayments = (payments) => {
-    localStorage.setItem("payments", JSON.stringify(payments));
-  };
-
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
-  };
-
-  const saveReviews = (reviews) => {
-    localStorage.setItem("reviews", JSON.stringify(reviews));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const splitFullName = (fullName) => {
-    const parts = fullName
-      .trim()
-      .split(" ")
-      .filter((part) => part !== "");
-
-    return {
-      first_name: parts[0] || "",
-      last_name: parts.length > 1 ? parts.slice(1).join(" ") : "",
-    };
-  };
-
-  const getResidentFullName = (resident) => {
-    const firstName = resident?.first_name || "";
-    const lastName = resident?.last_name || "";
-    const fullName = (firstName + " " + lastName).trim();
-
-    return fullName || "Resident";
-  };
-
-  const getCurrentUser = () => {
-    const users = getUsers();
-
-    return users.find((user) => {
-      return (
-        String(user.resident_id || "") === String(currentResidentId) ||
-        (user.email || "").toLowerCase() === currentEmail
-      );
-    });
-  };
-
-  const getLatestBooking = () => {
-    const bookings = getBookings();
-
-    const myBookings = bookings
-      .filter((booking) => {
-        const bookingResidentId = String(booking.resident_id || "");
-        const bookingEmail = (
-          booking.email ||
-          booking.userEmail ||
-          booking.studentEmail ||
-          ""
-        ).toLowerCase();
-
-        return (
-          bookingResidentId === String(currentResidentId) ||
-          bookingEmail === currentEmail
-        );
-      })
-      .sort((a, b) => {
-        return Number(b.booking_id || b.id || 0) - Number(a.booking_id || a.id || 0);
-      });
-
-    return myBookings.find((booking) => {
-      const bookingStatus = booking.booking_status || booking.status || "Pending";
-      return bookingStatus === "Approved" || bookingStatus === "Pending";
-    });
-  };
-
-  const currentUser = getCurrentUser();
-  const latestBooking = getLatestBooking();
-
-  const initialFullName = currentUser ? getResidentFullName(currentUser) : "Resident";
-
-  const initialUserType = (
-    currentUser?.user_type ||
-    localStorage.getItem("loggedInUserType") ||
-    localStorage.getItem("loggedInRole") ||
-    "student"
-  ).toLowerCase();
-
-  const [fullName, setFullName] = useState(initialFullName);
-  const [phone, setPhone] = useState(currentUser?.phone || "");
-  const [university, setUniversity] = useState(currentUser?.university_name || "");
-  const [major, setMajor] = useState(currentUser?.major || "");
-  const [company, setCompany] = useState(currentUser?.company_name || "");
-  const [jobTitle, setJobTitle] = useState(currentUser?.job_position || "");
-  const [bio, setBio] = useState(currentUser?.bio || "");
-  const [profileImageData, setProfileImageData] = useState(
-    currentUser?.profile_image || ""
-  );
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [university, setUniversity] = useState("");
+  const [major, setMajor] = useState("");
+  const [company, setCompany] = useState("");
+  const [bio, setBio] = useState("");
+  const [profileImageData, setProfileImageData] = useState("");
 
   const logout = (event) => {
     event.preventDefault();
@@ -155,115 +35,126 @@ function ProfilePage() {
     window.location.href = "/";
   };
 
-  const updateRelatedData = (newName) => {
-    const bookings = getBookings().map((booking) => {
-      const bookingResidentId = String(booking.resident_id || "");
-      const bookingEmail = (
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        ""
-      ).toLowerCase();
-
-      if (
-        bookingResidentId === String(currentResidentId) ||
-        bookingEmail === currentEmail
-      ) {
-        return {
-          ...booking,
-          resident_name: newName,
-          userName: newName,
-          studentName: newName,
-          residentName: newName,
-        };
-      }
-
-      return booking;
-    });
-
-    saveBookings(bookings);
-
-    const requests = getMaintenanceRequests().map((request) => {
-      const requestResidentId = String(request.resident_id || "");
-      const requestEmail = (
-        request.email ||
-        request.userEmail ||
-        request.studentEmail ||
-        request.residentEmail ||
-        ""
-      ).toLowerCase();
-
-      if (
-        requestResidentId === String(currentResidentId) ||
-        requestEmail === currentEmail
-      ) {
-        return {
-          ...request,
-          resident_name: newName,
-          userName: newName,
-          studentName: newName,
-          residentName: newName,
-        };
-      }
-
-      return request;
-    });
-
-    saveMaintenanceRequests(requests);
-
-    const payments = getPayments().map((payment) => {
-      const paymentResidentId = String(payment.resident_id || "");
-      const paymentEmail = (
-        payment.email ||
-        payment.userEmail ||
-        payment.studentEmail ||
-        ""
-      ).toLowerCase();
-
-      if (
-        paymentResidentId === String(currentResidentId) ||
-        paymentEmail === currentEmail
-      ) {
-        return {
-          ...payment,
-          resident_name: newName,
-          userName: newName,
-          studentName: newName,
-          residentName: newName,
-        };
-      }
-
-      return payment;
-    });
-
-    savePayments(payments);
-
-    const reviews = getReviews().map((review) => {
-      const reviewResidentId = String(review.resident_id || "");
-      const reviewEmail = (
-        review.email ||
-        review.userEmail ||
-        review.residentEmail ||
-        ""
-      ).toLowerCase();
-
-      if (
-        reviewResidentId === String(currentResidentId) ||
-        reviewEmail === currentEmail
-      ) {
-        return {
-          ...review,
-          resident_name: newName,
-          userName: newName,
-          residentName: newName,
-        };
-      }
-
-      return review;
-    });
-
-    saveReviews(reviews);
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
+
+  const normalizeResident = (item) => {
+    return {
+      ...item,
+      resident_id: item.resident_id || item.id,
+      user_id: item.user_id || "",
+      full_name: item.full_name || item.user?.full_name || "Resident",
+      email: item.email || item.user?.email || "",
+      phone: item.phone || "",
+      role:
+        item.role ||
+        item.user_type ||
+        localStorage.getItem("loggedInUserType") ||
+        "student",
+      university: item.university || item.university_name || "",
+      major: item.major || "",
+      company: item.company || item.company_name || "",
+      bio: item.bio || "",
+      profile_image: item.profile_image || "",
+    };
+  };
+
+  const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const residentData = booking.resident || {};
+
+    return {
+      ...booking,
+      booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || residentData.resident_id || "",
+      email: booking.email || residentData.email || residentData.user?.email || "",
+
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "",
+      room_type: booking.room_type || room.room_type || "",
+
+      booking_status: booking.booking_status || "pending",
+      created_at: booking.created_at || "",
+    };
+  };
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+
+      const [residentsResponse, bookingsResponse] = await Promise.all([
+        getResidents(),
+        getBookings().catch(() => []),
+      ]);
+
+      const residentsList = Array.isArray(residentsResponse)
+        ? residentsResponse
+        : residentsResponse.data || [];
+
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
+
+      const normalizedResidents = residentsList.map(normalizeResident);
+
+      const foundResident = normalizedResidents.find((item) => {
+        const sameId = String(item.resident_id || "") === String(currentResidentId);
+        const sameEmail = String(item.email || "").toLowerCase() === currentEmail;
+
+        return sameId || sameEmail;
+      });
+
+      if (!foundResident) {
+        setResident(null);
+        return;
+      }
+
+      const normalizedBookings = bookingsList.map(normalizeBooking);
+
+      const myBookings = normalizedBookings
+        .filter((booking) => {
+          const bookingResidentId = String(booking.resident_id || "");
+          const bookingEmail = String(booking.email || "").toLowerCase();
+
+          return (
+            bookingResidentId === String(foundResident.resident_id) ||
+            bookingEmail === currentEmail
+          );
+        })
+        .sort((a, b) => Number(b.booking_id || 0) - Number(a.booking_id || 0));
+
+      const activeBooking =
+        myBookings.find((booking) => {
+          const status = normalizeStatus(booking.booking_status);
+          return status === "approved" || status === "pending";
+        }) || null;
+
+      setResident(foundResident);
+      setLatestBooking(activeBooking);
+
+      setFullName(foundResident.full_name || "Resident");
+      setPhone(foundResident.phone || "");
+      setUniversity(foundResident.university || "");
+      setMajor(foundResident.major || "");
+      setCompany(foundResident.company || "");
+      setBio(foundResident.bio || "");
+      setProfileImageData(foundResident.profile_image || "");
+    } catch (error) {
+      console.error("Profile load failed:", error);
+      alert("Could not load profile from backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
   const handleImageChange = (event) => {
     const file = event.target.files[0];
@@ -285,8 +176,13 @@ function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!resident) {
+      alert("Resident not found.");
+      return;
+    }
 
     if (!fullName.trim() || !phone.trim()) {
       alert("Please fill all required fields.");
@@ -300,108 +196,57 @@ function ProfilePage() {
       return;
     }
 
-    const users = getUsers();
-
-    const currentResident = users.find((user) => {
-      return (
-        String(user.resident_id || "") === String(currentResidentId) ||
-        (user.email || "").toLowerCase() === currentEmail
-      );
-    });
-
-    if (!currentResident) {
-      alert("User not found.");
-      return;
-    }
-
-    const userType = (
-      currentResident.user_type ||
-      localStorage.getItem("loggedInUserType") ||
-      localStorage.getItem("loggedInRole") ||
-      "student"
-    ).toLowerCase();
+    const userType = String(resident.role || "student").toLowerCase();
 
     if (userType === "student" && (!university.trim() || !major.trim())) {
       alert("Please fill university and major fields.");
       return;
     }
 
-    if (userType === "employee" && (!company.trim() || !jobTitle.trim())) {
-      alert("Please fill company and job title fields.");
+    if (userType === "employee" && !company.trim()) {
+      alert("Please fill company field.");
       return;
     }
 
-    let finalPassword = currentResident.password || "";
+    try {
+      setSaving(true);
 
-    if (currentPassword || newPassword || confirmPassword) {
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        alert("Please fill all password fields to change your password.");
-        return;
-      }
+      await updateResident(resident.resident_id, {
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        role: userType,
+        university: userType === "student" ? university.trim() : "",
+        major: userType === "student" ? major.trim() : "",
+        company: userType === "employee" ? company.trim() : "",
+      });
 
-      if (currentPassword !== currentResident.password) {
-        alert("Current password is incorrect.");
-        return;
-      }
+      localStorage.setItem("loggedInUser", fullName.trim());
+      localStorage.setItem("loggedInUserType", userType);
+      localStorage.setItem("loggedInRole", userType);
 
-      if (newPassword.length < 6) {
-        alert("New password must be at least 6 characters.");
-        return;
-      }
-
-      if (newPassword !== confirmPassword) {
-        alert("New password and confirmation do not match.");
-        return;
-      }
-
-      finalPassword = newPassword;
+      alert("Profile updated successfully.");
+      loadProfile();
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      alert("Profile could not be updated. We may need to fix PATCH /residents/{id} later.");
+    } finally {
+      setSaving(false);
     }
-
-    const nameParts = splitFullName(fullName);
-
-    const updatedUsers = users.map((user) => {
-      const sameResident =
-        String(user.resident_id || "") === String(currentResidentId) ||
-        (user.email || "").toLowerCase() === currentEmail;
-
-      if (sameResident) {
-        return {
-          ...user,
-
-          first_name: nameParts.first_name,
-          last_name: nameParts.last_name,
-
-          phone: phone.trim(),
-          user_type: userType,
-
-          university_name: userType === "student" ? university.trim() : "",
-          major: userType === "student" ? major.trim() : "",
-
-          company_name: userType === "employee" ? company.trim() : "",
-          job_position: userType === "employee" ? jobTitle.trim() : "",
-
-          bio: bio.trim(),
-          profile_image: profileImageData,
-          password: finalPassword,
-          updated_at: formatDateToday(),
-        };
-      }
-
-      return user;
-    });
-
-    saveUsers(updatedUsers);
-    updateRelatedData(fullName.trim());
-
-    localStorage.setItem("loggedInUser", fullName.trim());
-    localStorage.setItem("loggedInUserType", userType);
-    localStorage.setItem("loggedInRole", userType);
-
-    alert("Profile updated successfully!");
-    window.location.reload();
   };
 
-  if (!currentUser) {
+  if (loading) {
+    return (
+      <div className="profile-layout">
+        <main className="profile-main">
+          <div className="profile-card">
+            <h2>Loading profile...</h2>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!resident) {
     return (
       <div className="profile-layout">
         <main className="profile-main">
@@ -416,6 +261,8 @@ function ProfilePage() {
       </div>
     );
   }
+
+  const initialUserType = String(resident.role || "student").toLowerCase();
 
   const readableRole =
     initialUserType.charAt(0).toUpperCase() + initialUserType.slice(1);
@@ -529,7 +376,7 @@ function ProfilePage() {
                   onChange={handleImageChange}
                 />
                 <small className="form-note">
-                  Upload a profile image from your device.
+                  Image preview is frontend-only for now.
                 </small>
               </div>
 
@@ -550,7 +397,7 @@ function ProfilePage() {
                   <input
                     type="email"
                     id="residentEmail"
-                    value={currentUser.email || currentEmail}
+                    value={resident.email || currentEmail}
                     readOnly
                   />
                 </div>
@@ -576,53 +423,39 @@ function ProfilePage() {
               </div>
 
               {initialUserType === "student" && (
-                <div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="university">University</label>
-                      <input
-                        type="text"
-                        id="university"
-                        value={university}
-                        onChange={(event) => setUniversity(event.target.value)}
-                      />
-                    </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="university">University</label>
+                    <input
+                      type="text"
+                      id="university"
+                      value={university}
+                      onChange={(event) => setUniversity(event.target.value)}
+                    />
+                  </div>
 
-                    <div className="form-group">
-                      <label htmlFor="major">Major</label>
-                      <input
-                        type="text"
-                        id="major"
-                        value={major}
-                        onChange={(event) => setMajor(event.target.value)}
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="major">Major</label>
+                    <input
+                      type="text"
+                      id="major"
+                      value={major}
+                      onChange={(event) => setMajor(event.target.value)}
+                    />
                   </div>
                 </div>
               )}
 
               {initialUserType === "employee" && (
-                <div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="company">Company</label>
-                      <input
-                        type="text"
-                        id="company"
-                        value={company}
-                        onChange={(event) => setCompany(event.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="jobTitle">Job Title</label>
-                      <input
-                        type="text"
-                        id="jobTitle"
-                        value={jobTitle}
-                        onChange={(event) => setJobTitle(event.target.value)}
-                      />
-                    </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="company">Company</label>
+                    <input
+                      type="text"
+                      id="company"
+                      value={company}
+                      onChange={(event) => setCompany(event.target.value)}
+                    />
                   </div>
                 </div>
               )}
@@ -633,11 +466,7 @@ function ProfilePage() {
                   <input
                     type="text"
                     id="currentHousing"
-                    value={
-                      latestBooking
-                        ? latestBooking.dorm_name || latestBooking.housingName || ""
-                        : ""
-                    }
+                    value={latestBooking ? latestBooking.dorm_name || "" : ""}
                     disabled
                   />
                 </div>
@@ -647,11 +476,7 @@ function ProfilePage() {
                   <input
                     type="text"
                     id="roomType"
-                    value={
-                      latestBooking
-                        ? latestBooking.room_type || latestBooking.roomType || ""
-                        : ""
-                    }
+                    value={latestBooking ? latestBooking.room_type || "" : ""}
                     disabled
                   />
                 </div>
@@ -668,55 +493,8 @@ function ProfilePage() {
                 ></textarea>
               </div>
 
-              <div className="password-section">
-                <h3>Change Password</h3>
-                <p>
-                  Leave these fields empty if you do not want to change your
-                  password.
-                </p>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="currentPassword">Current Password</label>
-                    <input
-                      type="password"
-                      id="currentPassword"
-                      placeholder="Current password"
-                      value={currentPassword}
-                      onChange={(event) =>
-                        setCurrentPassword(event.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="newPassword">New Password</label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      placeholder="New password"
-                      value={newPassword}
-                      onChange={(event) => setNewPassword(event.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="confirmPassword">Confirm New Password</label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    placeholder="Confirm new password"
-                    value={confirmPassword}
-                    onChange={(event) =>
-                      setConfirmPassword(event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="save-btn">
-                Save Changes
+              <button type="submit" className="save-btn" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             </form>
           </div>

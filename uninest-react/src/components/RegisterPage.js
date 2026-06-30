@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./RegisterPage.css";
+import { createResident, getResidents } from "../api";
 
 function RegisterPage() {
   const [role, setRole] = useState("");
@@ -12,22 +13,46 @@ function RegisterPage() {
     });
   };
 
-  const splitFullName = (fullName) => {
-    const parts = fullName
-      .trim()
-      .split(" ")
-      .filter((part) => part !== "");
-
-    const firstName = parts[0] || "";
-    const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
-
-    return {
-      first_name: firstName,
-      last_name: lastName,
-    };
+  const getLocalUsers = () => {
+    return JSON.parse(localStorage.getItem("users")) || [];
   };
 
-  const handleRegister = (event) => {
+  const saveLocalUser = (newResident) => {
+    const users = getLocalUsers();
+    users.push(newResident);
+    localStorage.setItem("users", JSON.stringify(users));
+  };
+
+  const checkBackendEmailExists = async (email) => {
+    try {
+      const response = await getResidents();
+      const residents = Array.isArray(response) ? response : response.data || [];
+
+      return residents.some((resident) => {
+        const residentEmail = (
+          resident.email ||
+          resident.user?.email ||
+          resident.userEmail ||
+          ""
+        ).toLowerCase();
+
+        return residentEmail === email;
+      });
+    } catch (error) {
+      console.warn("Could not check backend residents:", error);
+      return false;
+    }
+  };
+
+  const checkLocalEmailExists = (email) => {
+    const users = getLocalUsers();
+
+    return users.some((user) => {
+      return String(user.email || "").toLowerCase() === email;
+    });
+  };
+
+  const handleRegister = async (event) => {
     event.preventDefault();
 
     const fullName = event.target.fullname.value.trim();
@@ -44,7 +69,14 @@ function RegisterPage() {
     const password = event.target.password.value.trim();
     const confirmPassword = event.target.confirmPassword.value.trim();
 
-    if (!fullName || !email || !phone || !userType || !password || !confirmPassword) {
+    if (
+      !fullName ||
+      !email ||
+      !phone ||
+      !userType ||
+      !password ||
+      !confirmPassword
+    ) {
       alert("Please fill all required fields.");
       return;
     }
@@ -83,49 +115,68 @@ function RegisterPage() {
       return;
     }
 
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    const userExists = users.find((user) => {
-      return (user.email || "").toLowerCase() === email;
-    });
-
-    if (userExists || email === "admin@uninest.com") {
+    if (email === "admin@uninest.com") {
       alert("This account already exists. Please login.");
       return;
     }
 
-    const nameParts = splitFullName(fullName);
+    const backendExists = await checkBackendEmailExists(email);
+    const localExists = checkLocalEmailExists(email);
 
-    const newResident = {
-      resident_id: Date.now(),
+    if (backendExists || localExists) {
+      alert("This account already exists. Please login.");
+      return;
+    }
 
-      first_name: nameParts.first_name,
-      last_name: nameParts.last_name,
-
+    const payload = {
+      full_name: fullName,
       email: email,
       password: password,
       phone: phone,
-
-      user_type: userType,
-
-      university_name: userType === "student" ? universityName : "",
+      role: userType,
+      university: userType === "student" ? universityName : "",
       major: userType === "student" ? major : "",
-
-      company_name: userType === "employee" ? companyName : "",
-      job_position: userType === "employee" ? jobPosition : "",
-
-      profile_image: "",
-
-      created_at: formatDateToday(),
-      updated_at: "",
+      company: userType === "employee" ? companyName : "",
     };
 
-    users.push(newResident);
+    try {
+      await createResident(payload);
 
-    localStorage.setItem("users", JSON.stringify(users));
+      alert("Registered successfully! You can now login.");
+      window.location.href = "/login";
+    } catch (error) {
+      console.warn("Backend registration failed, saving locally:", error);
 
-    alert("Registered successfully! You can now login.");
-    window.location.href = "/login";
+      const newResident = {
+        resident_id: Date.now(),
+        full_name: fullName,
+        email: email,
+        password: password,
+        phone: phone,
+        role: userType,
+        user_type: userType,
+
+        university: userType === "student" ? universityName : "",
+        university_name: userType === "student" ? universityName : "",
+        major: userType === "student" ? major : "",
+
+        company: userType === "employee" ? companyName : "",
+        company_name: userType === "employee" ? companyName : "",
+        job_position: userType === "employee" ? jobPosition : "",
+
+        profile_image: "",
+        created_at: formatDateToday(),
+        updated_at: "",
+      };
+
+      saveLocalUser(newResident);
+
+      alert(
+        "Registered locally for frontend testing. Later we will fix backend POST /residents."
+      );
+
+      window.location.href = "/login";
+    }
   };
 
   return (

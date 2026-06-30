@@ -1,13 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ManageBookingsPage.css";
+import {
+  getBookings,
+  getDocuments,
+  getPayments,
+  updateBooking,
+  updateDocument,
+  deleteBooking,
+} from "../api";
 
 function ManageBookingsPage() {
   const navigate = useNavigate();
+
   const [bookings, setBookings] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
+
     if (role !== "admin") {
       navigate("/login");
       return;
@@ -16,331 +29,191 @@ function ManageBookingsPage() {
     loadBookings();
   }, [navigate]);
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const saveBookings = (items) => {
-    localStorage.setItem("studentBookings", JSON.stringify(items));
-    setBookings(items);
-  };
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
 
-  const saveNotifications = (items) => {
-    localStorage.setItem("notifications", JSON.stringify(items));
-  };
-
-  const getDorms = () => {
-    const dorms = JSON.parse(localStorage.getItem("dorms"));
-    const housings = JSON.parse(localStorage.getItem("housings"));
-
-    if (dorms && Array.isArray(dorms)) return dorms;
-
-    if (housings && Array.isArray(housings)) {
-      localStorage.setItem("dorms", JSON.stringify(housings));
-      return housings;
-    }
-
-    return [];
-  };
-
-  const saveDorms = (dorms) => {
-    localStorage.setItem("dorms", JSON.stringify(dorms));
-    localStorage.setItem("housings", JSON.stringify(dorms));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const normalizeBooking = (booking) => {
-    return {
-      ...booking,
-
-      booking_id: booking.booking_id || booking.id,
-
-      resident_id: booking.resident_id || "",
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        "Resident",
-
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        "-",
-
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
-      dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
-
-      university_name: booking.university_name || booking.university || "-",
-      city: booking.city || "",
-      area: booking.area || booking.location || "-",
-
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "-",
-      room_type: booking.room_type || booking.roomType || "-",
-      room_price: Number(booking.room_price || booking.price || 0),
-
-      check_in_date:
-        booking.check_in_date ||
-        booking.checkInDate ||
-        booking.moveInDate ||
-        "-",
-
-      check_out_date: booking.check_out_date || booking.checkOutDate || "-",
-      total_price: Number(booking.total_price || booking.totalCost || 0),
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-      document_status:
-        booking.document_status || booking.documentStatus || "Pending",
-
-      document_type:
-        booking.document_type || booking.documentType || "Not specified",
-
-      file_path: booking.file_path || booking.documentData || "",
-      file_name: booking.file_name || booking.documentName || "No file uploaded",
-      file_type: booking.file_type || booking.documentFileType || "",
-
-      payment_status: booking.payment_status || booking.paymentStatus || "Pending",
-
-      created_at: booking.created_at || booking.createdAt || "-",
-      updated_at: booking.updated_at || booking.updatedAt || "Not updated yet",
-    };
-  };
-
-  const loadBookings = () => {
-    setBookings(getBookings());
-  };
-
-  const getImageUrl = (image) => {
-    if (!image) return "/images/aub1.jpg";
-
-    if (
-      image.startsWith("data:") ||
-      image.startsWith("http") ||
-      image.startsWith("/")
-    ) {
-      return image;
-    }
-
-    return "/" + image;
+    return "Pending";
   };
 
   const getStatusClass = (status) => {
-    return String(status || "Pending").toLowerCase();
+    return normalizeStatus(status);
   };
 
-  const addNotification = (
-    resident_id,
-    notification_type,
-    title,
-    message,
-    emailFallback
-  ) => {
-    if (!resident_id && !emailFallback) return;
+  const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
 
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
+    return {
+      ...booking,
+      booking_id: booking.booking_id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      resident_name:
+        booking.resident_name || resident.full_name || "Resident",
+      email: booking.email || resident.email || resident.user?.email || "-",
 
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: resident_id || "",
-      title,
-      message,
-      notification_type,
-      is_read: false,
-      created_at: formatDateToday(),
+      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
+      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
 
-      id: notificationId,
-      userEmail: emailFallback || "",
-      type: notification_type,
-      isRead: false,
-      date: formatDateToday(),
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || "",
+
+      room_id: booking.room_id || room.room_id || "",
+      room_number: booking.room_number || room.room_number || "-",
+      room_type: booking.room_type || room.room_type || "-",
+      room_price: Number(booking.room_price || room.room_price || 0),
+
+      check_in_date: booking.check_in_date || "-",
+      check_out_date: booking.check_out_date || "-",
+      total_price: Number(booking.total_price || 0),
+
+      booking_status: booking.booking_status || "pending",
+      admin_note: booking.admin_note || "",
+      admin_id: booking.admin_id || null,
+
+      created_at: booking.created_at || "-",
+      updated_at: booking.updated_at || "Not updated yet",
     };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
   };
 
-  const calculateDormStatus = (rooms) => {
-    if (!rooms || rooms.length === 0) return "Full";
-
-    const hasAvailableRoom = rooms.some((room) => {
-      const availabilityStatus =
-        room.availability_status || room.status || "Available";
-
-      return availabilityStatus === "Available";
-    });
-
-    return hasAvailableRoom ? "Available" : "Full";
-  };
-
-  const updateRoomOccupancyAfterApproval = (booking) => {
-    const normalizedBooking = normalizeBooking(booking);
-    const dorms = getDorms();
-
-    const dormIndex = dorms.findIndex((dorm) => {
-      return Number(dorm.dorm_id || dorm.id) === Number(normalizedBooking.dorm_id);
-    });
-
-    if (dormIndex === -1) {
-      alert("Dorm not found. Room occupancy was not updated.");
-      return false;
-    }
-
-    const dorm = dorms[dormIndex];
-
-    if (!Array.isArray(dorm.rooms)) {
-      alert("No rooms found for this dorm.");
-      return false;
-    }
-
-    const roomIndex = dorm.rooms.findIndex((room) => {
-      return (
-        String(room.room_id || room.roomId || "") ===
-          String(normalizedBooking.room_id || "") ||
-        String(room.room_number || room.roomNumber || "") ===
-          String(normalizedBooking.room_number || "")
-      );
-    });
-
-    if (roomIndex === -1) {
-      alert("Room not found. Room occupancy was not updated.");
-      return false;
-    }
-
-    const room = dorm.rooms[roomIndex];
-
-    const occupancyLimit = Number(
-      room.occupancy_limit ||
-        room.occupancyLimit ||
-        room.room_capacity ||
-        room.capacity ||
-        1
-    );
-
-    const currentOccupancy = Number(
-      room.current_occupancy || room.currentOccupancy || 0
-    );
-
-    if (currentOccupancy >= occupancyLimit) {
-      alert("This room is already full. Booking cannot be approved.");
-      return false;
-    }
-
-    const newOccupancy = currentOccupancy + 1;
-    const newRoomStatus = newOccupancy >= occupancyLimit ? "Full" : "Available";
-
-    dorm.rooms[roomIndex] = {
-      ...room,
-      current_occupancy: newOccupancy,
-      occupancy_limit: occupancyLimit,
-      availability_status: newRoomStatus,
-
-      currentOccupancy: newOccupancy,
-      occupancyLimit: occupancyLimit,
-      status: newRoomStatus,
+  const normalizeDocument = (document) => {
+    return {
+      ...document,
+      document_id: document.document_id,
+      booking_id: document.booking_id,
+      file_path: document.file_path || "",
+      document_type: document.document_type || "Not specified",
+      document_status: document.document_status || "pending",
+      uploaded_at: document.uploaded_at || document.created_at || "",
     };
+  };
 
-    const dormStatus = calculateDormStatus(dorm.rooms);
-
-    dorms[dormIndex] = {
-      ...dorm,
-      rooms: dorm.rooms,
-      availability_status: dormStatus,
-      status: dormStatus,
-      availability: dormStatus,
+  const normalizePayment = (payment) => {
+    return {
+      ...payment,
+      payment_id: payment.payment_id,
+      booking_id: payment.booking_id,
+      amount: Number(payment.amount || 0),
+      payment_method: payment.payment_method || "Not paid yet",
+      payment_status: payment.payment_status || "pending",
+      created_at: payment.created_at || "",
     };
-
-    saveDorms(dorms);
-    return true;
   };
 
-  const approveDocument = (bookingId) => {
-    const updatedBookings = getBookings().map((booking) => {
-      const normalized = normalizeBooking(booking);
+  const loadBookings = async () => {
+    try {
+      setLoading(true);
 
-      if (Number(normalized.booking_id) === Number(bookingId)) {
-        addNotification(
-          normalized.resident_id,
-          "booking",
-          "Document Approved",
-          "Your document for " +
-            normalized.dorm_name +
-            " has been approved. Your booking is ready for final approval.",
-          normalized.email
-        );
+      const [bookingsResponse, documentsResponse, paymentsResponse] =
+        await Promise.all([
+          getBookings(),
+          getDocuments().catch(() => []),
+          getPayments().catch(() => []),
+        ]);
 
-        return {
-          ...booking,
-          document_status: "Approved",
-          updated_at: formatDateToday(),
+      const bookingsList = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : bookingsResponse.data || [];
 
-          documentStatus: "Approved",
-          updatedAt: formatDateToday(),
-        };
-      }
+      const documentsList = Array.isArray(documentsResponse)
+        ? documentsResponse
+        : documentsResponse.data || [];
 
-      return booking;
+      const paymentsList = Array.isArray(paymentsResponse)
+        ? paymentsResponse
+        : paymentsResponse.data || [];
+
+      setBookings(bookingsList.map(normalizeBooking));
+      setDocuments(documentsList.map(normalizeDocument));
+      setPayments(paymentsList.map(normalizePayment));
+    } catch (error) {
+      console.error("Failed to load admin bookings:", error);
+      alert("Could not load bookings from backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDocumentForBooking = (bookingId) => {
+    return documents.find((document) => {
+      return Number(document.booking_id) === Number(bookingId);
     });
-
-    saveBookings(updatedBookings);
-    alert("Document approved successfully.");
   };
 
-  const rejectDocument = (bookingId) => {
-    const updatedBookings = getBookings().map((booking) => {
-      const normalized = normalizeBooking(booking);
-
-      if (Number(normalized.booking_id) === Number(bookingId)) {
-        addNotification(
-          normalized.resident_id,
-          "booking",
-          "Document Rejected",
-          "Your document for " +
-            normalized.dorm_name +
-            " has been rejected. Your booking request has also been rejected.",
-          normalized.email
-        );
-
-        return {
-          ...booking,
-          document_status: "Rejected",
-          booking_status: "Rejected",
-          updated_at: formatDateToday(),
-
-          documentStatus: "Rejected",
-          status: "Rejected",
-          updatedAt: formatDateToday(),
-        };
-      }
-
-      return booking;
+  const getPaymentForBooking = (bookingId) => {
+    return payments.find((payment) => {
+      return Number(payment.booking_id) === Number(bookingId);
     });
-
-    saveBookings(updatedBookings);
-    alert("Document rejected. Booking has also been rejected.");
   };
 
-  const approveBooking = (bookingId) => {
-    const allBookings = getBookings();
+  const getImageUrl = () => {
+    try {
+      return require("../assets/images/aub1.jpg");
+    } catch {
+      return "";
+    }
+  };
 
-    const booking = allBookings.find((item) => {
-      const normalized = normalizeBooking(item);
-      return Number(normalized.booking_id) === Number(bookingId);
+  const approveDocument = async (bookingId) => {
+    const document = getDocumentForBooking(bookingId);
+
+    if (!document || !document.document_id) {
+      alert("No document found for this booking.");
+      return;
+    }
+
+    try {
+      await updateDocument(document.document_id, {
+        document_status: "approved",
+      });
+
+      alert("Document approved successfully.");
+      loadBookings();
+    } catch (error) {
+      console.error("Document approval failed:", error);
+      alert("Document could not be approved. Check PATCH /documents/{id}.");
+    }
+  };
+
+  const rejectDocument = async (bookingId) => {
+    const document = getDocumentForBooking(bookingId);
+
+    if (!document || !document.document_id) {
+      alert("No document found for this booking.");
+      return;
+    }
+
+    try {
+      await updateDocument(document.document_id, {
+        document_status: "rejected",
+      });
+
+      await updateBooking(bookingId, {
+        booking_status: "rejected",
+        admin_note: "Document rejected.",
+      });
+
+      alert("Document rejected and booking rejected.");
+      loadBookings();
+    } catch (error) {
+      console.error("Document rejection failed:", error);
+      alert("Document could not be rejected. Check Laravel document route.");
+    }
+  };
+
+  const approveBooking = async (bookingId) => {
+    const booking = bookings.find((item) => {
+      return Number(item.booking_id) === Number(bookingId);
     });
 
     if (!booking) {
@@ -348,138 +221,95 @@ function ManageBookingsPage() {
       return;
     }
 
-    const normalizedBooking = normalizeBooking(booking);
+    const document = getDocumentForBooking(bookingId);
+    const documentStatus = normalizeStatus(document?.document_status);
 
-    if (normalizedBooking.booking_status === "Cancelled") {
+    if (document && documentStatus !== "approved") {
+      alert("Please approve the uploaded document first.");
+      return;
+    }
+
+    if (normalizeStatus(booking.booking_status) === "cancelled") {
       alert("This booking was cancelled by the resident.");
       return;
     }
 
-    if (normalizedBooking.booking_status === "Approved") {
-      alert("This booking is already approved.");
-      return;
+    try {
+      await updateBooking(bookingId, {
+        booking_status: "approved",
+        admin_id: localStorage.getItem("loggedInAdminId") || null,
+        admin_note: "Booking approved.",
+      });
+
+      alert("Booking approved successfully.");
+      loadBookings();
+    } catch (error) {
+      console.error("Booking approval failed:", error);
+      alert("Booking could not be approved. Check PATCH /bookings/{id}.");
     }
-
-    if (normalizedBooking.document_status !== "Approved") {
-      alert("Please approve the uploaded document before approving the booking.");
-      return;
-    }
-
-    const occupancyUpdated = updateRoomOccupancyAfterApproval(normalizedBooking);
-
-    if (!occupancyUpdated) return;
-
-    const updatedBookings = allBookings.map((item) => {
-      const normalized = normalizeBooking(item);
-
-      if (Number(normalized.booking_id) === Number(bookingId)) {
-        addNotification(
-          normalized.resident_id,
-          "booking",
-          "Booking Approved",
-          "Your booking at " +
-            normalized.dorm_name +
-            ", Room " +
-            (normalized.room_number || "-") +
-            ", has been approved. You can now complete your payment.",
-          normalized.email
-        );
-
-        return {
-          ...item,
-          booking_status: "Approved",
-          document_status: "Approved",
-          payment_status: normalized.payment_status || "Pending",
-          admin_id: localStorage.getItem("loggedInAdminId") || 1,
-          updated_at: formatDateToday(),
-
-          status: "Approved",
-          documentStatus: "Approved",
-          paymentStatus: normalized.payment_status || "Pending",
-          updatedAt: formatDateToday(),
-        };
-      }
-
-      return item;
-    });
-
-    saveBookings(updatedBookings);
-    alert("Booking approved successfully. Room occupancy has been updated.");
   };
 
-  const rejectBooking = (bookingId) => {
-    const updatedBookings = getBookings().map((booking) => {
-      const normalized = normalizeBooking(booking);
+  const rejectBooking = async (bookingId) => {
+    const adminNote =
+      window.prompt("Write rejection reason:", "Booking rejected.") ||
+      "Booking rejected.";
 
-      if (Number(normalized.booking_id) === Number(bookingId)) {
-        addNotification(
-          normalized.resident_id,
-          "booking",
-          "Booking Rejected",
-          "Your booking request at " + normalized.dorm_name + " has been rejected.",
-          normalized.email
-        );
+    try {
+      await updateBooking(bookingId, {
+        booking_status: "rejected",
+        admin_note: adminNote,
+      });
 
-        const finalDocumentStatus =
-          normalized.document_status === "Pending"
-            ? "Rejected"
-            : normalized.document_status;
-
-        return {
-          ...booking,
-          booking_status: "Rejected",
-          document_status: finalDocumentStatus,
-          updated_at: formatDateToday(),
-
-          status: "Rejected",
-          documentStatus: finalDocumentStatus,
-          updatedAt: formatDateToday(),
-        };
-      }
-
-      return booking;
-    });
-
-    saveBookings(updatedBookings);
-    alert("Booking rejected successfully.");
+      alert("Booking rejected successfully.");
+      loadBookings();
+    } catch (error) {
+      console.error("Booking rejection failed:", error);
+      alert("Booking could not be rejected. Check PATCH /bookings/{id}.");
+    }
   };
 
-  const deleteBooking = (bookingId) => {
+  const handleDeleteBooking = async (bookingId) => {
     const ok = window.confirm("Are you sure you want to delete this booking?");
-    if (!ok) return;
 
-    const updatedBookings = getBookings().filter((booking) => {
-      const normalized = normalizeBooking(booking);
-      return Number(normalized.booking_id) !== Number(bookingId);
-    });
+    if (!ok) {
+      return;
+    }
 
-    saveBookings(updatedBookings);
-    alert("Booking deleted successfully.");
+    try {
+      await deleteBooking(bookingId);
+      alert("Booking deleted successfully.");
+      loadBookings();
+    } catch (error) {
+      console.error("Delete booking failed:", error);
+      alert("Booking could not be deleted. Check DELETE /bookings/{id}.");
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
-  const normalizedBookings = bookings.map(normalizeBooking);
-
-  const approvedCount = normalizedBookings.filter(
-    (b) => b.booking_status === "Approved"
+  const approvedCount = bookings.filter(
+    (booking) => normalizeStatus(booking.booking_status) === "approved"
   ).length;
 
-  const pendingCount = normalizedBookings.filter(
-    (b) => b.booking_status === "Pending"
+  const pendingCount = bookings.filter(
+    (booking) => normalizeStatus(booking.booking_status) === "pending"
   ).length;
 
-  const rejectedCount = normalizedBookings.filter(
-    (b) => b.booking_status === "Rejected"
+  const rejectedCount = bookings.filter(
+    (booking) => normalizeStatus(booking.booking_status) === "rejected"
   ).length;
 
-  const cancelledCount = normalizedBookings.filter(
-    (b) => b.booking_status === "Cancelled"
+  const cancelledCount = bookings.filter(
+    (booking) => normalizeStatus(booking.booking_status) === "cancelled"
   ).length;
 
   return (
@@ -554,7 +384,7 @@ function ManageBookingsPage() {
 
         <section className="booking-stats">
           <div className="stat-card">
-            <h3>{normalizedBookings.length}</h3>
+            <h3>{bookings.length}</h3>
             <p>Total Bookings</p>
           </div>
 
@@ -579,32 +409,50 @@ function ManageBookingsPage() {
           </div>
         </section>
 
-        {normalizedBookings.length === 0 ? (
+        {loading ? (
+          <div className="empty-bookings">
+            <h3>Loading bookings...</h3>
+          </div>
+        ) : bookings.length === 0 ? (
           <div className="empty-bookings">
             <h3>No bookings found</h3>
             <p>No resident booking requests have been submitted yet.</p>
           </div>
         ) : (
           <section className="booking-list">
-            {normalizedBookings.map((booking) => {
+            {bookings.map((booking) => {
               const bookingId = booking.booking_id;
-              const bookingStatus = booking.booking_status;
-              const documentStatus = booking.document_status;
-              const paymentStatus = booking.payment_status;
+              const document = getDocumentForBooking(bookingId);
+              const payment = getPaymentForBooking(bookingId);
+
+              const bookingStatus = displayStatus(booking.booking_status);
+              const documentStatus = displayStatus(
+                document?.document_status || "pending"
+              );
+              const paymentStatus = displayStatus(
+                payment?.payment_status || "pending"
+              );
+
+              const rawBookingStatus = normalizeStatus(booking.booking_status);
+              const rawDocumentStatus = normalizeStatus(
+                document?.document_status || "pending"
+              );
 
               return (
                 <div className="booking-card" key={bookingId}>
                   <div className="booking-card-left">
-                    <img
-                      src={getImageUrl(booking.dorm_image)}
-                      alt={booking.dorm_name || "Dorm"}
-                    />
+                    <img src={getImageUrl()} alt={booking.dorm_name || "Dorm"} />
                   </div>
 
                   <div className="booking-card-middle">
                     <div className="booking-title-row">
                       <h2>{booking.dorm_name || "Dorm Name"}</h2>
-                      <span className={`status-badge ${getStatusClass(bookingStatus)}`}>
+
+                      <span
+                        className={`status-badge ${getStatusClass(
+                          booking.booking_status
+                        )}`}
+                      >
                         {bookingStatus}
                       </span>
                     </div>
@@ -623,12 +471,8 @@ function ManageBookingsPage() {
                       <p>
                         <i className="fa-solid fa-location-dot"></i>{" "}
                         <strong>Location:</strong>{" "}
-                        {booking.area || booking.city || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-school"></i>{" "}
-                        <strong>Near:</strong> {booking.university_name || "-"}
+                        {booking.city || "-"}
+                        {booking.area ? ` - ${booking.area}` : ""}
                       </p>
 
                       <p>
@@ -669,48 +513,45 @@ function ManageBookingsPage() {
                       </p>
 
                       <p>
-                        <i className="fa-solid fa-clock-rotate-left"></i>{" "}
-                        <strong>Updated:</strong>{" "}
-                        {booking.updated_at || "Not updated yet"}
-                      </p>
-
-                      <p>
                         <i className="fa-solid fa-credit-card"></i>{" "}
                         <strong>Payment Status:</strong> {paymentStatus}
                       </p>
+
+                      {booking.admin_note && (
+                        <p>
+                          <i className="fa-solid fa-note-sticky"></i>{" "}
+                          <strong>Admin Note:</strong> {booking.admin_note}
+                        </p>
+                      )}
                     </div>
 
                     <div className="document-box">
                       <h3>
-                        <i className="fa-solid fa-file-lines"></i> Booking Document
+                        <i className="fa-solid fa-file-lines"></i> Booking
+                        Document
                       </h3>
 
                       <p>
                         <strong>Document Type:</strong>{" "}
-                        {booking.document_type || "Not specified"}
+                        {document?.document_type || "Not uploaded"}
                       </p>
 
-                      <p>
-                        <strong>File Name:</strong>{" "}
-                        {booking.file_name || "No file uploaded"}
-                      </p>
-
-                      {booking.file_path ? (
+                      {document?.file_path ? (
                         <div className="booking-document-view">
-                          {booking.file_type &&
-                          booking.file_type.startsWith("image/") ? (
+                          {String(document.file_path).startsWith("data:image") ? (
                             <img
-                              src={booking.file_path}
-                              alt={booking.file_name || "Booking Document"}
+                              src={document.file_path}
+                              alt="Booking Document"
                             />
                           ) : (
                             <a
-                              href={booking.file_path}
-                              download={booking.file_name || "booking-document"}
+                              href={document.file_path}
+                              target="_blank"
+                              rel="noreferrer"
                               className="download-document-btn"
                             >
-                              <i className="fa-solid fa-download"></i>
-                              Download / Review Document
+                              <i className="fa-solid fa-eye"></i>
+                              View / Review Document
                             </a>
                           )}
                         </div>
@@ -724,7 +565,7 @@ function ManageBookingsPage() {
                         <strong>Document Status:</strong>{" "}
                         <span
                           className={`document-status ${getStatusClass(
-                            documentStatus
+                            document?.document_status || "pending"
                           )}`}
                         >
                           {documentStatus}
@@ -732,8 +573,8 @@ function ManageBookingsPage() {
                       </p>
 
                       <div className="document-actions">
-                        {documentStatus === "Pending" &&
-                        bookingStatus === "Pending" ? (
+                        {rawDocumentStatus === "pending" &&
+                        rawBookingStatus === "pending" ? (
                           <>
                             <button
                               className="approve-doc-btn"
@@ -760,7 +601,7 @@ function ManageBookingsPage() {
 
                   <div className="booking-card-right">
                     <div className="booking-actions">
-                      {bookingStatus === "Pending" && (
+                      {rawBookingStatus === "pending" && (
                         <>
                           <button
                             className="approve-btn"
@@ -778,19 +619,19 @@ function ManageBookingsPage() {
                         </>
                       )}
 
-                      {bookingStatus === "Approved" && (
+                      {rawBookingStatus === "approved" && (
                         <button className="disabled-btn" disabled>
                           Booking Approved
                         </button>
                       )}
 
-                      {bookingStatus === "Rejected" && (
+                      {rawBookingStatus === "rejected" && (
                         <button className="disabled-btn" disabled>
                           Booking Rejected
                         </button>
                       )}
 
-                      {bookingStatus === "Cancelled" && (
+                      {rawBookingStatus === "cancelled" && (
                         <button className="disabled-btn" disabled>
                           Cancelled by Resident
                         </button>
@@ -805,7 +646,7 @@ function ManageBookingsPage() {
 
                       <button
                         className="delete-btn"
-                        onClick={() => deleteBooking(bookingId)}
+                        onClick={() => handleDeleteBooking(bookingId)}
                       >
                         Delete
                       </button>
