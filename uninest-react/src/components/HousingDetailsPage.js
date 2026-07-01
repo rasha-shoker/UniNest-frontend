@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./HousingDetailsPage.css";
-import { housingsData } from "../data/housingsData";
+import { getDorm, API_BASE_URL } from "../api";
 
 function HousingDetailsPage() {
   const params = new URLSearchParams(window.location.search);
   const idFromUrl = params.get("id");
-  const idFromStorage =
-    localStorage.getItem("selectedDormId") ||
-    localStorage.getItem("selectedHousingId");
+  const idFromStorage = localStorage.getItem("selectedDormId");
 
   const dormId = Number(idFromUrl || idFromStorage);
 
+  const [dorm, setDorm] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [mainImage, setMainImage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
   const formatDateToday = () => {
     return new Date().toLocaleDateString("en-GB", {
@@ -22,125 +25,295 @@ function HousingDetailsPage() {
     });
   };
 
-  const getDormImage = (imagePath) => {
-    const path = imagePath || "images/aub1.jpg";
-    const fileName = path.replace("images/", "");
+  useEffect(() => {
+    if (!dormId) {
+      setError("Dorm ID is missing.");
+      setLoading(false);
+      return;
+    }
+
+    loadDormDetails();
+  }, [dormId]);
+
+  const loadDormDetails = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await getDorm(dormId);
+
+      const dormData =
+        response && response.data && response.data.dorm_id
+          ? response.data
+          : response;
+
+      if (!dormData || !dormData.dorm_id) {
+        setError("Dorm not found.");
+        setLoading(false);
+        return;
+      }
+
+      const normalizedDorm = normalizeDorm(dormData);
+
+      setDorm(normalizedDorm);
+      localStorage.setItem("selectedDormId", normalizedDorm.dorm_id);
+      localStorage.setItem("selectedHousingId", normalizedDorm.dorm_id);
+
+      if (normalizedDorm.image_url) {
+        setMainImage(normalizedDorm.image_url);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load dorm details:", error);
+      setError("Could not load dorm details from the backend.");
+      setLoading(false);
+    }
+  };
+
+  const getImageSource = (imageInput) => {
+    let imagePath = "";
+
+    if (typeof imageInput === "string") {
+      imagePath = imageInput;
+    } else if (imageInput && typeof imageInput === "object") {
+      imagePath =
+        imageInput.image_url ||
+        imageInput.image ||
+        imageInput.housingImage ||
+        imageInput.data ||
+        "";
+    }
+
+    if (!imagePath) {
+      imagePath = "images/aub1.jpg";
+    }
+
+    const imagePathString = String(imagePath);
+
+    if (imagePathString.startsWith("data:")) {
+      return imagePathString;
+    }
+
+    if (imagePathString.startsWith("http")) {
+      return imagePathString;
+    }
+
+    if (
+      imagePathString.startsWith("/storage") ||
+      imagePathString.startsWith("storage")
+    ) {
+      return `${BACKEND_BASE_URL}/${imagePathString.replace(/^\/+/, "")}`;
+    }
+
+    if (
+      imagePathString.startsWith("/uploads") ||
+      imagePathString.startsWith("uploads")
+    ) {
+      return `${BACKEND_BASE_URL}/${imagePathString.replace(/^\/+/, "")}`;
+    }
+
+    const fileName = imagePathString.replace("images/", "");
 
     try {
       return require(`../assets/images/${fileName}`);
     } catch {
-      return require("../assets/images/aub1.jpg");
+      try {
+        return require("../assets/images/aub1.jpg");
+      } catch {
+        return "";
+      }
     }
   };
 
-  const normalizeDorm = (dorm) => {
+  const getRawImageUrl = (imageInput) => {
+    if (!imageInput) return "";
+
+    if (typeof imageInput === "string") {
+      return imageInput;
+    }
+
+    return (
+      imageInput.image_url ||
+      imageInput.image ||
+      imageInput.housingImage ||
+      imageInput.data ||
+      ""
+    );
+  };
+
+  const getFacilityName = (facility) => {
+    if (typeof facility === "string") {
+      return facility;
+    }
+
+    return (
+      facility.facility_name ||
+      facility.name ||
+      facility.room_facility_name ||
+      facility.facility?.facility_name ||
+      facility.facility?.name ||
+      "Facility"
+    );
+  };
+
+  const getAllFacilities = (dormData, rooms) => {
+    const facilities = [];
+
+    if (Array.isArray(dormData.facilities)) {
+      dormData.facilities.forEach((facility) => {
+        const name = getFacilityName(facility);
+        if (name && !facilities.find((item) => item.name === name)) {
+          facilities.push({
+            id: facility.facility_id || facility.id || name,
+            name,
+          });
+        }
+      });
+    }
+
+    rooms.forEach((room) => {
+      if (Array.isArray(room.facilities)) {
+        room.facilities.forEach((facility) => {
+          const name = getFacilityName(facility);
+          if (name && !facilities.find((item) => item.name === name)) {
+            facilities.push({
+              id: facility.facility_id || facility.id || name,
+              name,
+            });
+          }
+        });
+      }
+    });
+
+    return facilities;
+  };
+
+  const normalizeRoom = (room) => {
+    const currentOccupancy = Number(room.current_occupancy || 0);
+    const occupancyLimit = Number(
+      room.occupancy_limit || room.room_capacity || 0
+    );
+
+    let availabilityStatus = room.availability_status || "available";
+
+    if (occupancyLimit > 0 && currentOccupancy >= occupancyLimit) {
+      availabilityStatus = "full";
+    }
+
+    const roomImages = Array.isArray(room.images) ? room.images : [];
+
     return {
-      ...dorm,
-
-      dorm_id: dorm.dorm_id || dorm.id,
-      dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
-
-      university_name: dorm.university_name || dorm.university || "",
-      city: dorm.city || "",
-      area: dorm.area || dorm.location || "",
-
-      dorm_description: dorm.dorm_description || dorm.description || "",
-      eligibility_requirements:
-        dorm.eligibility_requirements ||
-        dorm.eligibility ||
-        "Available for students and employees",
-
-      rating: dorm.rating || 0,
-
-      image_url: dorm.image_url || dorm.image || dorm.housingImage || "images/aub1.jpg",
-      images: dorm.images || [],
-
-      dorm_type: dorm.dorm_type || dorm.type || "Dorm",
-      gender: dorm.gender || "Male / Female",
-      distance: dorm.distance || "Near campus",
-      availability_status:
-        dorm.availability_status || dorm.status || dorm.availability || "Available",
-
-      main_room_type: dorm.main_room_type || dorm.roomType || "",
-      base_price: dorm.base_price || dorm.price || 0,
-
-      rooms: Array.isArray(dorm.rooms)
-        ? dorm.rooms.map((room, index) => {
-            return {
-              ...room,
-              room_id: room.room_id || room.roomId || `${dorm.dorm_id}-${index + 1}`,
-              room_number:
-                room.room_number || room.roomNumber || `R-${dorm.dorm_id}-${index + 1}`,
-              room_type: room.room_type || room.type || dorm.main_room_type || "Room",
-              room_capacity: Number(room.room_capacity || room.capacity || 1),
-              occupancy_limit: Number(
-                room.occupancy_limit ||
-                  room.occupancyLimit ||
-                  room.capacity ||
-                  room.room_capacity ||
-                  1
-              ),
-              room_price: Number(room.room_price || room.price || dorm.base_price || 0),
-              availability_status:
-                room.availability_status ||
-                room.status ||
-                dorm.availability_status ||
-                "Available",
-              available_from: room.available_from || room.availableFrom || "Not specified",
-              available_to: room.available_to || room.availableTo || "Not specified",
-              image_url: room.image_url || room.image || "",
-              facilities: room.facilities || [],
-            };
-          })
-        : [],
-
-      facilities: dorm.facilities || [],
+      ...room,
+      room_id: room.room_id,
+      dorm_id: room.dorm_id,
+      room_number: room.room_number || "-",
+      room_type: room.room_type || "Room",
+      room_capacity: Number(room.room_capacity || 1),
+      current_occupancy: currentOccupancy,
+      occupancy_limit: occupancyLimit,
+      room_price: Number(room.room_price || 0),
+      availability_status: availabilityStatus,
+      image_url:
+        room.image_url ||
+        getRawImageUrl(roomImages[0]) ||
+        "",
+      images: roomImages,
+      facilities: Array.isArray(room.facilities) ? room.facilities : [],
     };
   };
 
-  const getDorms = () => {
-    const savedDorms = JSON.parse(localStorage.getItem("dorms"));
-    const savedHousings = JSON.parse(localStorage.getItem("housings"));
+  const normalizeReview = (review) => {
+    const resident = review.resident || {};
 
-    if (savedDorms && Array.isArray(savedDorms)) {
-      return savedDorms.map(normalizeDorm);
-    }
-
-    if (savedHousings && Array.isArray(savedHousings)) {
-      return savedHousings.map(normalizeDorm);
-    }
-
-    return housingsData.map(normalizeDorm);
+    return {
+      ...review,
+      review_id: review.review_id || review.id,
+      resident_id: review.resident_id || resident.resident_id || "",
+      resident_name:
+        resident.full_name ||
+        resident.user?.full_name ||
+        review.resident_name ||
+        "Resident",
+      rating: Number(review.rating || 0),
+      review_comment: review.review_comment || review.comment || "",
+      created_at: review.created_at || "",
+      review_status: review.review_status || review.status || "visible",
+    };
   };
 
-  const dorms = getDorms();
+  const normalizeDorm = (dormData) => {
+    const rooms = Array.isArray(dormData.rooms) ? dormData.rooms : [];
+    const images = Array.isArray(dormData.images) ? dormData.images : [];
+    const reviews = Array.isArray(dormData.reviews) ? dormData.reviews : [];
 
-  const dorm = dorms.find((item) => {
-    return Number(item.dorm_id || item.id) === Number(dormId);
-  });
+    const normalizedRooms = rooms.map(normalizeRoom);
 
-  if (dorm) {
-    localStorage.setItem("selectedDormId", dorm.dorm_id);
-    localStorage.setItem("selectedHousingId", dorm.dorm_id);
-  }
+    const visibleReviews = reviews
+      .map(normalizeReview)
+      .filter((review) => {
+        return String(review.review_status || "visible").toLowerCase() !== "hidden";
+      });
 
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
+    const mainImage =
+      dormData.image_url ||
+      getRawImageUrl(images[0]) ||
+      "images/aub1.jpg";
+
+    return {
+      ...dormData,
+      dorm_id: dormData.dorm_id,
+      dorm_name: dormData.dorm_name || "Dorm Name",
+      city: dormData.city || "",
+      area: dormData.area || "",
+      street: dormData.street || "",
+      building_number: dormData.building_number || "",
+      gps_location: dormData.gps_location || "",
+      dorm_description: dormData.dorm_description || "",
+      eligibility_requirements:
+        dormData.eligibility_requirements ||
+        "Available for students and employees",
+      contact_email: dormData.contact_email || "",
+      contact_phone: dormData.contact_phone || "",
+      rating: Number(dormData.rating || 0),
+      admin_id: dormData.admin_id || "",
+      image_url: mainImage,
+      images,
+      reviews: visibleReviews,
+      rooms: normalizedRooms,
+      facilities: getAllFacilities(dormData, normalizedRooms),
+    };
   };
 
-  const getVisibleReviewsForDorm = (currentDormId) => {
-    const reviews = getReviews();
+  const getDormAvailability = (currentDorm) => {
+    const rooms = Array.isArray(currentDorm.rooms) ? currentDorm.rooms : [];
 
-    return reviews.filter((review) => {
-      const reviewDormId = Number(review.dorm_id || review.housingId || review.dormId);
-      const reviewStatus = review.review_status || review.status || "Visible";
+    if (rooms.length === 0) {
+      return "No Rooms";
+    }
 
-      return reviewDormId === Number(currentDormId) && reviewStatus !== "Hidden";
+    const hasAvailableRoom = rooms.some((room) => {
+      return !isRoomFull(room);
     });
+
+    return hasAvailableRoom ? "Available" : "Full";
+  };
+
+  const isRoomFull = (room) => {
+    const status = String(room.availability_status || "").toLowerCase();
+
+    if (status.includes("full") || status.includes("unavailable")) {
+      return true;
+    }
+
+    const currentOccupancy = Number(room.current_occupancy || 0);
+    const occupancyLimit = Number(room.occupancy_limit || room.room_capacity || 0);
+
+    return occupancyLimit > 0 && currentOccupancy >= occupancyLimit;
   };
 
   const calculateAverageRating = (reviews) => {
-    if (reviews.length === 0) return 0;
+    if (!reviews || reviews.length === 0) return 0;
 
     const total = reviews.reduce((sum, review) => {
       return sum + Number(review.rating || 0);
@@ -162,7 +335,7 @@ function HousingDetailsPage() {
   };
 
   const getFacilityIcon = (facility) => {
-    const text = String(facility).toLowerCase();
+    const text = String(getFacilityName(facility)).toLowerCase();
 
     if (text.includes("wi")) return "fa-wifi";
     if (text.includes("laundry")) return "fa-shirt";
@@ -203,15 +376,24 @@ function HousingDetailsPage() {
       return;
     }
 
-    if (!isResidentLoggedInForBooking()) {
-      localStorage.setItem("redirectAfterLogin", "booking");
-      alert("Please login or register before booking.");
-      window.location.href = "/login";
+    if (!selectedRoom) {
+      alert("Please select an available room first.");
       return;
     }
 
-    if (!selectedRoom) {
-      alert("Please select an available room first.");
+    if (isRoomFull(selectedRoom)) {
+      alert("This room is full. Please select another room.");
+      return;
+    }
+
+    if (!isResidentLoggedInForBooking()) {
+      localStorage.setItem("redirectAfterLogin", "booking");
+
+      const visitorPendingBooking = buildPendingBooking("", "", "");
+      localStorage.setItem("pendingBooking", JSON.stringify(visitorPendingBooking));
+
+      alert("Please login or register before booking.");
+      window.location.href = "/login";
       return;
     }
 
@@ -219,40 +401,42 @@ function HousingDetailsPage() {
     const residentId = localStorage.getItem("loggedInResidentId") || "";
     const email = localStorage.getItem("loggedInUserEmail") || "";
 
+    const pendingBooking = buildPendingBooking(residentId, residentName, email);
+
+    localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
+    window.location.href = "/booking";
+  };
+
+  const buildPendingBooking = (residentId, residentName, email) => {
     const bookingId = Date.now();
 
-    const pendingBooking = {
+    return {
       booking_id: bookingId,
-
       resident_id: residentId,
+      room_id: selectedRoom.room_id,
+      check_in_date: "",
+      check_out_date: "",
+      total_price: 0,
+      booking_status: "pending",
+      admin_note: "",
+      created_at: formatDateToday(),
+      admin_id: dorm.admin_id || "",
+
       resident_name: residentName,
       email: email,
 
       dorm_id: dorm.dorm_id,
       dorm_name: dorm.dorm_name,
       dorm_image: dorm.image_url || "images/aub1.jpg",
-
-      university_name: dorm.university_name || "",
       city: dorm.city || "",
       area: dorm.area || "",
 
-      room_id: selectedRoom.room_id,
       room_number: selectedRoom.room_number,
       room_type: selectedRoom.room_type,
-      room_price: Number(selectedRoom.room_price),
+      room_price: Number(selectedRoom.room_price || 0),
 
-      available_from: selectedRoom.available_from,
-      available_to: selectedRoom.available_to,
-
-      check_in_date: "",
-      check_out_date: "",
-      total_price: 0,
-
-      booking_status: "Pending",
-      document_status: "Pending",
-      payment_status: "Pending",
-
-      created_at: formatDateToday(),
+      document_status: "pending",
+      payment_status: "pending",
 
       id: bookingId,
       userName: residentName,
@@ -266,89 +450,109 @@ function HousingDetailsPage() {
       housingId: dorm.dorm_id,
       housingName: dorm.dorm_name,
       housingImage: dorm.image_url || "images/aub1.jpg",
-      university: dorm.university_name || "",
       location: dorm.area || dorm.city || "",
 
       roomId: selectedRoom.room_id,
       roomNumber: selectedRoom.room_number,
       roomType: selectedRoom.room_type,
-      price: Number(selectedRoom.room_price),
-
-      availableFrom: selectedRoom.available_from,
-      availableTo: selectedRoom.available_to,
+      price: Number(selectedRoom.room_price || 0),
 
       checkInDate: "",
       checkOutDate: "",
       totalCost: 0,
 
-      status: "Pending",
-      documentStatus: "Pending",
-      paymentStatus: "Pending",
+      status: "pending",
+      documentStatus: "pending",
+      paymentStatus: "pending",
     };
-
-    localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
-
-    window.location.href = "/booking";
   };
 
-  if (!dorm) {
+  const logout = (event) => {
+    event.preventDefault();
+
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+    localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInUserId");
+    localStorage.removeItem("loggedInResidentId");
+
+    window.location.href = "/";
+  };
+
+  if (loading) {
     return (
       <div className="housing-details-page">
         <header className="details-navbar">
-  <div className="details-logo">
-    <h2>UniNest</h2>
-  </div>
+          <div className="details-logo">
+            <h2>UniNest</h2>
+          </div>
 
-  <nav>
-    <ul className="details-nav-links">
-      <li>
-        <a href="/">Home</a>
-      </li>
+          <nav>
+            <ul className="details-nav-links">
+              <li>
+                <a href="/">Home</a>
+              </li>
 
-      <li>
-        <a href="/housings" className="active">
-          Dorms
-        </a>
-      </li>
-
-      <li>
-        <a href="/student-dashboard">Dashboard</a>
-      </li>
-
-      <li>
-        <a
-          href="/"
-          onClick={(event) => {
-            event.preventDefault();
-
-            localStorage.removeItem("loggedInRole");
-            localStorage.removeItem("loggedInUserType");
-            localStorage.removeItem("loggedInUser");
-            localStorage.removeItem("loggedInUserEmail");
-            localStorage.removeItem("loggedInUserId");
-            localStorage.removeItem("loggedInResidentId");
-
-            window.location.href = "/";
-          }}
-        >
-          Logout
-        </a>
-      </li>
-    </ul>
-  </nav>
-</header>
+              <li>
+                <a href="/housings" className="active">
+                  Dorms
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </header>
 
         <section className="details-page-header">
           <div className="details-page-header-content">
-            <h1>Dorm Not Found</h1>
-            <p>The dorm you are looking for does not exist.</p>
+            <h1>Loading Dorm Details...</h1>
+            <p>Please wait while we load the dorm information.</p>
           </div>
         </section>
       </div>
     );
   }
 
-  const dormReviews = getVisibleReviewsForDorm(dorm.dorm_id);
+  if (error || !dorm) {
+    return (
+      <div className="housing-details-page">
+        <header className="details-navbar">
+          <div className="details-logo">
+            <h2>UniNest</h2>
+          </div>
+
+          <nav>
+            <ul className="details-nav-links">
+              <li>
+                <a href="/">Home</a>
+              </li>
+
+              <li>
+                <a href="/housings" className="active">
+                  Dorms
+                </a>
+              </li>
+
+              <li>
+                <a href="/login">Login</a>
+              </li>
+            </ul>
+          </nav>
+        </header>
+
+        <section className="details-page-header">
+          <div className="details-page-header-content">
+            <h1>Dorm Not Found</h1>
+            <p>{error || "The dorm you are looking for does not exist."}</p>
+            <p>Make sure Laravel is running on http://127.0.0.1:8000.</p>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const dormReviews = Array.isArray(dorm.reviews) ? dorm.reviews : [];
   const averageRating = calculateAverageRating(dormReviews);
 
   const galleryImages =
@@ -357,52 +561,39 @@ function HousingDetailsPage() {
       : [dorm.image_url, dorm.image_url, dorm.image_url];
 
   const displayedMainImage = mainImage || dorm.image_url || "images/aub1.jpg";
+  const dormAvailability = getDormAvailability(dorm);
 
   return (
     <div className="housing-details-page">
       <header className="details-navbar">
-  <div className="details-logo">
-    <h2>UniNest</h2>
-  </div>
+        <div className="details-logo">
+          <h2>UniNest</h2>
+        </div>
 
-  <nav>
-    <ul className="details-nav-links">
-      <li>
-        <a href="/">Home</a>
-      </li>
+        <nav>
+          <ul className="details-nav-links">
+            <li>
+              <a href="/">Home</a>
+            </li>
 
-      <li>
-        <a href="/housings" className="active">
-          Dorms
-        </a>
-      </li>
+            <li>
+              <a href="/housings" className="active">
+                Dorms
+              </a>
+            </li>
 
-      <li>
-        <a href="/student-dashboard">Dashboard</a>
-      </li>
+            <li>
+              <a href="/student-dashboard">Dashboard</a>
+            </li>
 
-      <li>
-        <a
-          href="/"
-          onClick={(event) => {
-            event.preventDefault();
-
-            localStorage.removeItem("loggedInRole");
-            localStorage.removeItem("loggedInUserType");
-            localStorage.removeItem("loggedInUser");
-            localStorage.removeItem("loggedInUserEmail");
-            localStorage.removeItem("loggedInUserId");
-            localStorage.removeItem("loggedInResidentId");
-
-            window.location.href = "/";
-          }}
-        >
-          Logout
-        </a>
-      </li>
-    </ul>
-  </nav>
-</header>
+            <li>
+              <a href="/" onClick={logout}>
+                Logout
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </header>
 
       <section className="details-page-header">
         <div className="details-page-header-content">
@@ -418,22 +609,17 @@ function HousingDetailsPage() {
         <div className="housing-details-container">
           <div className="housing-gallery">
             <div className="main-image">
-              <img src={getDormImage(displayedMainImage)} alt={dorm.dorm_name} />
+              <img src={getImageSource(displayedMainImage)} alt={dorm.dorm_name} />
             </div>
 
             <div className="small-images">
               {galleryImages.map((image, index) => {
-                const imagePath =
-                  typeof image === "string"
-                    ? image
-                    : image.image_url || image.data || dorm.image_url;
-
                 return (
                   <img
                     key={index}
-                    src={getDormImage(imagePath)}
+                    src={getImageSource(image)}
                     alt={dorm.dorm_name}
-                    onClick={() => setMainImage(imagePath)}
+                    onClick={() => setMainImage(getRawImageUrl(image))}
                   />
                 );
               })}
@@ -441,34 +627,39 @@ function HousingDetailsPage() {
           </div>
 
           <div className="housing-details-info">
-            <span className="housing-badge">{dorm.dorm_type || "Dorm"}</span>
+            <span className="housing-badge">Dorm</span>
 
             <h2>{dorm.dorm_name}</h2>
 
             <p>
               <i className="fa-solid fa-location-dot"></i>
-              <strong>Location:</strong> {dorm.area || dorm.city || "-"}
+              <strong>Location:</strong>{" "}
+              {dorm.city || "-"}
+              {dorm.area ? ` - ${dorm.area}` : ""}
             </p>
 
             <p>
-              <i className="fa-solid fa-school"></i>
-              <strong>Near:</strong> {dorm.university_name || "Nearby university"}
+              <i className="fa-solid fa-road"></i>
+              <strong>Address:</strong>{" "}
+              {dorm.street || "-"}
+              {dorm.building_number
+                ? `, Building ${dorm.building_number}`
+                : ""}
             </p>
 
-            <p>
-              <i className="fa-solid fa-venus-mars"></i>
-              <strong>Gender:</strong> {dorm.gender || "Male / Female"}
-            </p>
-
-            <p>
-              <i className="fa-solid fa-route"></i>
-              <strong>Distance:</strong> {dorm.distance || "Near campus"}
-            </p>
+            {dorm.gps_location && (
+              <p>
+                <i className="fa-solid fa-map-location-dot"></i>
+                <strong>GPS:</strong>{" "}
+                <a href={dorm.gps_location} target="_blank" rel="noreferrer">
+                  Open Location
+                </a>
+              </p>
+            )}
 
             <p>
               <i className="fa-solid fa-circle-check"></i>
-              <strong>Availability:</strong>{" "}
-              {dorm.availability_status || "Available"}
+              <strong>Availability:</strong> {dormAvailability}
             </p>
 
             <p>
@@ -491,6 +682,20 @@ function HousingDetailsPage() {
                 "Available for students and employees"}
             </p>
 
+            {dorm.contact_email && (
+              <p>
+                <i className="fa-solid fa-envelope"></i>
+                <strong>Email:</strong> {dorm.contact_email}
+              </p>
+            )}
+
+            {dorm.contact_phone && (
+              <p>
+                <i className="fa-solid fa-phone"></i>
+                <strong>Phone:</strong> {dorm.contact_phone}
+              </p>
+            )}
+
             <p className="housing-description">
               {dorm.dorm_description || "No description available."}
             </p>
@@ -510,7 +715,7 @@ function HousingDetailsPage() {
 
               {dorm.rooms && dorm.rooms.length > 0 ? (
                 dorm.rooms.map((room) => {
-                  const isFull = room.availability_status === "Full";
+                  const full = isRoomFull(room);
                   const isSelected =
                     selectedRoom && selectedRoom.room_id === room.room_id;
 
@@ -519,7 +724,7 @@ function HousingDetailsPage() {
                       <div>
                         {room.image_url && (
                           <img
-                            src={getDormImage(room.image_url)}
+                            src={getImageSource(room.image_url)}
                             alt="Room"
                             className="room-detail-image"
                           />
@@ -528,21 +733,23 @@ function HousingDetailsPage() {
                         <p>
                           <strong>{room.room_type}</strong>
                         </p>
+
                         <p>Room Number: {room.room_number}</p>
                         <p>Capacity: {room.room_capacity}</p>
+                        <p>Current Occupancy: {room.current_occupancy}</p>
                         <p>Occupancy Limit: {room.occupancy_limit}</p>
+
                         <p>
                           Status:{" "}
-                          <span className={isFull ? "room-full" : "room-available"}>
-                            {room.availability_status}
+                          <span className={full ? "room-full" : "room-available"}>
+                            {full ? "Full" : "Available"}
                           </span>
                         </p>
-                        <p>Available From: {room.available_from}</p>
-                        <p>Available To: {room.available_to}</p>
+
                         <p>
                           Facilities:{" "}
                           {room.facilities && room.facilities.length > 0
-                            ? room.facilities.join(", ")
+                            ? room.facilities.map(getFacilityName).join(", ")
                             : "No room facilities listed"}
                         </p>
                       </div>
@@ -555,16 +762,16 @@ function HousingDetailsPage() {
                         <button
                           type="button"
                           className={
-                            isFull
+                            full
                               ? "select-room-btn disabled-room-btn"
                               : isSelected
                               ? "select-room-btn selected-room"
                               : "select-room-btn"
                           }
-                          disabled={isFull}
+                          disabled={full}
                           onClick={() => setSelectedRoom(room)}
                         >
-                          {isFull ? "Full" : isSelected ? "Selected" : "Select"}
+                          {full ? "Full" : isSelected ? "Selected" : "Select"}
                         </button>
                       </div>
                     </div>
@@ -596,10 +803,13 @@ function HousingDetailsPage() {
 
         <div className="facilities-container">
           {dorm.facilities && dorm.facilities.length > 0 ? (
-            dorm.facilities.map((facility) => (
-              <div className="facility-box" key={facility}>
+            dorm.facilities.map((facility, index) => (
+              <div
+                className="facility-box"
+                key={facility.facility_id || facility.id || facility.name || index}
+              >
                 <i className={`fa-solid ${getFacilityIcon(facility)}`}></i>
-                <h3>{facility}</h3>
+                <h3>{getFacilityName(facility)}</h3>
               </div>
             ))
           ) : (
@@ -626,6 +836,7 @@ function HousingDetailsPage() {
                   <i className="fa-solid fa-star"></i> 0.0 / 5
                 </span>
               </div>
+
               <p>
                 Be the first resident to review this dorm after completing a
                 booking.
@@ -633,14 +844,9 @@ function HousingDetailsPage() {
             </div>
           ) : (
             dormReviews.map((review, index) => (
-              <div className="review-card" key={index}>
+              <div className="review-card" key={review.review_id || index}>
                 <div className="review-header">
-                  <h3>
-                    {review.resident_name ||
-                      review.residentName ||
-                      review.userName ||
-                      "Resident"}
-                  </h3>
+                  <h3>{review.resident_name || "Resident"}</h3>
 
                   <span className="review-stars">
                     {renderStars(review.rating)}
@@ -648,11 +854,11 @@ function HousingDetailsPage() {
                   </span>
                 </div>
 
-                <p>{review.review_comment || review.comment || ""}</p>
+                <p>{review.review_comment || ""}</p>
 
                 <small>
                   <i className="fa-solid fa-calendar-days"></i>{" "}
-                  {review.created_at || review.createdAt || review.date || ""}
+                  {review.created_at || ""}
                 </small>
               </div>
             ))
@@ -676,9 +882,11 @@ function HousingDetailsPage() {
               <li>
                 <a href="/">Home</a>
               </li>
+
               <li>
                 <a href="/housings">Dorms</a>
               </li>
+
               <li>
                 <a href="/about">About</a>
               </li>
@@ -687,12 +895,15 @@ function HousingDetailsPage() {
 
           <div className="details-footer-box">
             <h3>Contact Info</h3>
+
             <p>
               <i className="fa-solid fa-envelope"></i> support@uninest.com
             </p>
+
             <p>
               <i className="fa-solid fa-phone"></i> +961 76 741 699
             </p>
+
             <p>
               <i className="fa-solid fa-phone"></i> +961 81 894 380
             </p>
@@ -700,10 +911,12 @@ function HousingDetailsPage() {
 
           <div className="details-footer-box">
             <h3>Follow Us</h3>
+
             <div className="details-social-icons">
               <a href="#" aria-label="Facebook">
                 <i className="fa-brands fa-facebook-f"></i>
               </a>
+
               <a href="#" aria-label="Instagram">
                 <i className="fa-brands fa-instagram"></i>
               </a>

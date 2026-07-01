@@ -1,397 +1,709 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ReportsPage.css";
+import {
+  getDorms,
+  getRooms,
+  getBookings,
+  getResidents,
+  getPayments,
+  getMaintenanceRequests,
+  getReviews,
+  getDocuments,
+} from "../api";
 
 function ReportsPage() {
   const navigate = useNavigate();
+
+  const [dorms, setDorms] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [residents, setResidents] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
 
     if (role !== "admin") {
       navigate("/login");
+      return;
     }
+
+    loadReports();
   }, [navigate]);
 
-  const getResidents = () => {
-    const residents = JSON.parse(localStorage.getItem("residents"));
-    const users = JSON.parse(localStorage.getItem("users"));
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
+  };
 
-    if (residents && Array.isArray(residents)) {
-      return residents.map(normalizeResident);
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+    if (value === "resolved") return "Resolved";
+    if (value === "in_progress") return "In Progress";
+    if (value === "visible") return "Visible";
+    if (value === "hidden") return "Hidden";
+
+    return "Pending";
+  };
+
+  const getStatusClass = (status) => {
+    const value = normalizeStatus(status);
+
+    if (
+      value === "approved" ||
+      value === "paid" ||
+      value === "completed" ||
+      value === "resolved" ||
+      value === "visible"
+    ) {
+      return "approved";
     }
 
-    if (users && Array.isArray(users)) {
-      return users.map(normalizeResident);
+    if (value === "in_progress") return "progress";
+
+    if (
+      value === "rejected" ||
+      value === "cancelled" ||
+      value === "hidden"
+    ) {
+      return "rejected";
     }
 
-    return [];
+    return "pending";
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
+  const normalizeDorm = (dorm) => {
+    return {
+      ...dorm,
+      dorm_id: dorm.dorm_id || dorm.id || dorm.housingId,
+      dorm_name: dorm.dorm_name || dorm.name || dorm.housingName || "Dorm Name",
+      city: dorm.city || "",
+      area: dorm.area || dorm.location || "",
+      rating: Number(dorm.rating || 0),
+      admin_id: dorm.admin_id || "",
+      created_at: dorm.created_at || dorm.createdAt || "",
+      isLocal: dorm.isLocal || false,
+    };
   };
 
-  const getPayments = () => {
-    return JSON.parse(localStorage.getItem("payments")) || [];
-  };
-
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
-  };
-
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
-  };
-
-  const getDorms = () => {
-    const dorms = JSON.parse(localStorage.getItem("dorms"));
-    const housings = JSON.parse(localStorage.getItem("housings"));
-
-    if (dorms && Array.isArray(dorms)) {
-      return dorms.map(normalizeDorm);
-    }
-
-    if (housings && Array.isArray(housings)) {
-      return housings.map(normalizeDorm);
-    }
-
-    return [];
+  const normalizeRoom = (room) => {
+    return {
+      ...room,
+      room_id: room.room_id || room.id || room.roomId,
+      dorm_id: room.dorm_id || room.housingId || "",
+      room_number: room.room_number || room.roomNumber || "-",
+      room_type: room.room_type || room.roomType || "-",
+      room_capacity: Number(room.room_capacity || room.capacity || 0),
+      current_occupancy: Number(room.current_occupancy || room.currentOccupancy || 0),
+      occupancy_limit: Number(room.occupancy_limit || room.occupancyLimit || room.room_capacity || 0),
+      room_price: Number(room.room_price || room.price || 0),
+      availability_status:
+        room.availability_status || room.availabilityStatus || "available",
+      isLocal: room.isLocal || false,
+    };
   };
 
   const normalizeResident = (resident) => {
     return {
       ...resident,
       resident_id: resident.resident_id || resident.id,
-      first_name: resident.first_name || resident.firstName || "",
-      last_name: resident.last_name || resident.lastName || "",
-      email: resident.email || "",
-      user_type: resident.user_type || resident.role || "student",
-      university_name: resident.university_name || resident.university || "",
-    };
-  };
-
-  const normalizeDorm = (dorm) => {
-    return {
-      ...dorm,
-      dorm_id: dorm.dorm_id || dorm.id,
-      dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
-      university_name: dorm.university_name || dorm.university || "",
-      availability_status:
-        dorm.availability_status ||
-        dorm.status ||
-        dorm.availability ||
-        "Available",
-
-      rooms: Array.isArray(dorm.rooms)
-        ? dorm.rooms.map((room) => {
-            return {
-              ...room,
-              room_id: room.room_id || room.roomId,
-              room_number: room.room_number || room.roomNumber || "",
-              room_type: room.room_type || room.type || "",
-              room_capacity: Number(room.room_capacity || room.capacity || 1),
-              current_occupancy: Number(
-                room.current_occupancy || room.currentOccupancy || 0
-              ),
-              occupancy_limit: Number(
-                room.occupancy_limit ||
-                  room.occupancyLimit ||
-                  room.room_capacity ||
-                  room.capacity ||
-                  1
-              ),
-              room_price: Number(room.room_price || room.price || 0),
-              availability_status:
-                room.availability_status || room.status || "Available",
-            };
-          })
-        : [],
+      full_name:
+        resident.full_name ||
+        resident.user?.full_name ||
+        resident.name ||
+        resident.fullName ||
+        "Resident",
+      email: resident.email || resident.user?.email || resident.userEmail || "",
+      phone: resident.phone || "",
+      role: resident.role || resident.user_type || "student",
+      university: resident.university || "",
+      major: resident.major || "",
+      company: resident.company || resident.company_name || "",
+      created_at: resident.created_at || "",
+      isLocal: resident.isLocal || false,
     };
   };
 
   const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...booking,
+
       booking_id: booking.booking_id || booking.id,
-      resident_id: booking.resident_id || "",
-      dorm_id: booking.dorm_id || booking.housingId,
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      total_price: Number(booking.total_price || booking.totalCost || 0),
-      booking_status: booking.booking_status || booking.status || "Pending",
-      payment_status: booking.payment_status || booking.paymentStatus || "Pending",
+      resident_id: booking.resident_id || resident.resident_id || "",
+
+      resident_name:
+        booking.resident_name ||
+        booking.residentName ||
+        booking.userName ||
+        booking.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
+
+      email:
+        booking.email ||
+        booking.userEmail ||
+        booking.studentEmail ||
+        booking.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        "-",
+
+      dorm_id:
+        booking.dorm_id ||
+        booking.housingId ||
+        dorm.dorm_id ||
+        room.dorm_id ||
+        "",
+
+      dorm_name:
+        booking.dorm_name ||
+        booking.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
+
+      room_id: booking.room_id || booking.roomId || room.room_id || "",
+      room_number:
+        booking.room_number || booking.roomNumber || room.room_number || "-",
+      room_type: booking.room_type || booking.roomType || room.room_type || "-",
+
+      check_in_date: booking.check_in_date || booking.checkInDate || "",
+      check_out_date: booking.check_out_date || booking.checkOutDate || "",
+
+      total_price: Number(
+        booking.total_price || booking.totalCost || booking.amount || 0
+      ),
+
+      booking_status: booking.booking_status || booking.status || "pending",
+      payment_status:
+        booking.payment_status || booking.paymentStatus || "pending",
+
+      document_status:
+        booking.document_status || booking.documentStatus || "pending",
+
       created_at: booking.created_at || booking.createdAt || "",
+      isLocal: booking.isLocal || false,
     };
   };
 
   const normalizePayment = (payment) => {
     return {
       ...payment,
-      payment_id: payment.payment_id || payment.paymentId,
+      payment_id: payment.payment_id || payment.id,
       booking_id: payment.booking_id || payment.bookingId,
       amount: Number(payment.amount || 0),
-      payment_method: payment.payment_method || payment.method || "",
-      payment_status: payment.payment_status || payment.status || "Pending",
-      payment_date: payment.payment_date || payment.paymentDate || "",
+      payment_method: payment.payment_method || payment.method || "Cash",
+      payment_status: payment.payment_status || payment.status || "pending",
+      created_at: payment.created_at || payment.payment_date || "",
+      isLocal: payment.isLocal || false,
     };
   };
 
   const normalizeMaintenanceRequest = (request) => {
+    const booking = request.booking || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
     return {
       ...request,
-      request_id: request.request_id || request.id,
-      booking_id: request.booking_id || request.bookingId,
-      request_status: request.request_status || request.status || "Pending",
-      request_date:
-        request.request_date || request.submittedDate || request.createdAt || "",
+
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+
+      booking_id: request.booking_id || booking.booking_id || "",
+      room_id: request.room_id || room.room_id || "",
+
+      resident_id:
+        request.resident_id ||
+        resident.resident_id ||
+        booking.resident_id ||
+        "",
+
+      resident_name:
+        request.resident_name ||
+        request.residentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        booking.resident_name ||
+        "Resident",
+
+      dorm_name:
+        request.dorm_name ||
+        request.housingName ||
+        dorm.dorm_name ||
+        booking.dorm_name ||
+        "Dorm",
+
+      room_number:
+        request.room_number ||
+        request.roomNumber ||
+        room.room_number ||
+        booking.room_number ||
+        "-",
+
+      maintenance_category:
+        request.maintenance_category || request.category || "General",
+
+      priority: request.priority || "Medium",
+
+      request_description:
+        request.request_description ||
+        request.issue_description ||
+        request.description ||
+        "",
+
+      request_status: request.request_status || request.status || "pending",
+
+      created_at:
+        request.created_at ||
+        request.request_date ||
+        request.submittedDate ||
+        request.createdAt ||
+        "",
+
+      isLocal: request.isLocal || false,
     };
   };
 
   const normalizeReview = (review) => {
+    const resident = review.resident || {};
+    const dorm = review.dorm || {};
+
     return {
       ...review,
+
       review_id: review.review_id || review.id,
-      resident_id: review.resident_id || "",
-      dorm_id: review.dorm_id || review.housingId,
+      booking_id: review.booking_id || review.bookingId || "",
+      resident_id: review.resident_id || resident.resident_id || "",
+
+      resident_name:
+        review.resident_name ||
+        review.residentName ||
+        review.userName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
+
+      dorm_id: review.dorm_id || review.housingId || dorm.dorm_id || "",
+      dorm_name:
+        review.dorm_name ||
+        review.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
+
       rating: Number(review.rating || 0),
       review_comment: review.review_comment || review.comment || "",
-      review_status: review.review_status || review.status || "Visible",
+      review_status: review.review_status || review.status || "visible",
       created_at: review.created_at || review.createdAt || review.date || "",
+      isLocal: review.isLocal || false,
     };
   };
 
-  const percent = (part, total) => {
-    if (!total || total === 0) return 0;
-    return Math.round((part / total) * 100);
+  const normalizeDocument = (document) => {
+    return {
+      ...document,
+      document_id: document.document_id || document.id,
+      booking_id: document.booking_id || document.bookingId,
+      document_type: document.document_type || document.type || "Document",
+      document_status: document.document_status || document.status || "pending",
+      uploaded_at: document.uploaded_at || document.created_at || "",
+      isLocal: document.isLocal || false,
+    };
   };
 
-  const isPaid = (value) => {
-    return value === "Completed" || value === "Paid";
+  const getLocalDorms = () => {
+    const localDorms =
+      JSON.parse(localStorage.getItem("dorms")) ||
+      JSON.parse(localStorage.getItem("housings")) ||
+      JSON.parse(localStorage.getItem("housingsData")) ||
+      [];
+
+    return localDorms.map((dorm) =>
+      normalizeDorm({
+        ...dorm,
+        isLocal: true,
+      })
+    );
   };
 
-  const getUniversityFromResident = (resident) => {
-    const universityName = String(resident.university_name || "").toUpperCase();
-    const email = String(resident.email || "").toLowerCase();
+  const getLocalRooms = () => {
+    const localRooms = JSON.parse(localStorage.getItem("rooms")) || [];
 
-    if (universityName.includes("AUB") || email.endsWith("@aub.edu.lb")) {
-      return "AUB";
-    }
-
-    if (universityName.includes("LAU") || email.endsWith("@lau.edu")) {
-      return "LAU";
-    }
-
-    if (universityName.includes("USJ") || email.endsWith("@usj.edu.lb")) {
-      return "USJ";
-    }
-
-    return "Other";
+    return localRooms.map((room) =>
+      normalizeRoom({
+        ...room,
+        isLocal: true,
+      })
+    );
   };
 
-  const calculateTotalRevenue = (payments) => {
-    return payments.reduce((total, payment) => {
-      const normalized = normalizePayment(payment);
+  const getLocalResidents = () => {
+    const localResidents =
+      JSON.parse(localStorage.getItem("residents")) ||
+      JSON.parse(localStorage.getItem("users")) ||
+      [];
 
-      if (isPaid(normalized.payment_status)) {
-        return total + Number(normalized.amount || 0);
+    return localResidents.map((resident) =>
+      normalizeResident({
+        ...resident,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalBookings = () => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    return localBookings.map((booking) =>
+      normalizeBooking({
+        ...booking,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalPayments = () => {
+    const localPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    return localPayments.map((payment) =>
+      normalizePayment({
+        ...payment,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalMaintenanceRequests = () => {
+    const localRequests =
+      JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+
+    return localRequests.map((request) =>
+      normalizeMaintenanceRequest({
+        ...request,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalReviews = () => {
+    const localReviews = JSON.parse(localStorage.getItem("reviews")) || [];
+
+    return localReviews.map((review) =>
+      normalizeReview({
+        ...review,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalDocuments = () => {
+    const localDocuments = JSON.parse(localStorage.getItem("documents")) || [];
+
+    return localDocuments.map((document) =>
+      normalizeDocument({
+        ...document,
+        isLocal: true,
+      })
+    );
+  };
+
+  const mergeById = (backendItems, localItems, idField) => {
+    const merged = [...localItems];
+
+    backendItems.forEach((backendItem) => {
+      const exists = merged.some((localItem) => {
+        return Number(localItem[idField]) === Number(backendItem[idField]);
+      });
+
+      if (!exists) {
+        merged.push(backendItem);
       }
+    });
 
-      return total;
-    }, 0);
+    return merged;
   };
 
-  const calculateAverageRating = (reviews) => {
-    const normalizedReviews = reviews.map(normalizeReview);
+  const loadReports = async () => {
+    try {
+      setLoading(true);
 
-    if (normalizedReviews.length === 0) return "0.0";
+      const localDorms = getLocalDorms();
+      const localRooms = getLocalRooms();
+      const localResidents = getLocalResidents();
+      const localBookings = getLocalBookings();
+      const localPayments = getLocalPayments();
+      const localMaintenance = getLocalMaintenanceRequests();
+      const localReviews = getLocalReviews();
+      const localDocuments = getLocalDocuments();
 
-    const total = normalizedReviews.reduce((sum, review) => {
-      return sum + Number(review.rating || 0);
-    }, 0);
+      let backendDorms = [];
+      let backendRooms = [];
+      let backendResidents = [];
+      let backendBookings = [];
+      let backendPayments = [];
+      let backendMaintenance = [];
+      let backendReviews = [];
+      let backendDocuments = [];
 
-    return (total / normalizedReviews.length).toFixed(1);
-  };
+      try {
+        const dormsResponse = await getDorms();
+        const dormsList = Array.isArray(dormsResponse)
+          ? dormsResponse
+          : dormsResponse.data || [];
 
-  const countRooms = (dorms) => {
-    return dorms.reduce((total, dorm) => {
-      if (Array.isArray(dorm.rooms)) {
-        return total + dorm.rooms.length;
-      }
+        backendDorms = dormsList.map(normalizeDorm);
 
-      return total;
-    }, 0);
-  };
-
-  const countOccupiedRooms = (dorms, bookings) => {
-    let occupiedFromRooms = 0;
-
-    dorms.forEach((dorm) => {
-      if (Array.isArray(dorm.rooms)) {
-        dorm.rooms.forEach((room) => {
-          occupiedFromRooms += Number(room.current_occupancy || 0);
+        const roomsFromDorms = dormsList.flatMap((dorm) => {
+          const dormRooms = dorm.rooms || [];
+          return dormRooms.map((room) =>
+            normalizeRoom({
+              ...room,
+              dorm_id: room.dorm_id || dorm.dorm_id,
+            })
+          );
         });
+
+        backendRooms = roomsFromDorms;
+      } catch (error) {
+        console.warn("Backend dorms could not be loaded:", error);
       }
-    });
 
-    if (occupiedFromRooms > 0) return occupiedFromRooms;
+      try {
+        const roomsResponse = await getRooms();
+        const roomsList = Array.isArray(roomsResponse)
+          ? roomsResponse
+          : roomsResponse.data || [];
 
-    return bookings.filter((booking) => {
-      const normalized = normalizeBooking(booking);
-      return normalized.booking_status === "Approved";
-    }).length;
-  };
+        const roomsFromEndpoint = roomsList.map(normalizeRoom);
 
-  const getBookingMonthIndex = (booking) => {
-    const normalized = normalizeBooking(booking);
-
-    if (normalized.created_at) {
-      const createdDate = new Date(normalized.created_at);
-
-      if (!isNaN(createdDate.getMonth())) {
-        return createdDate.getMonth();
+        backendRooms = mergeById(
+          roomsFromEndpoint,
+          backendRooms,
+          "room_id"
+        );
+      } catch (error) {
+        console.warn("Backend rooms could not be loaded:", error);
       }
+
+      try {
+        const residentsResponse = await getResidents();
+        const residentsList = Array.isArray(residentsResponse)
+          ? residentsResponse
+          : residentsResponse.data || [];
+
+        backendResidents = residentsList.map(normalizeResident);
+      } catch (error) {
+        console.warn("Backend residents could not be loaded:", error);
+      }
+
+      try {
+        const bookingsResponse = await getBookings();
+        const bookingsList = Array.isArray(bookingsResponse)
+          ? bookingsResponse
+          : bookingsResponse.data || [];
+
+        backendBookings = bookingsList.map(normalizeBooking);
+      } catch (error) {
+        console.warn("Backend bookings could not be loaded:", error);
+      }
+
+      try {
+        const paymentsResponse = await getPayments();
+        const paymentsList = Array.isArray(paymentsResponse)
+          ? paymentsResponse
+          : paymentsResponse.data || [];
+
+        backendPayments = paymentsList.map(normalizePayment);
+      } catch (error) {
+        console.warn("Backend payments could not be loaded:", error);
+      }
+
+      try {
+        const maintenanceResponse = await getMaintenanceRequests();
+        const maintenanceList = Array.isArray(maintenanceResponse)
+          ? maintenanceResponse
+          : maintenanceResponse.data || [];
+
+        backendMaintenance = maintenanceList.map(normalizeMaintenanceRequest);
+      } catch (error) {
+        console.warn("Backend maintenance could not be loaded:", error);
+      }
+
+      try {
+        const reviewsResponse = await getReviews();
+        const reviewsList = Array.isArray(reviewsResponse)
+          ? reviewsResponse
+          : reviewsResponse.data || [];
+
+        backendReviews = reviewsList.map(normalizeReview);
+      } catch (error) {
+        console.warn("Backend reviews could not be loaded:", error);
+      }
+
+      try {
+        const documentsResponse = await getDocuments();
+        const documentsList = Array.isArray(documentsResponse)
+          ? documentsResponse
+          : documentsResponse.data || [];
+
+        backendDocuments = documentsList.map(normalizeDocument);
+      } catch (error) {
+        console.warn("Backend documents could not be loaded:", error);
+      }
+
+      setDorms(mergeById(backendDorms, localDorms, "dorm_id"));
+      setRooms(mergeById(backendRooms, localRooms, "room_id"));
+      setResidents(mergeById(backendResidents, localResidents, "resident_id"));
+
+      setBookings(
+        mergeById(backendBookings, localBookings, "booking_id").sort(
+          (a, b) => Number(b.booking_id || 0) - Number(a.booking_id || 0)
+        )
+      );
+
+      setPayments(mergeById(backendPayments, localPayments, "payment_id"));
+
+      setMaintenanceRequests(
+        mergeById(
+          backendMaintenance,
+          localMaintenance,
+          "maintenance_request_id"
+        ).sort((a, b) => {
+          return (
+            Number(b.maintenance_request_id || 0) -
+            Number(a.maintenance_request_id || 0)
+          );
+        })
+      );
+
+      setReviews(
+        mergeById(backendReviews, localReviews, "review_id").sort((a, b) => {
+          return Number(b.review_id || 0) - Number(a.review_id || 0);
+        })
+      );
+
+      setDocuments(
+        mergeById(backendDocuments, localDocuments, "document_id")
+      );
+    } catch (error) {
+      console.error("Reports load failed:", error);
+      alert("Could not load reports.");
+    } finally {
+      setLoading(false);
     }
-
-    if (normalized.booking_id) {
-      const dateFromId = new Date(Number(normalized.booking_id));
-
-      if (!isNaN(dateFromId.getMonth())) {
-        return dateFromId.getMonth();
-      }
-    }
-
-    return new Date().getMonth();
-  };
-
-  const getMonthlyOverview = (bookings) => {
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-
-    const monthCounts = new Array(12).fill(0);
-
-    bookings.forEach((booking) => {
-      const monthIndex = getBookingMonthIndex(booking);
-
-      if (monthIndex >= 0 && monthIndex <= 11) {
-        monthCounts[monthIndex]++;
-      }
-    });
-
-    return months.map((month, index) => ({
-      month,
-      count: monthCounts[index],
-    }));
   };
 
   const logout = () => {
-    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
-  const residents = getResidents().filter((resident) => {
-    const userType = String(resident.user_type || "").toLowerCase();
-    return userType === "student" || userType === "employee";
+  const totalBookings = bookings.length;
+
+  const pendingBookings = bookings.filter((booking) => {
+    return normalizeStatus(booking.booking_status) === "pending";
+  }).length;
+
+  const approvedBookings = bookings.filter((booking) => {
+    return normalizeStatus(booking.booking_status) === "approved";
+  }).length;
+
+  const rejectedBookings = bookings.filter((booking) => {
+    return normalizeStatus(booking.booking_status) === "rejected";
+  }).length;
+
+  const cancelledBookings = bookings.filter((booking) => {
+    return normalizeStatus(booking.booking_status) === "cancelled";
+  }).length;
+
+  const paidPayments = payments.filter((payment) => {
+    const status = normalizeStatus(payment.payment_status);
+    return status === "paid" || status === "completed";
   });
 
-  const bookings = getBookings().map(normalizeBooking);
-  const payments = getPayments().map(normalizePayment);
-  const maintenanceRequests = getMaintenanceRequests().map(
-    normalizeMaintenanceRequest
-  );
-  const reviews = getReviews().map(normalizeReview);
-  const dorms = getDorms();
+  const totalRevenue = paidPayments.reduce((total, payment) => {
+    return total + Number(payment.amount || 0);
+  }, 0);
 
-  const approvedBookings = bookings.filter(
-    (b) => b.booking_status === "Approved"
-  ).length;
+  const pendingPayments = payments.filter((payment) => {
+    return normalizeStatus(payment.payment_status) === "pending";
+  }).length;
 
-  const pendingBookings = bookings.filter(
-    (b) => b.booking_status === "Pending"
-  ).length;
+  const pendingDocuments = documents.filter((document) => {
+    return normalizeStatus(document.document_status) === "pending";
+  }).length;
 
-  const rejectedBookings = bookings.filter(
-    (b) => b.booking_status === "Rejected"
-  ).length;
+  const approvedDocuments = documents.filter((document) => {
+    return normalizeStatus(document.document_status) === "approved";
+  }).length;
 
-  const cancelledBookings = bookings.filter(
-    (b) => b.booking_status === "Cancelled"
-  ).length;
+  const pendingMaintenance = maintenanceRequests.filter((request) => {
+    return normalizeStatus(request.request_status) === "pending";
+  }).length;
 
-  const paidBookings = bookings.filter((booking) =>
-    isPaid(booking.payment_status)
-  ).length;
+  const inProgressMaintenance = maintenanceRequests.filter((request) => {
+    return normalizeStatus(request.request_status) === "in_progress";
+  }).length;
 
-  const completedPayments = payments.filter((payment) =>
-    isPaid(payment.payment_status)
-  ).length;
+  const completedMaintenance = maintenanceRequests.filter((request) => {
+    const status = normalizeStatus(request.request_status);
+    return status === "completed" || status === "resolved";
+  }).length;
 
-  const totalRevenue = calculateTotalRevenue(payments);
+  const visibleReviews = reviews.filter((review) => {
+    return normalizeStatus(review.review_status) === "visible";
+  }).length;
 
-  const pendingMaintenance = maintenanceRequests.filter(
-    (r) => r.request_status === "Pending"
-  ).length;
+  const hiddenReviews = reviews.filter((review) => {
+    return normalizeStatus(review.review_status) === "hidden";
+  }).length;
 
-  const progressMaintenance = maintenanceRequests.filter(
-    (r) => r.request_status === "In Progress"
-  ).length;
+  const averageRating =
+    reviews.length === 0
+      ? 0
+      : (
+          reviews.reduce((total, review) => total + Number(review.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1);
 
-  const resolvedMaintenance = maintenanceRequests.filter(
-    (r) => r.request_status === "Resolved"
-  ).length;
+  const totalRoomCapacity = rooms.reduce((total, room) => {
+    return total + Number(room.occupancy_limit || room.room_capacity || 0);
+  }, 0);
 
-  const openMaintenance = pendingMaintenance + progressMaintenance;
+  const occupiedRooms = bookings.filter((booking) => {
+    return normalizeStatus(booking.booking_status) === "approved";
+  }).length;
 
-  const visibleReviews = reviews.filter(
-    (r) => (r.review_status || "Visible") === "Visible"
-  ).length;
+  const occupancyRate =
+    totalRoomCapacity === 0
+      ? 0
+      : Math.round((occupiedRooms / totalRoomCapacity) * 100);
 
-  const hiddenReviews = reviews.filter(
-    (r) => r.review_status === "Hidden"
-  ).length;
-
-  const averageRating = calculateAverageRating(reviews);
-
-  const totalRooms = countRooms(dorms);
-  const occupiedRooms = countOccupiedRooms(dorms, bookings);
-  const availableRooms = Math.max(0, totalRooms - occupiedRooms);
-
-  const universityCounts = {
-    AUB: 0,
-    LAU: 0,
-    USJ: 0,
-    Others: 0,
-  };
-
-  residents.forEach((resident) => {
-    const university = getUniversityFromResident(resident);
-
-    if (university === "AUB") {
-      universityCounts.AUB++;
-    } else if (university === "LAU") {
-      universityCounts.LAU++;
-    } else if (university === "USJ") {
-      universityCounts.USJ++;
-    } else {
-      universityCounts.Others++;
-    }
-  });
-
-  const monthlyOverview = getMonthlyOverview(bookings);
+  const latestBookings = bookings.slice(0, 5);
+  const latestMaintenance = maintenanceRequests.slice(0, 5);
+  const latestReviews = reviews.slice(0, 5);
 
   return (
     <div className="reports-page reports-layout">
@@ -455,239 +767,330 @@ function ReportsPage() {
       <main className="reports-main">
         <div className="reports-topbar">
           <div>
-            <h1>Reports & Analytics</h1>
+            <h1>Reports</h1>
             <p>
-              Track platform performance, bookings, payments, maintenance
-              requests, and reviews.
+              System overview for dorms, rooms, bookings, payments,
+              maintenance, and reviews.
             </p>
           </div>
         </div>
 
-        <section className="report-stats">
-          <div className="report-stat-card">
-            <h3>{residents.length}</h3>
-            <p>Total Residents</p>
+        {loading ? (
+          <div className="reports-card">
+            <h2>Loading reports...</h2>
           </div>
+        ) : (
+          <>
+            <section className="reports-stats">
+              <div className="report-stat-card">
+                <h3>{dorms.length}</h3>
+                <p>Total Dorms</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{bookings.length}</h3>
-            <p>Total Bookings</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>{rooms.length}</h3>
+                <p>Total Rooms</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{dorms.length}</h3>
-            <p>Total Dorms</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>{residents.length}</h3>
+                <p>Total Residents</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{totalRooms}</h3>
-            <p>Total Rooms</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>{totalBookings}</h3>
+                <p>Total Bookings</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{openMaintenance}</h3>
-            <p>Open Maintenance</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>${totalRevenue}</h3>
+                <p>Total Revenue</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{payments.length}</h3>
-            <p>Total Payments</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>{occupancyRate}%</h3>
+                <p>Occupancy Rate</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>${totalRevenue}</h3>
-            <p>Total Revenue</p>
-          </div>
+              <div className="report-stat-card">
+                <h3>{maintenanceRequests.length}</h3>
+                <p>Maintenance Requests</p>
+              </div>
 
-          <div className="report-stat-card">
-            <h3>{averageRating}</h3>
-            <p>Average Rating</p>
-          </div>
-        </section>
+              <div className="report-stat-card">
+                <h3>{averageRating}</h3>
+                <p>Average Rating</p>
+              </div>
+            </section>
 
-        <section className="reports-grid">
-          <div className="report-card">
-            <h2>Booking Status</h2>
+            <section className="reports-grid">
+              <div className="reports-card">
+                <h2>Booking Status</h2>
 
-            <ReportBar
-              label="Approved"
-              value={percent(approvedBookings, bookings.length)}
-              colorClass="green-fill"
-            />
+                <div className="mini-report-list">
+                  <div>
+                    <span>Pending</span>
+                    <strong>{pendingBookings}</strong>
+                  </div>
 
-            <ReportBar
-              label="Pending"
-              value={percent(pendingBookings, bookings.length)}
-              colorClass="orange-fill"
-            />
+                  <div>
+                    <span>Approved</span>
+                    <strong>{approvedBookings}</strong>
+                  </div>
 
-            <ReportBar
-              label="Rejected"
-              value={percent(rejectedBookings, bookings.length)}
-              colorClass="red-fill"
-            />
+                  <div>
+                    <span>Rejected</span>
+                    <strong>{rejectedBookings}</strong>
+                  </div>
 
-            <ReportBar
-              label="Cancelled"
-              value={percent(cancelledBookings, bookings.length)}
-              colorClass="gray-fill"
-            />
-          </div>
-
-          <div className="report-card">
-            <h2>Payment Report</h2>
-
-            <ReportBar
-              label="Completed Payments"
-              value={percent(completedPayments, payments.length)}
-              colorClass="green-fill"
-            />
-
-            <ReportBar
-              label="Paid Bookings"
-              value={percent(paidBookings, bookings.length)}
-              colorClass="blue-fill"
-            />
-
-            <div className="report-summary-box">
-              <p>
-                <strong>Total Revenue:</strong> ${totalRevenue}
-              </p>
-              <p>
-                <strong>Total Payment Records:</strong> {payments.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="report-card">
-            <h2>Maintenance Requests</h2>
-
-            <ReportBar
-              label="Pending"
-              value={percent(pendingMaintenance, maintenanceRequests.length)}
-              colorClass="orange-fill"
-            />
-
-            <ReportBar
-              label="In Progress"
-              value={percent(progressMaintenance, maintenanceRequests.length)}
-              colorClass="blue-fill"
-            />
-
-            <ReportBar
-              label="Resolved"
-              value={percent(resolvedMaintenance, maintenanceRequests.length)}
-              colorClass="green-fill"
-            />
-          </div>
-
-          <div className="report-card">
-            <h2>Review Statistics</h2>
-
-            <ReportBar
-              label="Visible Reviews"
-              value={percent(visibleReviews, reviews.length)}
-              colorClass="green-fill"
-            />
-
-            <ReportBar
-              label="Hidden Reviews"
-              value={percent(hiddenReviews, reviews.length)}
-              colorClass="red-fill"
-            />
-
-            <div className="report-summary-box">
-              <p>
-                <strong>Average Rating:</strong> {averageRating} / 5
-              </p>
-              <p>
-                <strong>Total Reviews:</strong> {reviews.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="report-card">
-            <h2>Dorm Occupancy</h2>
-
-            <ReportBar
-              label="Occupied Rooms"
-              value={percent(occupiedRooms, totalRooms)}
-              colorClass="blue-fill"
-            />
-
-            <ReportBar
-              label="Available Rooms"
-              value={percent(availableRooms, totalRooms)}
-              colorClass="cyan-fill"
-            />
-
-            <div className="report-summary-box">
-              <p>
-                <strong>Total Rooms:</strong> {totalRooms}
-              </p>
-              <p>
-                <strong>Occupied:</strong> {occupiedRooms}
-              </p>
-            </div>
-          </div>
-
-          <div className="report-card">
-            <h2>University Distribution</h2>
-
-            <ReportBar
-              label="AUB"
-              value={percent(universityCounts.AUB, residents.length)}
-              colorClass="blue-fill"
-            />
-
-            <ReportBar
-              label="LAU"
-              value={percent(universityCounts.LAU, residents.length)}
-              colorClass="cyan-fill"
-            />
-
-            <ReportBar
-              label="USJ"
-              value={percent(universityCounts.USJ, residents.length)}
-              colorClass="green-fill"
-            />
-
-            <ReportBar
-              label="Others"
-              value={percent(universityCounts.Others, residents.length)}
-              colorClass="orange-fill"
-            />
-          </div>
-
-          <div className="report-card full-card">
-            <h2>Monthly Booking Overview</h2>
-
-            <div className="overview-grid">
-              {monthlyOverview.map((item) => (
-                <div className="overview-box" key={item.month}>
-                  <h3>{item.month}</h3>
-                  <p>{item.count} Bookings</p>
+                  <div>
+                    <span>Cancelled</span>
+                    <strong>{cancelledBookings}</strong>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              </div>
+
+              <div className="reports-card">
+                <h2>Payment Status</h2>
+
+                <div className="mini-report-list">
+                  <div>
+                    <span>Paid Payments</span>
+                    <strong>{paidPayments.length}</strong>
+                  </div>
+
+                  <div>
+                    <span>Pending Payments</span>
+                    <strong>{pendingPayments}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total Revenue</span>
+                    <strong>${totalRevenue}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="reports-card">
+                <h2>Document Status</h2>
+
+                <div className="mini-report-list">
+                  <div>
+                    <span>Pending Documents</span>
+                    <strong>{pendingDocuments}</strong>
+                  </div>
+
+                  <div>
+                    <span>Approved Documents</span>
+                    <strong>{approvedDocuments}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total Documents</span>
+                    <strong>{documents.length}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="reports-card">
+                <h2>Maintenance Status</h2>
+
+                <div className="mini-report-list">
+                  <div>
+                    <span>Pending</span>
+                    <strong>{pendingMaintenance}</strong>
+                  </div>
+
+                  <div>
+                    <span>In Progress</span>
+                    <strong>{inProgressMaintenance}</strong>
+                  </div>
+
+                  <div>
+                    <span>Completed</span>
+                    <strong>{completedMaintenance}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="reports-card">
+                <h2>Review Status</h2>
+
+                <div className="mini-report-list">
+                  <div>
+                    <span>Visible Reviews</span>
+                    <strong>{visibleReviews}</strong>
+                  </div>
+
+                  <div>
+                    <span>Hidden Reviews</span>
+                    <strong>{hiddenReviews}</strong>
+                  </div>
+
+                  <div>
+                    <span>Average Rating</span>
+                    <strong>{averageRating}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="reports-card">
+                <h2>Room Occupancy</h2>
+
+                <div className="mini-report-list">
+                  <div>
+                    <span>Total Capacity</span>
+                    <strong>{totalRoomCapacity}</strong>
+                  </div>
+
+                  <div>
+                    <span>Approved Bookings</span>
+                    <strong>{occupiedRooms}</strong>
+                  </div>
+
+                  <div>
+                    <span>Occupancy Rate</span>
+                    <strong>{occupancyRate}%</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="reports-table-section">
+              <div className="reports-card">
+                <div className="table-header">
+                  <h2>Latest Bookings</h2>
+                  <Link to="/manage-bookings">View All</Link>
+                </div>
+
+                {latestBookings.length === 0 ? (
+                  <p>No bookings found.</p>
+                ) : (
+                  <table className="reports-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Resident</th>
+                        <th>Dorm</th>
+                        <th>Room</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {latestBookings.map((booking) => (
+                        <tr key={booking.booking_id}>
+                          <td>#{booking.booking_id}</td>
+                          <td>{booking.resident_name}</td>
+                          <td>{booking.dorm_name}</td>
+                          <td>{booking.room_number}</td>
+                          <td>${booking.total_price || 0}</td>
+                          <td>
+                            <span
+                              className={`status-badge ${getStatusClass(
+                                booking.booking_status
+                              )}`}
+                            >
+                              {displayStatus(booking.booking_status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="reports-card">
+                <div className="table-header">
+                  <h2>Latest Maintenance</h2>
+                  <Link to="/manage-maintenance">View All</Link>
+                </div>
+
+                {latestMaintenance.length === 0 ? (
+                  <p>No maintenance requests found.</p>
+                ) : (
+                  <table className="reports-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Resident</th>
+                        <th>Dorm</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {latestMaintenance.map((request) => (
+                        <tr key={request.maintenance_request_id}>
+                          <td>#{request.maintenance_request_id}</td>
+                          <td>{request.resident_name}</td>
+                          <td>{request.dorm_name}</td>
+                          <td>{request.maintenance_category}</td>
+                          <td>
+                            <span
+                              className={`status-badge ${getStatusClass(
+                                request.request_status
+                              )}`}
+                            >
+                              {displayStatus(request.request_status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="reports-card">
+                <div className="table-header">
+                  <h2>Latest Reviews</h2>
+                  <Link to="/manage-reviews">View All</Link>
+                </div>
+
+                {latestReviews.length === 0 ? (
+                  <p>No reviews found.</p>
+                ) : (
+                  <table className="reports-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Resident</th>
+                        <th>Dorm</th>
+                        <th>Rating</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {latestReviews.map((review) => (
+                        <tr key={review.review_id}>
+                          <td>#{review.review_id}</td>
+                          <td>{review.resident_name}</td>
+                          <td>{review.dorm_name}</td>
+                          <td>{review.rating} / 5</td>
+                          <td>
+                            <span
+                              className={`status-badge ${getStatusClass(
+                                review.review_status
+                              )}`}
+                            >
+                              {displayStatus(review.review_status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </main>
-    </div>
-  );
-}
-
-function ReportBar({ label, value, colorClass }) {
-  return (
-    <div className="bar-item">
-      <div className="bar-label">
-        <span>{label}</span>
-        <span>{value}%</span>
-      </div>
-
-      <div className="bar-track">
-        <div className={`bar-fill ${colorClass}`} style={{ width: `${value}%` }}></div>
-      </div>
     </div>
   );
 }

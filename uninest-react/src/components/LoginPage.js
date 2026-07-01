@@ -1,16 +1,40 @@
 import "./LoginPage.css";
+import { getAdmins, getResidents } from "../api";
 
 function LoginPage() {
   const getResidentFullName = (resident) => {
-    const firstName = resident.first_name || resident.firstName || "";
-    const lastName = resident.last_name || resident.lastName || "";
-
-    const fullName = (firstName + " " + lastName).trim();
-
-    return fullName || resident.fullName || resident.name || "Resident";
+    return (
+      resident.full_name ||
+      resident.user?.full_name ||
+      resident.name ||
+      resident.fullName ||
+      "Resident"
+    );
   };
 
-  const getResidentsData = () => {
+  const getResidentEmail = (resident) => {
+    return (
+      resident.email ||
+      resident.user?.email ||
+      resident.userEmail ||
+      ""
+    ).toLowerCase();
+  };
+
+  const getResidentPassword = (resident) => {
+    return resident.password || resident.user?.password || "";
+  };
+
+  const getResidentRole = (resident) => {
+    return (
+      resident.role ||
+      resident.user_type ||
+      resident.user?.role ||
+      "student"
+    ).toLowerCase();
+  };
+
+  const getLocalResidentsData = () => {
     const residents = JSON.parse(localStorage.getItem("residents"));
     const users = JSON.parse(localStorage.getItem("users"));
 
@@ -32,56 +56,11 @@ function LoginPage() {
     return pendingBooking && redirectAfterLogin === "booking";
   };
 
-  const handleLogin = (event) => {
-    event.preventDefault();
-
-    const email = event.target.email.value.trim().toLowerCase();
-    const password = event.target.password.value.trim();
-
-    if (!email || !password) {
-      alert("Please fill all fields.");
-      return;
-    }
-
-    if (email === "admin@uninest.com" && password === "123456") {
-      localStorage.setItem("loggedInAdminId", "1");
-      localStorage.setItem("loggedInUser", "Admin");
-      localStorage.setItem("loggedInUserEmail", email);
-      localStorage.setItem("loggedInRole", "admin");
-      localStorage.setItem("loggedInUserType", "admin");
-
-      localStorage.removeItem("loggedInResidentId");
-      localStorage.removeItem("redirectAfterLogin");
-
-      window.location.href = "/admin-dashboard";
-      return;
-    }
-
-    const residents = getResidentsData();
-
-    const resident = residents.find((item) => {
-      return (item.email || "").toLowerCase() === email;
-    });
-
-    if (!resident) {
-      alert("Account not found. Please register first.");
-      return;
-    }
-
-    if (resident.status === "Inactive") {
-      alert("Your account is inactive. Please contact the admin.");
-      return;
-    }
-
-    if (resident.password !== password) {
-      alert("Incorrect password. Please try again.");
-      return;
-    }
-
+  const saveResidentSession = (resident) => {
     const residentId = resident.resident_id || resident.id || "";
     const residentName = getResidentFullName(resident);
-    const residentEmail = resident.email || email;
-    const userType = (resident.user_type || resident.role || "student").toLowerCase();
+    const residentEmail = getResidentEmail(resident);
+    const userType = getResidentRole(resident);
 
     localStorage.setItem("loggedInResidentId", residentId);
     localStorage.setItem("loggedInUser", residentName);
@@ -91,7 +70,10 @@ function LoginPage() {
 
     localStorage.removeItem("loggedInAdminId");
 
-    if (shouldRedirectToBooking() && (userType === "student" || userType === "employee")) {
+    if (
+      shouldRedirectToBooking() &&
+      (userType === "student" || userType === "employee")
+    ) {
       const pendingBooking = JSON.parse(localStorage.getItem("pendingBooking"));
 
       pendingBooking.resident_id = residentId;
@@ -115,14 +97,126 @@ function LoginPage() {
 
     localStorage.removeItem("redirectAfterLogin");
 
-    if (userType === "student" || userType === "employee") {
-      window.location.href = "/student-dashboard";
+    window.location.href = "/student-dashboard";
+  };
+
+  const saveAdminSession = (admin) => {
+    const adminId = admin.admin_id || admin.id || 1;
+    const adminName =
+      admin.full_name ||
+      `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+      "Admin";
+
+    const adminEmail = (admin.email || "admin@uninest.com").toLowerCase();
+
+    localStorage.setItem("loggedInAdminId", adminId);
+    localStorage.setItem("loggedInUser", adminName);
+    localStorage.setItem("loggedInUserEmail", adminEmail);
+    localStorage.setItem("loggedInRole", "admin");
+    localStorage.setItem("loggedInUserType", "admin");
+
+    localStorage.removeItem("loggedInResidentId");
+    localStorage.removeItem("redirectAfterLogin");
+
+    window.location.href = "/admin-dashboard";
+  };
+
+  const findAdminFromBackend = async (email, password) => {
+    try {
+      const response = await getAdmins();
+      const admins = Array.isArray(response) ? response : response.data || [];
+
+      return admins.find((admin) => {
+        return (
+          String(admin.email || "").toLowerCase() === email &&
+          String(admin.password || "") === password
+        );
+      });
+    } catch (error) {
+      console.warn("Backend admins could not be loaded:", error);
+      return null;
+    }
+  };
+
+  const findResidentFromBackend = async (email, password) => {
+    try {
+      const response = await getResidents();
+      const residents = Array.isArray(response) ? response : response.data || [];
+
+      return residents.find((resident) => {
+        const residentEmail = getResidentEmail(resident);
+        const residentPassword = getResidentPassword(resident);
+
+        return residentEmail === email && String(residentPassword) === password;
+      });
+    } catch (error) {
+      console.warn("Backend residents could not be loaded:", error);
+      return null;
+    }
+  };
+
+  const findResidentFromLocalStorage = (email, password) => {
+    const residents = getLocalResidentsData();
+
+    return residents.find((resident) => {
+      return (
+        String(resident.email || "").toLowerCase() === email &&
+        String(resident.password || "") === password
+      );
+    });
+  };
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
+    const email = event.target.email.value.trim().toLowerCase();
+    const password = event.target.password.value.trim();
+
+    if (!email || !password) {
+      alert("Please fill all fields.");
       return;
     }
 
-    localStorage.setItem("loggedInRole", "student");
-    localStorage.setItem("loggedInUserType", "student");
-    window.location.href = "/student-dashboard";
+    const backendAdmin = await findAdminFromBackend(email, password);
+
+    if (backendAdmin) {
+      saveAdminSession(backendAdmin);
+      return;
+    }
+
+    if (email === "admin@uninest.com" && password === "123456") {
+      saveAdminSession({
+        admin_id: 1,
+        first_name: "Admin",
+        last_name: "",
+        email,
+        password,
+      });
+      return;
+    }
+
+    const backendResident = await findResidentFromBackend(email, password);
+
+    if (backendResident) {
+      saveResidentSession(backendResident);
+      return;
+    }
+
+    const localResident = findResidentFromLocalStorage(email, password);
+
+    if (localResident) {
+      if (localResident.status === "Inactive") {
+        alert("Your account is inactive. Please contact the admin.");
+        return;
+      }
+
+      saveResidentSession(localResident);
+      return;
+    }
+
+    alert(
+      "Account not found or password is incorrect. If this account exists in the database, we may need to fix backend login/password response later."
+    );
   };
 
   return (

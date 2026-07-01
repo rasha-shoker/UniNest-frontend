@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ManageReviewsPage.css";
+import { getReviews, updateReview, deleteReview } from "../api";
 
 function ManageReviewsPage() {
   const navigate = useNavigate();
 
   const [reviews, setReviews] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [ratingFilter, setRatingFilter] = useState("All");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
+
     if (role !== "admin") {
       navigate("/login");
       return;
@@ -19,21 +20,27 @@ function ManageReviewsPage() {
     loadReviews();
   }, [navigate]);
 
-  const getReviews = () => {
-    return JSON.parse(localStorage.getItem("reviews")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "visible").toLowerCase();
   };
 
-  const saveReviews = (items) => {
-    localStorage.setItem("reviews", JSON.stringify(items));
-    setReviews(items);
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "hidden") return "Hidden";
+    if (value === "rejected") return "Rejected";
+    if (value === "pending") return "Pending";
+
+    return "Visible";
   };
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
+  const getStatusClass = (status) => {
+    const value = normalizeStatus(status);
 
-  const saveNotifications = (items) => {
-    localStorage.setItem("notifications", JSON.stringify(items));
+    if (value === "hidden" || value === "rejected") return "rejected";
+    if (value === "pending") return "pending";
+
+    return "approved";
   };
 
   const formatDateToday = () => {
@@ -44,235 +51,264 @@ function ManageReviewsPage() {
     });
   };
 
-  const addNotification = (
-    resident_id,
-    notification_type,
-    title,
-    message,
-    emailFallback
-  ) => {
-    if (!resident_id && !emailFallback) return;
-
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
-
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: resident_id || "",
-      title,
-      message,
-      notification_type,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: notificationId,
-      userEmail: emailFallback || "",
-      type: notification_type,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
-  };
-
   const normalizeReview = (review) => {
+    const resident = review.resident || {};
+    const dorm = review.dorm || {};
+
     return {
       ...review,
 
       review_id: review.review_id || review.id,
-      booking_id: review.booking_id || review.bookingId,
 
-      resident_id: review.resident_id || "",
+      booking_id: review.booking_id || review.bookingId || "",
+
+      resident_id: review.resident_id || resident.resident_id || "",
+
       resident_name:
         review.resident_name ||
         review.residentName ||
         review.userName ||
+        resident.full_name ||
+        resident.user?.full_name ||
         "Resident",
 
       email:
         review.email ||
         review.residentEmail ||
         review.userEmail ||
+        resident.email ||
+        resident.user?.email ||
         "-",
 
-      dorm_id: review.dorm_id || review.housingId,
-      dorm_name: review.dorm_name || review.housingName || "Dorm Review",
+      dorm_id: review.dorm_id || review.housingId || dorm.dorm_id || "",
 
-      room_id: review.room_id || review.roomId || "",
-      room_number: review.room_number || review.roomNumber || "-",
-      room_type: review.room_type || review.roomType || "-",
+      dorm_name:
+        review.dorm_name ||
+        review.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
 
       rating: Number(review.rating || 0),
-      review_comment: review.review_comment || review.comment || "-",
 
-      review_status: review.review_status || review.status || "Visible",
-      created_at: review.created_at || review.createdAt || review.date || "-",
-      updated_at: review.updated_at || review.updatedAt || "Not updated yet",
+      review_comment: review.review_comment || review.comment || "",
+
+      review_status: review.review_status || review.status || "visible",
+
+      created_at:
+        review.created_at ||
+        review.createdAt ||
+        review.date ||
+        formatDateToday(),
+
+      updated_at: review.updated_at || review.updatedAt || "",
+
+      isLocal: review.isLocal || false,
     };
   };
 
-  const loadReviews = () => {
-    setReviews(getReviews());
+  const getLocalReviews = () => {
+    const localReviews = JSON.parse(localStorage.getItem("reviews")) || [];
+
+    return localReviews.map((review) =>
+      normalizeReview({
+        ...review,
+        isLocal: true,
+      })
+    );
   };
 
-  const normalizedReviews = reviews.map(normalizeReview);
+  const mergeById = (backendItems, localItems, idField) => {
+    const merged = [...localItems];
 
-  const filteredReviews = useMemo(() => {
-    return normalizedReviews.filter((review) => {
-      const reviewStatus = review.review_status || "Visible";
+    backendItems.forEach((backendItem) => {
+      const exists = merged.some((localItem) => {
+        return Number(localItem[idField]) === Number(backendItem[idField]);
+      });
 
-      const matchStatus =
-        statusFilter === "All" || reviewStatus === statusFilter;
-
-      const matchRating =
-        ratingFilter === "All" ||
-        Number(review.rating) === Number(ratingFilter);
-
-      return matchStatus && matchRating;
+      if (!exists) {
+        merged.push(backendItem);
+      }
     });
-  }, [reviews, statusFilter, ratingFilter]);
 
-  const visibleCount = normalizedReviews.filter(
-    (review) => review.review_status === "Visible"
-  ).length;
+    return merged;
+  };
 
-  const hiddenCount = normalizedReviews.filter(
-    (review) => review.review_status === "Hidden"
-  ).length;
+  const loadReviews = async () => {
+    try {
+      setLoading(true);
 
-  const averageRating =
-    normalizedReviews.length > 0
-      ? (
-          normalizedReviews.reduce(
-            (sum, review) => sum + Number(review.rating || 0),
-            0
-          ) / normalizedReviews.length
-        ).toFixed(1)
-      : "0.0";
+      const localReviews = getLocalReviews();
 
-  const hideReview = (reviewId) => {
-    const allReviews = getReviews();
-    let updatedReview = null;
+      let backendReviews = [];
 
-    const updatedReviews = allReviews.map((review) => {
-      const normalized = normalizeReview(review);
+      try {
+        const reviewsResponse = await getReviews();
 
-      if (Number(normalized.review_id) === Number(reviewId)) {
-        updatedReview = {
+        const reviewsList = Array.isArray(reviewsResponse)
+          ? reviewsResponse
+          : reviewsResponse.data || [];
+
+        backendReviews = reviewsList.map(normalizeReview);
+      } catch (error) {
+        console.warn("Backend reviews could not be loaded:", error);
+      }
+
+      const mergedReviews = mergeById(
+        backendReviews,
+        localReviews,
+        "review_id"
+      ).sort((a, b) => {
+        return Number(b.review_id || 0) - Number(a.review_id || 0);
+      });
+
+      setReviews(mergedReviews);
+    } catch (error) {
+      console.error("Failed to load reviews:", error);
+      alert("Could not load reviews.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateLocalReview = (reviewId, updates) => {
+    const localReviews = JSON.parse(localStorage.getItem("reviews")) || [];
+
+    const updatedReviews = localReviews.map((review) => {
+      const currentReviewId = review.review_id || review.id;
+
+      if (Number(currentReviewId) === Number(reviewId)) {
+        return {
           ...review,
-          review_status: "Hidden",
+          ...updates,
+          status: updates.review_status || updates.status || review.status,
+          review_status:
+            updates.review_status || updates.status || review.review_status,
           updated_at: formatDateToday(),
-
-          status: "Hidden",
           updatedAt: formatDateToday(),
         };
-
-        return updatedReview;
       }
 
       return review;
     });
 
-    saveReviews(updatedReviews);
-
-    if (updatedReview) {
-      const normalizedUpdated = normalizeReview(updatedReview);
-
-      addNotification(
-        normalizedUpdated.resident_id,
-        "review",
-        "Review Hidden",
-        "Your review for " +
-          normalizedUpdated.dorm_name +
-          " has been hidden by the admin.",
-        normalizedUpdated.email
-      );
-    }
-
-    alert("Review hidden successfully.");
+    localStorage.setItem("reviews", JSON.stringify(updatedReviews));
   };
 
-  const showReview = (reviewId) => {
-    const allReviews = getReviews();
-    let updatedReview = null;
+  const deleteLocalReview = (reviewId) => {
+    const localReviews = JSON.parse(localStorage.getItem("reviews")) || [];
 
-    const updatedReviews = allReviews.map((review) => {
-      const normalized = normalizeReview(review);
-
-      if (Number(normalized.review_id) === Number(reviewId)) {
-        updatedReview = {
-          ...review,
-          review_status: "Visible",
-          updated_at: formatDateToday(),
-
-          status: "Visible",
-          updatedAt: formatDateToday(),
-        };
-
-        return updatedReview;
-      }
-
-      return review;
+    const updatedReviews = localReviews.filter((review) => {
+      const currentReviewId = review.review_id || review.id;
+      return Number(currentReviewId) !== Number(reviewId);
     });
 
-    saveReviews(updatedReviews);
-
-    if (updatedReview) {
-      const normalizedUpdated = normalizeReview(updatedReview);
-
-      addNotification(
-        normalizedUpdated.resident_id,
-        "review",
-        "Review Visible Again",
-        "Your review for " +
-          normalizedUpdated.dorm_name +
-          " is now visible again.",
-        normalizedUpdated.email
-      );
-    }
-
-    alert("Review is visible again.");
+    localStorage.setItem("reviews", JSON.stringify(updatedReviews));
   };
 
-  const deleteReview = (reviewId) => {
+  const changeReviewStatus = async (review, newStatus) => {
+    const reviewId = review.review_id;
+
+    try {
+      await updateReview(reviewId, {
+        resident_id: Number(review.resident_id),
+        dorm_id: Number(review.dorm_id),
+        rating: Number(review.rating),
+        review_comment: review.review_comment,
+        review_status: newStatus,
+      });
+
+      updateLocalReview(reviewId, {
+        review_status: newStatus,
+        status: newStatus,
+      });
+
+      alert(`Review marked as ${displayStatus(newStatus)}.`);
+      loadReviews();
+    } catch (error) {
+      console.warn("Backend review update failed:", error);
+
+      updateLocalReview(reviewId, {
+        review_status: newStatus,
+        status: newStatus,
+      });
+
+      alert(
+        `Review marked as ${displayStatus(
+          newStatus
+        )} locally for frontend testing.`
+      );
+
+      loadReviews();
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
     const ok = window.confirm("Are you sure you want to delete this review?");
+
     if (!ok) return;
 
-    const updatedReviews = getReviews().filter((review) => {
-      const normalized = normalizeReview(review);
-      return Number(normalized.review_id) !== Number(reviewId);
-    });
+    try {
+      await deleteReview(reviewId);
 
-    saveReviews(updatedReviews);
-    alert("Review deleted successfully.");
+      deleteLocalReview(reviewId);
+
+      alert("Review deleted successfully.");
+      loadReviews();
+    } catch (error) {
+      console.warn("Backend review delete failed:", error);
+
+      deleteLocalReview(reviewId);
+
+      alert("Review deleted locally for frontend testing.");
+      loadReviews();
+    }
+  };
+
+  const renderStars = (value) => {
+    const ratingValue = Math.round(Number(value) || 0);
+
+    return [1, 2, 3, 4, 5].map((star) => (
+      <i
+        key={star}
+        className={
+          star <= ratingValue ? "fa-solid fa-star" : "fa-regular fa-star"
+        }
+      ></i>
+    ));
   };
 
   const logout = () => {
-    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
-  const renderStars = (rating) => {
-    const items = [];
+  const totalReviews = reviews.length;
 
-    for (let i = 1; i <= 5; i++) {
-      items.push(
-        <i
-          key={i}
-          className={i <= Number(rating) ? "fa-solid fa-star" : "fa-regular fa-star"}
-        ></i>
-      );
-    }
+  const visibleCount = reviews.filter((review) => {
+    return normalizeStatus(review.review_status) === "visible";
+  }).length;
 
-    return items;
-  };
+  const hiddenCount = reviews.filter((review) => {
+    return normalizeStatus(review.review_status) === "hidden";
+  }).length;
+
+  const averageRating =
+    reviews.length === 0
+      ? 0
+      : (
+          reviews.reduce((total, review) => total + Number(review.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1);
 
   return (
-    <div className="manage-reviews-page reviews-layout">
-      <aside className="reviews-sidebar">
+    <div className="manage-reviews-page reviews-admin-layout">
+      <aside className="reviews-admin-sidebar">
         <div className="sidebar-logo">
           <h2>UniNest</h2>
           <p>Admin Panel</p>
@@ -329,17 +365,17 @@ function ManageReviewsPage() {
         </ul>
       </aside>
 
-      <main className="reviews-main">
-        <div className="reviews-topbar">
+      <main className="reviews-admin-main">
+        <div className="reviews-admin-topbar">
           <div>
             <h1>Manage Reviews</h1>
-            <p>View, hide, show, or delete resident reviews.</p>
+            <p>Review resident feedback and control what appears publicly.</p>
           </div>
         </div>
 
-        <section className="reviews-stats">
+        <section className="reviews-admin-stats">
           <div className="review-stat-card">
-            <h3>{normalizedReviews.length}</h3>
+            <h3>{totalReviews}</h3>
             <p>Total Reviews</p>
           </div>
 
@@ -359,134 +395,128 @@ function ManageReviewsPage() {
           </div>
         </section>
 
-        <section className="reviews-filter-card">
-          <div className="filter-group">
-            <label>Filter by Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Reviews</option>
-              <option value="Visible">Visible</option>
-              <option value="Hidden">Hidden</option>
-            </select>
+        {loading ? (
+          <div className="reviews-admin-card">
+            <h2>Loading reviews...</h2>
           </div>
-
-          <div className="filter-group">
-            <label>Filter by Rating</label>
-            <select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
-            >
-              <option value="All">All Ratings</option>
-              <option value="5">5 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="2">2 Stars</option>
-              <option value="1">1 Star</option>
-            </select>
-          </div>
-        </section>
-
-        {filteredReviews.length === 0 ? (
-          <div className="empty-reviews">
-            <h3>No reviews found</h3>
-            <p>No resident reviews have been submitted yet.</p>
+        ) : reviews.length === 0 ? (
+          <div className="reviews-admin-card empty-reviews">
+            <h2>No reviews found</h2>
+            <p>No residents have submitted reviews yet.</p>
           </div>
         ) : (
           <section className="reviews-list">
-            {filteredReviews.map((review) => {
-              const reviewId = review.review_id;
-              const reviewStatus = review.review_status || "Visible";
+            {reviews.map((review) => {
+              const reviewStatus = normalizeStatus(review.review_status);
 
               return (
-                <div className="review-admin-card" key={reviewId}>
-                  <div className="review-main">
-                    <div className="review-title-row">
-                      <h2>{review.dorm_name || "Dorm Review"}</h2>
-                      <span
-                        className={`review-status ${reviewStatus.toLowerCase()}`}
-                      >
-                        {reviewStatus}
-                      </span>
-                    </div>
-
-                    <div className="review-meta-grid">
+                <div className="admin-review-card" key={review.review_id}>
+                  <div className="review-header">
+                    <div>
+                      <h2>{review.dorm_name}</h2>
                       <p>
-                        <i className="fa-solid fa-user"></i>{" "}
-                        <strong>Resident:</strong>{" "}
-                        {review.resident_name || "Resident"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-envelope"></i>{" "}
-                        <strong>Email:</strong> {review.email || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-building"></i>{" "}
-                        <strong>Dorm:</strong> {review.dorm_name || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-door-open"></i>{" "}
-                        <strong>Room:</strong> {review.room_number || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-bed"></i>{" "}
-                        <strong>Room Type:</strong> {review.room_type || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-calendar-days"></i>{" "}
-                        <strong>Date:</strong> {review.created_at || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-clock-rotate-left"></i>{" "}
-                        <strong>Updated:</strong>{" "}
-                        {review.updated_at || "Not updated yet"}
+                        Review ID #{review.review_id}
+                        {review.isLocal ? " - Local" : ""}
                       </p>
                     </div>
 
-                    <div className="rating-row">
-                      <span>{renderStars(review.rating)}</span>
-                      <strong>{review.rating || 0} / 5</strong>
-                    </div>
-
-                    <div className="comment-box">
-                      <p>{review.review_comment || "-"}</p>
-                    </div>
+                    <span
+                      className={`status-badge ${getStatusClass(
+                        review.review_status
+                      )}`}
+                    >
+                      {displayStatus(review.review_status)}
+                    </span>
                   </div>
 
-                  <div className="review-actions">
-                    <Link
-                      to={`/housing-details?id=${review.dorm_id}`}
-                      className="view-btn"
-                    >
-                      View Dorm
-                    </Link>
+                  <div className="review-info-grid">
+                    <p>
+                      <i className="fa-solid fa-user"></i>{" "}
+                      <strong>Resident:</strong> {review.resident_name}
+                    </p>
 
-                    {reviewStatus === "Hidden" ? (
-                      <button
-                        className="show-btn"
-                        onClick={() => showReview(reviewId)}
-                      >
-                        Show Review
-                      </button>
-                    ) : (
+                    <p>
+                      <i className="fa-solid fa-envelope"></i>{" "}
+                      <strong>Email:</strong> {review.email}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-building"></i>{" "}
+                      <strong>Dorm:</strong> {review.dorm_name}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-calendar-days"></i>{" "}
+                      <strong>Submitted:</strong> {review.created_at}
+                    </p>
+                  </div>
+
+                  <div className="review-rating-box">
+                    <div className="review-stars">{renderStars(review.rating)}</div>
+                    <span>{review.rating} / 5</span>
+                  </div>
+
+                  <div className="review-comment-box">
+                    <h3>Comment</h3>
+                    <p>{review.review_comment || "-"}</p>
+                  </div>
+
+                  {review.isLocal && (
+                    <div className="local-note-box">
+                      <p>
+                        <strong>Note:</strong> This review is saved locally until
+                        backend review store/update is fixed.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="review-actions">
+                    {reviewStatus === "visible" && (
                       <button
                         className="hide-btn"
-                        onClick={() => hideReview(reviewId)}
+                        onClick={() => changeReviewStatus(review, "hidden")}
                       >
                         Hide Review
                       </button>
                     )}
 
+                    {reviewStatus === "hidden" && (
+                      <button
+                        className="show-btn"
+                        onClick={() => changeReviewStatus(review, "visible")}
+                      >
+                        Show Review
+                      </button>
+                    )}
+
+                    {reviewStatus !== "visible" && reviewStatus !== "hidden" && (
+                      <>
+                        <button
+                          className="show-btn"
+                          onClick={() => changeReviewStatus(review, "visible")}
+                        >
+                          Mark Visible
+                        </button>
+
+                        <button
+                          className="hide-btn"
+                          onClick={() => changeReviewStatus(review, "hidden")}
+                        >
+                          Hide Review
+                        </button>
+                      </>
+                    )}
+
+                    <Link
+                      to={`/housing-details?id=${review.dorm_id}`}
+                      className="view-dorm-btn"
+                    >
+                      View Dorm
+                    </Link>
+
                     <button
                       className="delete-btn"
-                      onClick={() => deleteReview(reviewId)}
+                      onClick={() => handleDeleteReview(review.review_id)}
                     >
                       Delete
                     </button>

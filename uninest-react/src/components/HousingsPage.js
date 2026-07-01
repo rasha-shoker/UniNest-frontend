@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./HousingsPage.css";
-import { housingsData } from "../data/housingsData";
+import { getDorms, API_BASE_URL } from "../api";
+
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 function HousingsPage() {
+  const [dorms, setDorms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [university, setUniversity] = useState("");
   const [city, setCity] = useState("");
   const [roomType, setRoomType] = useState("");
@@ -10,7 +16,6 @@ function HousingsPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
-  
   const universityCities = {
     MU: ["Beirut"],
     LU: ["Hadath", "Fanar", "Ras Maska"],
@@ -20,9 +25,93 @@ function HousingsPage() {
     USJ: ["Beirut"],
   };
 
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+
+    getDorms()
+      .then((data) => {
+        const dormList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+        const normalizedDorms = dormList.map(normalizeDorm);
+        setDorms(normalizedDorms);
+      })
+      .catch((error) => {
+        console.error("Failed to load dorms:", error);
+        setError("Could not load dorms from the backend.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  function normalizeDorm(dorm) {
+    const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
+
+    const normalizedRooms = rooms.map((room) => ({
+      ...room,
+      room_id: room.room_id,
+      dorm_id: room.dorm_id,
+      room_number: room.room_number || "",
+      room_type: room.room_type || "",
+      room_capacity: room.room_capacity || "",
+      current_occupancy: Number(room.current_occupancy || 0),
+      occupancy_limit: Number(room.occupancy_limit || room.room_capacity || 0),
+      room_price: Number(room.room_price || 0),
+      availability_status: room.availability_status || "available",
+    }));
+
+    return {
+      ...dorm,
+      dorm_id: dorm.dorm_id,
+      dorm_name: dorm.dorm_name || "Dorm Name",
+      city: dorm.city || "",
+      area: dorm.area || "",
+      street: dorm.street || "",
+      building_number: dorm.building_number || "",
+      gps_location: dorm.gps_location || "",
+      dorm_description: dorm.dorm_description || "",
+      eligibility_requirements: dorm.eligibility_requirements || "",
+      contact_email: dorm.contact_email || "",
+      contact_phone: dorm.contact_phone || "",
+      rating: dorm.rating || "Not rated",
+      admin_id: dorm.admin_id,
+      rooms: normalizedRooms,
+      images: Array.isArray(dorm.images) ? dorm.images : [],
+      reviews: Array.isArray(dorm.reviews) ? dorm.reviews : [],
+      facilities: Array.isArray(dorm.facilities) ? dorm.facilities : [],
+    };
+  }
+
   const getDormImage = (dorm) => {
-    const imagePath = dorm.image_url || dorm.image || dorm.housingImage || "images/aub1.jpg";
-    const fileName = imagePath.replace("images/", "");
+    const imagePath =
+      dorm.image_url ||
+      dorm.images?.[0]?.image_url ||
+      "images/aub1.jpg";
+
+    if (!imagePath) {
+      return require("../assets/images/aub1.jpg");
+    }
+
+    if (imagePath.startsWith("http")) {
+      return imagePath;
+    }
+
+    const cleanPath = imagePath.replace(/^\/+/, "");
+
+    if (
+      cleanPath.startsWith("storage/") ||
+      cleanPath.startsWith("uploads/") ||
+      cleanPath.startsWith("public/")
+    ) {
+      return `${BACKEND_BASE_URL}/${cleanPath}`;
+    }
+
+    const fileName = cleanPath.replace("images/", "");
 
     try {
       return require(`../assets/images/${fileName}`);
@@ -46,79 +135,35 @@ function HousingsPage() {
     return roomTypeValue;
   };
 
-  const normalizeDorm = (dorm) => {
-    return {
-      ...dorm,
+  const getDormAvailability = (dorm) => {
+    const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
 
-      dorm_id: dorm.dorm_id || dorm.id,
-      dorm_name: dorm.dorm_name || dorm.name || "Dorm Name",
+    if (rooms.length === 0) {
+      return "Available";
+    }
 
-      university_name: dorm.university_name || dorm.university || "",
-      city: dorm.city || "",
-      area: dorm.area || dorm.location || "",
+    const hasAvailableRoom = rooms.some((room) => {
+      const roomStatus = String(room.availability_status || "").toLowerCase();
 
-      image_url: dorm.image_url || dorm.image || dorm.housingImage || "images/aub1.jpg",
+      if (roomStatus.includes("available")) {
+        return true;
+      }
 
-      availability_status:
-        dorm.availability_status || dorm.status || dorm.availability || "Available",
+      const currentOccupancy = Number(room.current_occupancy || 0);
+      const occupancyLimit = Number(room.occupancy_limit || room.room_capacity || 0);
 
-      main_room_type: dorm.main_room_type || dorm.roomType || "",
-      base_price: dorm.base_price || dorm.price || 0,
-
-      rooms: Array.isArray(dorm.rooms)
-        ? dorm.rooms.map((room) => {
-            return {
-              ...room,
-              room_id: room.room_id || room.roomId,
-              dorm_id: room.dorm_id || dorm.dorm_id || dorm.id,
-              room_type: room.room_type || room.type || "",
-              room_price: Number(room.room_price || room.price || 0),
-              availability_status: room.availability_status || room.status || "Available",
-            };
-          })
-        : [],
-
-      facilities: dorm.facilities || [],
-    };
-  };
-
-  const getDorms = () => {
-  const savedDorms = JSON.parse(localStorage.getItem("dorms")) || [];
-  const savedHousings = JSON.parse(localStorage.getItem("housings")) || [];
-  const defaultDorms = housingsData || [];
-
-  const allDorms = [
-    ...defaultDorms,
-    ...savedDorms,
-    ...savedHousings,
-  ].map(normalizeDorm);
-
-  const uniqueDorms = [];
-
-  allDorms.forEach((dorm) => {
-    const dormId = String(dorm.dorm_id || dorm.id);
-
-    const alreadyExists = uniqueDorms.some((item) => {
-      return String(item.dorm_id || item.id) === dormId;
+      return occupancyLimit > 0 && currentOccupancy < occupancyLimit;
     });
 
-    if (!alreadyExists) {
-      uniqueDorms.push(dorm);
-    }
-  });
-
-  localStorage.setItem("dorms", JSON.stringify(uniqueDorms));
-  localStorage.setItem("housings", JSON.stringify(uniqueDorms));
-
-  return uniqueDorms;
-};
+    return hasAvailableRoom ? "Available" : "Full";
+  };
 
   const getStartingPrice = (dorm) => {
     const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
 
     if (rooms.length > 0) {
       const prices = rooms
-        .map((room) => Number(room.room_price || room.price || 0))
+        .map((room) => Number(room.room_price || 0))
         .filter((price) => price > 0);
 
       if (prices.length > 0) {
@@ -126,20 +171,14 @@ function HousingsPage() {
       }
     }
 
-    return Number(dorm.base_price || dorm.price || 0);
+    return 0;
   };
 
   const dormMatchesRoomType = (dorm, selectedRoomType) => {
-    const mainRoomType = normalizeRoomType(dorm.main_room_type || dorm.room_type || "");
-
-    if (mainRoomType === selectedRoomType) {
-      return true;
-    }
-
     const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
 
     return rooms.some((room) => {
-      return normalizeRoomType(room.room_type || room.type || "") === selectedRoomType;
+      return normalizeRoomType(room.room_type || "") === selectedRoomType;
     });
   };
 
@@ -148,7 +187,7 @@ function HousingsPage() {
 
     if (rooms.length > 0) {
       return rooms.some((room) => {
-        const price = Number(room.room_price || room.price || 0);
+        const price = Number(room.room_price || 0);
 
         if (price <= 0) return false;
         if (min > 0 && price < min) return false;
@@ -166,33 +205,66 @@ function HousingsPage() {
     return true;
   };
 
+  const getAvailableCities = () => {
+    if (university) {
+      return universityCities[university] || [];
+    }
+
+    const citySet = new Set();
+
+    dorms.forEach((dorm) => {
+      if (dorm.city) citySet.add(dorm.city);
+      if (dorm.area) citySet.add(dorm.area);
+    });
+
+    return Array.from(citySet).sort();
+  };
+
   const getFilteredDorms = () => {
-    let dorms = getDorms();
+    let filteredDorms = [...dorms];
 
     const min = Number(minPrice);
     const max = Number(maxPrice);
 
     if (university) {
-      dorms = dorms.filter((dorm) => dorm.university_name === university);
+      filteredDorms = filteredDorms.filter((dorm) => {
+        const searchableText = `
+          ${dorm.dorm_name}
+          ${dorm.city}
+          ${dorm.area}
+          ${dorm.dorm_description}
+          ${dorm.eligibility_requirements}
+        `.toLowerCase();
+
+        return searchableText.includes(university.toLowerCase());
+      });
     }
 
     if (city) {
-      dorms = dorms.filter((dorm) => dorm.city === city || dorm.area === city);
+      filteredDorms = filteredDorms.filter((dorm) => {
+        return dorm.city === city || dorm.area === city;
+      });
     }
 
     if (roomType) {
-      dorms = dorms.filter((dorm) => dormMatchesRoomType(dorm, roomType));
+      filteredDorms = filteredDorms.filter((dorm) =>
+        dormMatchesRoomType(dorm, roomType)
+      );
     }
 
     if (status) {
-      dorms = dorms.filter((dorm) => dorm.availability_status === status);
+      filteredDorms = filteredDorms.filter((dorm) => {
+        return getDormAvailability(dorm) === status;
+      });
     }
 
     if (min > 0 || max > 0) {
-      dorms = dorms.filter((dorm) => dormMatchesPriceRange(dorm, min, max));
+      filteredDorms = filteredDorms.filter((dorm) =>
+        dormMatchesPriceRange(dorm, min, max)
+      );
     }
 
-    return dorms;
+    return filteredDorms;
   };
 
   const handleSearch = (event) => {
@@ -208,8 +280,6 @@ function HousingsPage() {
 
   const viewDetails = (dormId) => {
     localStorage.setItem("selectedDormId", dormId);
-    localStorage.setItem("selectedHousingId", dormId);
-
     window.location.href = `/housing-details?id=${dormId}`;
   };
 
@@ -219,50 +289,50 @@ function HousingsPage() {
   };
 
   const filteredDorms = getFilteredDorms();
-  const cities = university ? universityCities[university] || [] : [];
+  const cities = getAvailableCities();
 
   return (
     <div className="housings-page">
       <header className="housings-navbar">
-  <div className="housings-logo">
-    <h2>UniNest</h2>
-  </div>
+        <div className="housings-logo">
+          <h2>UniNest</h2>
+        </div>
 
-  <nav>
-    <ul className="housings-nav-links">
-      <li>
-        <a href="/">Home</a>
-      </li>
+        <nav>
+          <ul className="housings-nav-links">
+            <li>
+              <a href="/">Home</a>
+            </li>
 
-      <li>
-        <a href="/housings" className="active">
-          Dorms
-        </a>
-      </li>
+            <li>
+              <a href="/housings" className="active">
+                Dorms
+              </a>
+            </li>
 
-      <li>
-        <a
-          href="/"
-          onClick={(event) => {
-            event.preventDefault();
+            <li>
+              <a
+                href="/"
+                onClick={(event) => {
+                  event.preventDefault();
 
-            localStorage.removeItem("loggedInRole");
-            localStorage.removeItem("loggedInUserType");
-            localStorage.removeItem("loggedInUser");
-            localStorage.removeItem("loggedInUserEmail");
-            localStorage.removeItem("loggedInUserId");
-            localStorage.removeItem("loggedInResidentId");
+                  localStorage.removeItem("loggedInRole");
+                  localStorage.removeItem("loggedInUserType");
+                  localStorage.removeItem("loggedInUser");
+                  localStorage.removeItem("loggedInUserEmail");
+                  localStorage.removeItem("loggedInUserId");
+                  localStorage.removeItem("loggedInResidentId");
 
-            window.location.href = "/";
-          }}
-          className="housings-login-link"
-        >
-          Login
-        </a>
-      </li>
-    </ul>
-  </nav>
-</header>
+                  window.location.href = "/";
+                }}
+                className="housings-login-link"
+              >
+                Login
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </header>
 
       <section className="housings-page-header">
         <div className="housings-page-header-content">
@@ -281,7 +351,11 @@ function HousingsPage() {
           <form className="filter-form" onSubmit={handleSearch}>
             <div className="form-group">
               <label htmlFor="university">University</label>
-              <select id="university" value={university} onChange={handleUniversityChange}>
+              <select
+                id="university"
+                value={university}
+                onChange={handleUniversityChange}
+              >
                 <option value="">All Universities</option>
                 <option value="MU">MU</option>
                 <option value="LU">LU</option>
@@ -294,7 +368,11 @@ function HousingsPage() {
 
             <div className="form-group">
               <label htmlFor="city">City / Location</label>
-              <select id="city" value={city} onChange={(event) => setCity(event.target.value)}>
+              <select
+                id="city"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+              >
                 <option value="">All Cities</option>
                 {cities.map((cityName) => (
                   <option value={cityName} key={cityName}>
@@ -371,7 +449,16 @@ function HousingsPage() {
           <p>Choose a dorm and view its details before booking.</p>
         </div>
 
-        {filteredDorms.length === 0 ? (
+        {loading ? (
+          <div className="empty-housings-message">
+            <h3>Loading dorms...</h3>
+          </div>
+        ) : error ? (
+          <div className="empty-housings-message">
+            <h3>{error}</h3>
+            <p>Make sure Laravel is running on http://127.0.0.1:8000.</p>
+          </div>
+        ) : filteredDorms.length === 0 ? (
           <div className="empty-housings-message">
             <h3>No dorms found</h3>
             <p>Try changing your search filters.</p>
@@ -381,16 +468,14 @@ function HousingsPage() {
             {filteredDorms.map((dorm) => {
               const dormId = dorm.dorm_id;
               const dormName = dorm.dorm_name || "Dorm Name";
-              const location = dorm.area || dorm.city || "-";
-              const universityName = dorm.university_name || "-";
+              const location = `${dorm.city || ""}${
+                dorm.area ? ` - ${dorm.area}` : ""
+              }`;
               const startingPrice = getStartingPrice(dorm);
-              const availabilityStatus = dorm.availability_status || "Available";
+              const availabilityStatus = getDormAvailability(dorm);
               const displayRoomType = normalizeRoomType(
-                dorm.main_room_type ||
-                  (dorm.rooms && dorm.rooms[0] ? dorm.rooms[0].room_type : "") ||
-                  "-"
+                dorm.rooms && dorm.rooms[0] ? dorm.rooms[0].room_type : "-"
               );
-              const facilities = dorm.facilities || [];
 
               return (
                 <div className="housings-card" key={dormId}>
@@ -412,27 +497,32 @@ function HousingsPage() {
 
                     <p>
                       <i className="fa-solid fa-location-dot"></i>
-                      {location}
+                      {location || "-"}
                     </p>
 
                     <p>
-                      <i className="fa-solid fa-school"></i>
-                      {universityName}
+                      <i className="fa-solid fa-circle-info"></i>
+                      {dorm.eligibility_requirements ||
+                        "Eligibility not specified"}
                     </p>
 
                     <p>
                       <i className="fa-solid fa-bed"></i>
-                      {displayRoomType}
+                      {displayRoomType || "-"}
                     </p>
 
                     <p>
                       <i className="fa-solid fa-dollar-sign"></i>
-                      Starting from ${startingPrice}/month
+                      {startingPrice > 0
+                        ? `Starting from $${startingPrice}/month`
+                        : "Price not available"}
                     </p>
 
                     <div className="housings-facilities">
-                      {facilities.slice(0, 3).map((facility) => (
-                        <span key={facility}>{facility}</span>
+                      {dorm.facilities.slice(0, 3).map((facility) => (
+                        <span key={facility.facility_id || facility}>
+                          {facility.facility_name || facility}
+                        </span>
                       ))}
                     </div>
 
@@ -539,10 +629,10 @@ function HousingsPage() {
           <div className="housings-footer-box">
             <h3>Follow Us</h3>
             <div className="housings-social-icons">
-              <a href="#">
+              <a href="/">
                 <i className="fa-brands fa-facebook-f"></i>
               </a>
-              <a href="#">
+              <a href="/">
                 <i className="fa-brands fa-instagram"></i>
               </a>
             </div>

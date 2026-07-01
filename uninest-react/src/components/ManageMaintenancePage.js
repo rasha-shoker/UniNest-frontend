@@ -1,36 +1,59 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ManageMaintenancePage.css";
+import {
+  getMaintenanceRequests,
+  updateMaintenanceRequest,
+  getBookings,
+  getPayments,
+} from "../api";
 
 function ManageMaintenancePage() {
   const navigate = useNavigate();
+
   const [requests, setRequests] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("loggedInRole");
+
     if (role !== "admin") {
       navigate("/login");
       return;
     }
 
-    loadRequests();
+    loadMaintenanceRequests();
   }, [navigate]);
 
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const saveMaintenanceRequests = (items) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(items));
-    setRequests(items);
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+    if (value === "resolved") return "Resolved";
+    if (value === "in_progress") return "In Progress";
+
+    return "Pending";
   };
 
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
+  const getStatusClass = (status) => {
+    const value = normalizeStatus(status);
 
-  const saveNotifications = (items) => {
-    localStorage.setItem("notifications", JSON.stringify(items));
+    if (value === "completed" || value === "resolved") return "completed";
+    if (value === "in_progress") return "progress";
+    if (value === "approved" || value === "paid") return "approved";
+    if (value === "rejected" || value === "cancelled") return "rejected";
+
+    return "pending";
   };
 
   const formatDateToday = () => {
@@ -41,234 +64,484 @@ function ManageMaintenancePage() {
     });
   };
 
-  const addNotification = (
-    resident_id,
-    notification_type,
-    title,
-    message,
-    emailFallback
-  ) => {
-    if (!resident_id && !emailFallback) return;
+  const parseRequestDetails = (request) => {
+    const rawDescription =
+      request.request_description ||
+      request.issue_description ||
+      request.description ||
+      "";
 
-    const notifications = getNotifications();
-    const notificationId = Date.now() + Math.floor(Math.random() * 1000);
+    let category =
+      request.maintenance_category || request.category || "General";
 
-    const newNotification = {
-      notification_id: notificationId,
-      resident_id: resident_id || "",
-      title,
-      message,
-      notification_type,
-      is_read: false,
-      created_at: formatDateToday(),
+    let priority = request.priority || "Medium";
 
-      id: notificationId,
-      userEmail: emailFallback || "",
-      type: notification_type,
-      isRead: false,
-      date: formatDateToday(),
+    let description = rawDescription;
+
+    const match = rawDescription.match(/^(.+?)\s-\s(.+?):\s(.+)$/);
+
+    if (match) {
+      category = match[1] || category;
+      priority = match[2] || priority;
+      description = match[3] || description;
+    }
+
+    return {
+      category,
+      priority,
+      description,
     };
+  };
 
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
+  const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
+    return {
+      ...booking,
+
+      booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+
+      resident_name:
+        booking.resident_name ||
+        booking.residentName ||
+        booking.userName ||
+        booking.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
+
+      email:
+        booking.email ||
+        booking.userEmail ||
+        booking.studentEmail ||
+        booking.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        "-",
+
+      dorm_id:
+        booking.dorm_id ||
+        booking.housingId ||
+        dorm.dorm_id ||
+        room.dorm_id ||
+        "",
+
+      dorm_name:
+        booking.dorm_name ||
+        booking.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
+
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || booking.location || "",
+
+      room_id: booking.room_id || booking.roomId || room.room_id || "",
+      room_number:
+        booking.room_number || booking.roomNumber || room.room_number || "-",
+      room_type: booking.room_type || booking.roomType || room.room_type || "-",
+
+      booking_status: booking.booking_status || booking.status || "pending",
+      payment_status:
+        booking.payment_status || booking.paymentStatus || "pending",
+
+      isLocal: booking.isLocal || false,
+    };
+  };
+
+  const normalizePayment = (payment) => {
+    return {
+      ...payment,
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || payment.bookingId,
+      amount: Number(payment.amount || 0),
+      payment_method: payment.payment_method || payment.method || "",
+      payment_status: payment.payment_status || payment.status || "pending",
+      created_at: payment.created_at || payment.payment_date || "",
+      isLocal: payment.isLocal || false,
+    };
   };
 
   const normalizeRequest = (request) => {
+    const booking = request.booking || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+    const details = parseRequestDetails(request);
+
     return {
       ...request,
 
-      request_id: request.request_id || request.id,
-      booking_id: request.booking_id || request.bookingId,
-      staff_id: request.staff_id || request.staffId || null,
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
 
-      resident_id: request.resident_id || "",
+      booking_id: request.booking_id || booking.booking_id || "",
+      room_id: request.room_id || room.room_id || "",
+      maintenance_id: request.maintenance_id || null,
+
+      resident_id:
+        request.resident_id ||
+        resident.resident_id ||
+        booking.resident_id ||
+        "",
+
       resident_name:
         request.resident_name ||
         request.residentName ||
         request.userName ||
-        request.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        booking.resident_name ||
         "Resident",
 
       email:
         request.email ||
-        request.residentEmail ||
         request.userEmail ||
         request.studentEmail ||
+        request.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        booking.email ||
         "-",
 
-      dorm_id: request.dorm_id || request.housingId,
-      dorm_name: request.dorm_name || request.housingName || "-",
+      dorm_id:
+        request.dorm_id ||
+        request.housingId ||
+        dorm.dorm_id ||
+        booking.dorm_id ||
+        "",
 
-      room_id: request.room_id || request.roomId || "",
-      room_number: request.room_number || request.roomNumber || "-",
-      room_type: request.room_type || request.roomType || "-",
+      dorm_name:
+        request.dorm_name ||
+        request.housingName ||
+        dorm.dorm_name ||
+        booking.dorm_name ||
+        "Dorm",
 
-      request_title:
-        request.request_title || request.title || "Maintenance Request",
-
-      maintenance_category:
-        request.maintenance_category ||
-        request.category ||
-        request.issueType ||
+      room_number:
+        request.room_number ||
+        request.roomNumber ||
+        room.room_number ||
+        booking.room_number ||
         "-",
 
-      issue_description: request.issue_description || request.description || "-",
-      priority: request.priority || "Medium",
+      room_type:
+        request.room_type ||
+        request.roomType ||
+        room.room_type ||
+        booking.room_type ||
+        "-",
 
-      request_status: request.request_status || request.status || "Pending",
-      request_date:
+      maintenance_category: details.category,
+      category: details.category,
+
+      priority: details.priority,
+
+      request_description: details.description,
+      issue_description: details.description,
+      description: details.description,
+
+      request_status: request.request_status || request.status || "pending",
+      status: request.request_status || request.status || "pending",
+
+      created_at:
+        request.created_at ||
         request.request_date ||
         request.submittedDate ||
         request.createdAt ||
         "-",
 
-      updated_at: request.updated_at || request.updatedAt || "Not updated yet",
+      updated_at: request.updated_at || request.updatedAt || "",
 
-      images: Array.isArray(request.images)
-        ? request.images.map((image) => {
-            return {
-              ...image,
-              image_id:
-                image.image_id || Date.now() + Math.floor(Math.random() * 1000),
-              dorm_id: image.dorm_id || null,
-              room_id: image.room_id || null,
-              maintenance_request_id:
-                image.maintenance_request_id ||
-                request.request_id ||
-                request.id ||
-                null,
-              image_url: image.image_url || image.data || "",
-              uploaded_at:
-                image.uploaded_at ||
-                request.request_date ||
-                request.submittedDate ||
-                "",
-            };
-          })
-        : [],
+      image_url: request.image_url || request.image || "",
+      image_name: request.image_name || request.imageName || "",
+
+      isLocal: request.isLocal || false,
     };
   };
 
-  const loadRequests = () => {
-    setRequests(getMaintenanceRequests());
+  const getLocalBookings = () => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    return localBookings.map((booking) =>
+      normalizeBooking({
+        ...booking,
+        isLocal: true,
+      })
+    );
   };
 
-  const getStatusClass = (status) => {
-    if (status === "Pending") return "pending";
-    if (status === "In Progress") return "progress";
-    if (status === "Resolved") return "resolved";
-    return "pending";
+  const getLocalPayments = () => {
+    const localPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    return localPayments.map((payment) =>
+      normalizePayment({
+        ...payment,
+        isLocal: true,
+      })
+    );
   };
 
-  const getPriorityClass = (priority) => {
-    if (priority === "Low") return "low";
-    if (priority === "Medium") return "medium";
-    if (priority === "High") return "high";
-    if (priority === "Urgent") return "urgent";
-    return "medium";
+  const getLocalRequests = () => {
+    const localRequests =
+      JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+
+    return localRequests.map((request) =>
+      normalizeRequest({
+        ...request,
+        isLocal: true,
+      })
+    );
   };
 
-  const updateRequestStatus = (requestId, newStatus) => {
-    const allRequests = getMaintenanceRequests();
-    let updatedRequest = null;
+  const mergeById = (backendItems, localItems, idField) => {
+    const merged = [...localItems];
 
-    const updatedRequests = allRequests.map((request) => {
-      const normalized = normalizeRequest(request);
+    backendItems.forEach((backendItem) => {
+      const exists = merged.some((localItem) => {
+        return Number(localItem[idField]) === Number(backendItem[idField]);
+      });
 
-      if (Number(normalized.request_id) === Number(requestId)) {
-        updatedRequest = {
+      if (!exists) {
+        merged.push(backendItem);
+      }
+    });
+
+    return merged;
+  };
+
+  const enrichRequestWithBooking = (request, allBookings) => {
+    const relatedBooking = allBookings.find((booking) => {
+      return Number(booking.booking_id) === Number(request.booking_id);
+    });
+
+    if (!relatedBooking) return request;
+
+    return normalizeRequest({
+      ...request,
+
+      resident_id: request.resident_id || relatedBooking.resident_id,
+      resident_name: request.resident_name || relatedBooking.resident_name,
+      email: request.email || relatedBooking.email,
+
+      dorm_id: request.dorm_id || relatedBooking.dorm_id,
+      dorm_name: request.dorm_name || relatedBooking.dorm_name,
+
+      room_id: request.room_id || relatedBooking.room_id,
+      room_number: request.room_number || relatedBooking.room_number,
+      room_type: request.room_type || relatedBooking.room_type,
+    });
+  };
+
+  const loadMaintenanceRequests = async () => {
+    try {
+      setLoading(true);
+
+      const localBookings = getLocalBookings();
+      const localPayments = getLocalPayments();
+      const localRequests = getLocalRequests();
+
+      let backendBookings = [];
+      let backendPayments = [];
+      let backendRequests = [];
+
+      try {
+        const bookingsResponse = await getBookings();
+
+        const bookingsList = Array.isArray(bookingsResponse)
+          ? bookingsResponse
+          : bookingsResponse.data || [];
+
+        backendBookings = bookingsList.map(normalizeBooking);
+      } catch (error) {
+        console.warn("Backend bookings could not be loaded:", error);
+      }
+
+      try {
+        const paymentsResponse = await getPayments();
+
+        const paymentsList = Array.isArray(paymentsResponse)
+          ? paymentsResponse
+          : paymentsResponse.data || [];
+
+        backendPayments = paymentsList.map(normalizePayment);
+      } catch (error) {
+        console.warn("Backend payments could not be loaded:", error);
+      }
+
+      try {
+        const requestsResponse = await getMaintenanceRequests();
+
+        const requestsList = Array.isArray(requestsResponse)
+          ? requestsResponse
+          : requestsResponse.data || [];
+
+        backendRequests = requestsList.map(normalizeRequest);
+      } catch (error) {
+        console.warn("Backend maintenance requests could not be loaded:", error);
+      }
+
+      const mergedBookings = mergeById(
+        backendBookings,
+        localBookings,
+        "booking_id"
+      );
+
+      const mergedPayments = mergeById(
+        backendPayments,
+        localPayments,
+        "payment_id"
+      );
+
+      const mergedRequests = mergeById(
+        backendRequests,
+        localRequests,
+        "maintenance_request_id"
+      )
+        .map((request) => enrichRequestWithBooking(request, mergedBookings))
+        .sort((a, b) => {
+          return (
+            Number(b.maintenance_request_id || 0) -
+            Number(a.maintenance_request_id || 0)
+          );
+        });
+
+      setBookings(mergedBookings);
+      setPayments(mergedPayments);
+      setRequests(mergedRequests);
+    } catch (error) {
+      console.error("Failed to load maintenance requests:", error);
+      alert("Could not load maintenance requests.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateLocalRequest = (requestId, updates) => {
+    const localRequests =
+      JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+
+    const updatedRequests = localRequests.map((request) => {
+      const currentRequestId =
+        request.maintenance_request_id || request.request_id || request.id;
+
+      if (Number(currentRequestId) === Number(requestId)) {
+        return {
           ...request,
-          request_status: newStatus,
+          ...updates,
+          request_status:
+            updates.request_status || updates.status || request.request_status,
+          status: updates.request_status || updates.status || request.status,
           updated_at: formatDateToday(),
-
-          status: newStatus,
           updatedAt: formatDateToday(),
         };
-
-        return updatedRequest;
       }
 
       return request;
     });
 
-    saveMaintenanceRequests(updatedRequests);
-
-    if (updatedRequest) {
-      const normalizedUpdated = normalizeRequest(updatedRequest);
-
-      let title = "";
-      let message = "";
-
-      if (newStatus === "In Progress") {
-        title = "Maintenance Request In Progress";
-        message = `Your maintenance request "${
-          normalizedUpdated.request_title || "Maintenance Request"
-        }" for ${normalizedUpdated.dorm_name || "your dorm"}, Room ${
-          normalizedUpdated.room_number || "-"
-        }, is now in progress.`;
-      }
-
-      if (newStatus === "Resolved") {
-        title = "Maintenance Request Resolved";
-        message = `Your maintenance request "${
-          normalizedUpdated.request_title || "Maintenance Request"
-        }" for ${normalizedUpdated.dorm_name || "your dorm"}, Room ${
-          normalizedUpdated.room_number || "-"
-        }, has been resolved.`;
-      }
-
-      addNotification(
-        normalizedUpdated.resident_id,
-        "maintenance",
-        title,
-        message,
-        normalizedUpdated.email
-      );
-    }
-
-    alert("Maintenance request status updated successfully.");
+    localStorage.setItem(
+      "maintenanceRequests",
+      JSON.stringify(updatedRequests)
+    );
   };
 
-  const deleteRequest = (requestId) => {
-    const ok = window.confirm(
-      "Are you sure you want to delete this maintenance request?"
-    );
+  const updateRequestStatus = async (request, newStatus) => {
+    const requestId = request.maintenance_request_id;
 
-    if (!ok) return;
+    try {
+      await updateMaintenanceRequest(requestId, {
+        booking_id: Number(request.booking_id),
+        room_id: Number(request.room_id),
+        maintenance_id: request.maintenance_id || null,
+        request_description: request.request_description,
+        request_status: newStatus,
+      });
 
-    const updatedRequests = getMaintenanceRequests().filter((request) => {
-      const normalized = normalizeRequest(request);
-      return Number(normalized.request_id) !== Number(requestId);
+      updateLocalRequest(requestId, {
+        request_status: newStatus,
+        status: newStatus,
+      });
+
+      alert(`Maintenance request marked as ${displayStatus(newStatus)}.`);
+      loadMaintenanceRequests();
+    } catch (error) {
+      console.warn("Backend maintenance update failed:", error);
+
+      updateLocalRequest(requestId, {
+        request_status: newStatus,
+        status: newStatus,
+      });
+
+      alert(
+        `Maintenance request marked as ${displayStatus(
+          newStatus
+        )} locally for frontend testing.`
+      );
+
+      loadMaintenanceRequests();
+    }
+  };
+
+  const getPaymentForBooking = (bookingId) => {
+    return payments.find((payment) => {
+      return Number(payment.booking_id) === Number(bookingId);
     });
+  };
 
-    saveMaintenanceRequests(updatedRequests);
-    alert("Maintenance request deleted successfully.");
+  const getBookingForRequest = (bookingId) => {
+    return bookings.find((booking) => {
+      return Number(booking.booking_id) === Number(bookingId);
+    });
+  };
+
+  const isBookingPaid = (bookingId) => {
+    const booking = getBookingForRequest(bookingId);
+    const payment = getPaymentForBooking(bookingId);
+
+    const bookingPaymentStatus = normalizeStatus(booking?.payment_status);
+    const paymentStatus = normalizeStatus(payment?.payment_status);
+
+    return (
+      bookingPaymentStatus === "paid" ||
+      bookingPaymentStatus === "completed" ||
+      paymentStatus === "paid" ||
+      paymentStatus === "completed"
+    );
   };
 
   const logout = () => {
-    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
     navigate("/login");
   };
 
-  const normalizedRequests = requests.map(normalizeRequest);
+  const totalRequests = requests.length;
 
-  const pendingCount = normalizedRequests.filter(
-    (request) => request.request_status === "Pending"
-  ).length;
+  const pendingCount = requests.filter((request) => {
+    return normalizeStatus(request.request_status) === "pending";
+  }).length;
 
-  const progressCount = normalizedRequests.filter(
-    (request) => request.request_status === "In Progress"
-  ).length;
+  const inProgressCount = requests.filter((request) => {
+    return normalizeStatus(request.request_status) === "in_progress";
+  }).length;
 
-  const resolvedCount = normalizedRequests.filter(
-    (request) => request.request_status === "Resolved"
-  ).length;
+  const completedCount = requests.filter((request) => {
+    const status = normalizeStatus(request.request_status);
+    return status === "completed" || status === "resolved";
+  }).length;
 
   return (
-    <div className="manage-maintenance-page maintenance-layout">
-      <aside className="maintenance-sidebar">
+    <div className="manage-maintenance-page maintenance-admin-layout">
+      <aside className="maintenance-admin-sidebar">
         <div className="sidebar-logo">
           <h2>UniNest</h2>
           <p>Admin Panel</p>
@@ -325,17 +598,19 @@ function ManageMaintenancePage() {
         </ul>
       </aside>
 
-      <main className="maintenance-main">
-        <div className="maintenance-topbar">
+      <main className="maintenance-admin-main">
+        <div className="maintenance-admin-topbar">
           <div>
             <h1>Manage Maintenance</h1>
-            <p>Track and update all resident maintenance requests.</p>
+            <p>
+              Review resident maintenance requests and update their progress.
+            </p>
           </div>
         </div>
 
-        <section className="maintenance-stats">
+        <section className="maintenance-admin-stats">
           <div className="maintenance-stat-card">
-            <h3>{normalizedRequests.length}</h3>
+            <h3>{totalRequests}</h3>
             <p>Total Requests</p>
           </div>
 
@@ -345,171 +620,175 @@ function ManageMaintenancePage() {
           </div>
 
           <div className="maintenance-stat-card">
-            <h3>{progressCount}</h3>
+            <h3>{inProgressCount}</h3>
             <p>In Progress</p>
           </div>
 
           <div className="maintenance-stat-card">
-            <h3>{resolvedCount}</h3>
-            <p>Resolved</p>
+            <h3>{completedCount}</h3>
+            <p>Completed</p>
           </div>
         </section>
 
-        {normalizedRequests.length === 0 ? (
-          <div className="empty-requests">
-            <h3>No maintenance requests found</h3>
-            <p>No resident maintenance requests have been submitted yet.</p>
+        {loading ? (
+          <div className="maintenance-admin-card">
+            <h2>Loading maintenance requests...</h2>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="maintenance-admin-card empty-maintenance">
+            <h2>No maintenance requests found</h2>
+            <p>No residents have submitted maintenance requests yet.</p>
           </div>
         ) : (
-          <section className="request-list">
-            {normalizedRequests.map((request) => {
-              const requestId = request.request_id;
-              const requestStatus = request.request_status || "Pending";
-              const priority = request.priority || "Medium";
+          <section className="maintenance-requests-list">
+            {requests.map((request) => {
+              const requestStatus = normalizeStatus(request.request_status);
+              const paid = isBookingPaid(request.booking_id);
 
               return (
-                <div className="request-card" key={requestId}>
-                  <div className="request-main">
-                    <h2>{request.request_title || "Maintenance Request"}</h2>
-
-                    <div className="request-info-grid">
+                <div
+                  className="maintenance-request-card"
+                  key={request.maintenance_request_id}
+                >
+                  <div className="request-header">
+                    <div>
+                      <h2>
+                        {request.maintenance_category || "Maintenance Request"}
+                      </h2>
                       <p>
-                        <i className="fa-solid fa-user"></i>{" "}
-                        <strong>Resident:</strong>{" "}
-                        {request.resident_name || "Resident"}
+                        Request ID #{request.maintenance_request_id}
+                        {request.isLocal ? " - Local" : ""}
                       </p>
-
-                      <p>
-                        <i className="fa-solid fa-envelope"></i>{" "}
-                        <strong>Email:</strong> {request.email || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-building"></i>{" "}
-                        <strong>Dorm:</strong> {request.dorm_name || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-door-open"></i>{" "}
-                        <strong>Room:</strong> {request.room_number || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-bed"></i>{" "}
-                        <strong>Room Type:</strong> {request.room_type || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-screwdriver-wrench"></i>{" "}
-                        <strong>Category:</strong>{" "}
-                        {request.maintenance_category || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-triangle-exclamation"></i>{" "}
-                        <strong>Priority:</strong>{" "}
-                        <span className={`priority ${getPriorityClass(priority)}`}>
-                          {priority}
-                        </span>
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-calendar-days"></i>{" "}
-                        <strong>Submitted:</strong>{" "}
-                        {request.request_date || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-clock-rotate-left"></i>{" "}
-                        <strong>Updated:</strong>{" "}
-                        {request.updated_at || "Not updated yet"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-image"></i>{" "}
-                        <strong>Images:</strong>{" "}
-                        {request.images.length > 0
-                          ? `${request.images.length} uploaded`
-                          : "No image uploaded"}
-                      </p>
-
-                      {Array.isArray(request.images) &&
-                        request.images.length > 0 && (
-                          <div className="maintenance-image-gallery">
-                            {request.images.map((image) => (
-                              <img
-                                key={image.image_id}
-                                src={image.image_url}
-                                alt="Maintenance"
-                              />
-                            ))}
-                          </div>
-                        )}
                     </div>
 
-                    <div className="description-box">
-                      <p>
-                        <i className="fa-solid fa-file-lines"></i>{" "}
-                        <strong>Description:</strong>
-                      </p>
-                      <p>{request.issue_description || "-"}</p>
-                    </div>
+                    <span
+                      className={`status-badge ${getStatusClass(
+                        request.request_status
+                      )}`}
+                    >
+                      {displayStatus(request.request_status)}
+                    </span>
                   </div>
 
-                  <div className="request-side">
-                    <span
-                      className={`status-badge ${getStatusClass(requestStatus)}`}
-                    >
-                      {requestStatus}
-                    </span>
+                  <div className="request-info-grid">
+                    <p>
+                      <i className="fa-solid fa-user"></i>{" "}
+                      <strong>Resident:</strong> {request.resident_name}
+                    </p>
 
-                    <div className="request-actions">
-                      {requestStatus === "Pending" && (
-                        <>
-                          <button
-                            className="progress-btn"
-                            onClick={() =>
-                              updateRequestStatus(requestId, "In Progress")
-                            }
-                          >
-                            Set In Progress
-                          </button>
+                    <p>
+                      <i className="fa-solid fa-envelope"></i>{" "}
+                      <strong>Email:</strong> {request.email}
+                    </p>
 
-                          <button
-                            className="complete-btn"
-                            onClick={() =>
-                              updateRequestStatus(requestId, "Resolved")
-                            }
-                          >
-                            Mark Resolved
-                          </button>
-                        </>
-                      )}
+                    <p>
+                      <i className="fa-solid fa-building"></i>{" "}
+                      <strong>Dorm:</strong> {request.dorm_name}
+                    </p>
 
-                      {requestStatus === "In Progress" && (
+                    <p>
+                      <i className="fa-solid fa-door-open"></i>{" "}
+                      <strong>Room:</strong> {request.room_number}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-bed"></i>{" "}
+                      <strong>Room Type:</strong> {request.room_type}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-circle-exclamation"></i>{" "}
+                      <strong>Priority:</strong> {request.priority}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-calendar-days"></i>{" "}
+                      <strong>Submitted:</strong> {request.created_at}
+                    </p>
+
+                    <p>
+                      <i className="fa-solid fa-credit-card"></i>{" "}
+                      <strong>Booking Paid:</strong> {paid ? "Yes" : "No"}
+                    </p>
+                  </div>
+
+                  <div className="request-description-box">
+                    <h3>Description</h3>
+                    <p>{request.request_description || "-"}</p>
+                  </div>
+
+                  {request.image_url && (
+                    <div className="maintenance-image-box">
+                      <h3>Attached Image</h3>
+                      <img src={request.image_url} alt="Maintenance" />
+                    </div>
+                  )}
+
+                  {request.isLocal && (
+                    <div className="local-note-box">
+                      <p>
+                        <strong>Note:</strong> This request is saved locally
+                        until backend maintenance store/update is fixed.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="request-actions">
+                    {requestStatus === "pending" && (
+                      <>
+                        <button
+                          className="progress-btn"
+                          onClick={() =>
+                            updateRequestStatus(request, "in_progress")
+                          }
+                        >
+                          Mark In Progress
+                        </button>
+
                         <button
                           className="complete-btn"
                           onClick={() =>
-                            updateRequestStatus(requestId, "Resolved")
+                            updateRequestStatus(request, "completed")
                           }
                         >
-                          Mark Resolved
+                          Mark Completed
                         </button>
-                      )}
+                      </>
+                    )}
 
-                      {requestStatus === "Resolved" && (
-                        <button className="disabled-btn" disabled>
-                          Resolved
-                        </button>
-                      )}
-
+                    {requestStatus === "in_progress" && (
                       <button
-                        className="delete-btn"
-                        onClick={() => deleteRequest(requestId)}
+                        className="complete-btn"
+                        onClick={() =>
+                          updateRequestStatus(request, "completed")
+                        }
                       >
-                        Delete
+                        Mark Completed
                       </button>
-                    </div>
+                    )}
+
+                    {(requestStatus === "completed" ||
+                      requestStatus === "resolved") && (
+                      <button className="disabled-btn" disabled>
+                        Request Completed
+                      </button>
+                    )}
+
+                    {requestStatus !== "pending" &&
+                      requestStatus !== "in_progress" &&
+                      requestStatus !== "completed" &&
+                      requestStatus !== "resolved" && (
+                        <button className="disabled-btn" disabled>
+                          {displayStatus(request.request_status)}
+                        </button>
+                      )}
+
+                    <Link
+                      to={`/housing-details?id=${request.dorm_id}`}
+                      className="view-dorm-btn"
+                    >
+                      View Dorm
+                    </Link>
                   </div>
                 </div>
               );

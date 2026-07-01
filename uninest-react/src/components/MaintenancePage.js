@@ -1,21 +1,556 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./MaintenancePage.css";
+import {
+  getBookings,
+  getPayments,
+  getMaintenanceRequests,
+  createMaintenanceRequest,
+} from "../api";
 
 function MaintenancePage() {
-  const [relatedBooking, setRelatedBooking] = useState("");
-  const [requestTitle, setRequestTitle] = useState("");
-  const [maintenanceCategory, setMaintenanceCategory] = useState("");
-  const [priority, setPriority] = useState("");
-  const [description, setDescription] = useState("");
-  const [uploadedImages, setUploadedImages] = useState([]);
-  const [refresh, setRefresh] = useState(0);
+  const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+  const loggedInUserEmail = (
+    localStorage.getItem("loggedInUserEmail") || ""
+  ).toLowerCase();
 
-  const getCurrentUserEmailValue = () => {
-    return localStorage.getItem("loggedInUserEmail") || "";
+  const [bookings, setBookings] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [selectedBookingId, setSelectedBookingId] = useState("");
+  const [category, setCategory] = useState("General");
+  const [priority, setPriority] = useState("Medium");
+  const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadMaintenancePage();
+  }, []);
+
+  const normalizeStatus = (status) => {
+    return String(status || "pending").toLowerCase();
   };
 
-  const getCurrentUserNameValue = () => {
-    return localStorage.getItem("loggedInUser") || "Resident";
+  const displayStatus = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "Approved";
+    if (value === "rejected") return "Rejected";
+    if (value === "cancelled") return "Cancelled";
+    if (value === "paid") return "Paid";
+    if (value === "completed") return "Completed";
+    if (value === "in_progress") return "In Progress";
+    if (value === "resolved") return "Resolved";
+
+    return "Pending";
+  };
+
+  const getStatusClass = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "approved";
+    if (value === "paid" || value === "completed") return "paid";
+    if (value === "rejected") return "rejected";
+    if (value === "cancelled") return "cancelled";
+    if (value === "in_progress") return "progress";
+    if (value === "resolved") return "resolved";
+
+    return "pending";
+  };
+
+  const formatDateToday = () => {
+    return new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const normalizeBooking = (booking) => {
+    const room = booking.room || {};
+    const dorm = room.dorm || booking.dorm || {};
+    const resident = booking.resident || {};
+
+    return {
+      ...booking,
+
+      booking_id: booking.booking_id || booking.id,
+      resident_id: booking.resident_id || resident.resident_id || "",
+      resident_name:
+        booking.resident_name ||
+        booking.residentName ||
+        booking.userName ||
+        booking.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
+
+      email: (
+        booking.email ||
+        booking.userEmail ||
+        booking.studentEmail ||
+        booking.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        ""
+      ).toLowerCase(),
+
+      dorm_id:
+        booking.dorm_id ||
+        booking.housingId ||
+        dorm.dorm_id ||
+        room.dorm_id ||
+        "",
+
+      dorm_name:
+        booking.dorm_name ||
+        booking.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
+
+      city: booking.city || dorm.city || "",
+      area: booking.area || dorm.area || booking.location || "",
+
+      room_id: booking.room_id || booking.roomId || room.room_id || "",
+      room_number:
+        booking.room_number || booking.roomNumber || room.room_number || "-",
+      room_type: booking.room_type || booking.roomType || room.room_type || "-",
+
+      booking_status: booking.booking_status || booking.status || "pending",
+      payment_status:
+        booking.payment_status || booking.paymentStatus || "pending",
+
+      check_in_date: booking.check_in_date || booking.checkInDate || "",
+      check_out_date: booking.check_out_date || booking.checkOutDate || "",
+      total_price: Number(
+        booking.total_price || booking.totalCost || booking.amount || 0
+      ),
+
+      isLocal: booking.isLocal || false,
+    };
+  };
+
+  const normalizePayment = (payment) => {
+    return {
+      ...payment,
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || payment.bookingId,
+      amount: Number(payment.amount || 0),
+      payment_method: payment.payment_method || payment.method || "",
+      payment_status: payment.payment_status || payment.status || "pending",
+      created_at: payment.created_at || payment.payment_date || "",
+      isLocal: payment.isLocal || false,
+    };
+  };
+
+  const normalizeRequest = (request) => {
+    const booking = request.booking || {};
+    const room = request.room || booking.room || {};
+    const dorm = room.dorm || {};
+    const resident = booking.resident || {};
+
+    return {
+      ...request,
+
+      maintenance_request_id:
+        request.maintenance_request_id || request.request_id || request.id,
+
+      booking_id: request.booking_id || booking.booking_id || "",
+      room_id: request.room_id || room.room_id || "",
+      maintenance_id: request.maintenance_id || null,
+
+      resident_id:
+        request.resident_id ||
+        resident.resident_id ||
+        booking.resident_id ||
+        "",
+
+      resident_name:
+        request.resident_name ||
+        request.residentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
+
+      email: (
+        request.email ||
+        request.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        ""
+      ).toLowerCase(),
+
+      dorm_name:
+        request.dorm_name ||
+        request.housingName ||
+        dorm.dorm_name ||
+        booking.dorm_name ||
+        "Dorm",
+
+      room_number:
+        request.room_number ||
+        request.roomNumber ||
+        room.room_number ||
+        booking.room_number ||
+        "-",
+
+      room_type:
+        request.room_type ||
+        request.roomType ||
+        room.room_type ||
+        booking.room_type ||
+        "-",
+
+      maintenance_category:
+        request.maintenance_category ||
+        request.category ||
+        "General",
+
+      priority: request.priority || "Medium",
+
+      request_description:
+        request.request_description ||
+        request.issue_description ||
+        request.description ||
+        "",
+
+      request_status: request.request_status || request.status || "pending",
+      created_at:
+        request.created_at ||
+        request.request_date ||
+        request.submittedDate ||
+        request.createdAt ||
+        "",
+
+      image_url: request.image_url || request.image || "",
+      isLocal: request.isLocal || false,
+    };
+  };
+
+  const getLocalBookings = () => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    return localBookings.map((booking) =>
+      normalizeBooking({
+        ...booking,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalPayments = () => {
+    const localPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    return localPayments.map((payment) =>
+      normalizePayment({
+        ...payment,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalRequests = () => {
+    const localRequests =
+      JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+
+    return localRequests.map((request) =>
+      normalizeRequest({
+        ...request,
+        isLocal: true,
+      })
+    );
+  };
+
+  const mergeById = (backendItems, localItems, idField) => {
+    const merged = [...localItems];
+
+    backendItems.forEach((backendItem) => {
+      const exists = merged.some((localItem) => {
+        return Number(localItem[idField]) === Number(backendItem[idField]);
+      });
+
+      if (!exists) {
+        merged.push(backendItem);
+      }
+    });
+
+    return merged;
+  };
+
+  const loadMaintenancePage = async () => {
+    try {
+      setLoading(true);
+
+      const localBookings = getLocalBookings();
+      const localPayments = getLocalPayments();
+      const localRequests = getLocalRequests();
+
+      let backendBookings = [];
+      let backendPayments = [];
+      let backendRequests = [];
+
+      try {
+        const bookingsResponse = await getBookings();
+        const bookingsList = Array.isArray(bookingsResponse)
+          ? bookingsResponse
+          : bookingsResponse.data || [];
+
+        backendBookings = bookingsList.map(normalizeBooking);
+      } catch (error) {
+        console.warn("Backend bookings could not be loaded:", error);
+      }
+
+      try {
+        const paymentsResponse = await getPayments();
+        const paymentsList = Array.isArray(paymentsResponse)
+          ? paymentsResponse
+          : paymentsResponse.data || [];
+
+        backendPayments = paymentsList.map(normalizePayment);
+      } catch (error) {
+        console.warn("Backend payments could not be loaded:", error);
+      }
+
+      try {
+        const requestsResponse = await getMaintenanceRequests();
+        const requestsList = Array.isArray(requestsResponse)
+          ? requestsResponse
+          : requestsResponse.data || [];
+
+        backendRequests = requestsList.map(normalizeRequest);
+      } catch (error) {
+        console.warn("Backend maintenance requests could not be loaded:", error);
+      }
+
+      const mergedBookings = mergeById(
+        backendBookings,
+        localBookings,
+        "booking_id"
+      );
+
+      const mergedPayments = mergeById(
+        backendPayments,
+        localPayments,
+        "payment_id"
+      );
+
+      const mergedRequests = mergeById(
+        backendRequests,
+        localRequests,
+        "maintenance_request_id"
+      ).sort((a, b) => {
+        return (
+          Number(b.maintenance_request_id || 0) -
+          Number(a.maintenance_request_id || 0)
+        );
+      });
+
+      const myBookings = mergedBookings.filter((booking) => {
+        const sameResident =
+          String(booking.resident_id || "") === String(loggedInResidentId);
+
+        const sameEmail =
+          String(booking.email || "").toLowerCase() === loggedInUserEmail;
+
+        return sameResident || sameEmail;
+      });
+
+      const myRequests = mergedRequests.filter((request) => {
+        const sameResident =
+          String(request.resident_id || "") === String(loggedInResidentId);
+
+        const sameEmail =
+          String(request.email || "").toLowerCase() === loggedInUserEmail;
+
+        const requestBookingBelongsToMe = myBookings.some((booking) => {
+          return Number(booking.booking_id) === Number(request.booking_id);
+        });
+
+        return sameResident || sameEmail || requestBookingBelongsToMe;
+      });
+
+      setBookings(myBookings);
+      setPayments(mergedPayments);
+      setRequests(myRequests);
+    } catch (error) {
+      console.error("Maintenance page load failed:", error);
+      alert("Could not load maintenance page.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPaymentForBooking = (bookingId) => {
+    return payments.find((payment) => {
+      return Number(payment.booking_id) === Number(bookingId);
+    });
+  };
+
+  const isBookingPaid = (booking) => {
+    const payment = getPaymentForBooking(booking.booking_id);
+
+    const bookingPaymentStatus = normalizeStatus(booking.payment_status);
+    const paymentStatus = normalizeStatus(payment?.payment_status);
+
+    return (
+      bookingPaymentStatus === "paid" ||
+      bookingPaymentStatus === "completed" ||
+      paymentStatus === "paid" ||
+      paymentStatus === "completed"
+    );
+  };
+
+  const eligibleBookings = bookings.filter((booking) => {
+    return (
+      normalizeStatus(booking.booking_status) === "approved" &&
+      isBookingPaid(booking)
+    );
+  });
+
+  const selectedBooking = eligibleBookings.find((booking) => {
+    return Number(booking.booking_id) === Number(selectedBookingId);
+  });
+
+  const saveLocalMaintenanceRequest = (requestObject) => {
+    const oldRequests =
+      JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
+
+    oldRequests.unshift(requestObject);
+
+    localStorage.setItem("maintenanceRequests", JSON.stringify(oldRequests));
+  };
+
+  const handleImageChange = (event) => {
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file only.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      setImageFile(e.target.result);
+      setImageFileName(file.name);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const buildLocalRequestObject = (requestId) => {
+    return {
+      maintenance_request_id: requestId,
+      request_id: requestId,
+
+      booking_id: selectedBooking.booking_id,
+      room_id: selectedBooking.room_id,
+      maintenance_id: null,
+
+      resident_id: loggedInResidentId,
+      resident_name: localStorage.getItem("loggedInUser") || "Resident",
+      email: loggedInUserEmail,
+
+      dorm_id: selectedBooking.dorm_id,
+      dorm_name: selectedBooking.dorm_name,
+
+      room_number: selectedBooking.room_number,
+      room_type: selectedBooking.room_type,
+
+      maintenance_category: category,
+      category: category,
+      priority: priority,
+
+      request_description: description.trim(),
+      issue_description: description.trim(),
+      description: description.trim(),
+
+      request_status: "pending",
+      status: "pending",
+
+      created_at: formatDateToday(),
+      request_date: formatDateToday(),
+
+      image_url: imageFile,
+      image_name: imageFileName,
+
+      isLocal: true,
+    };
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!selectedBooking) {
+      alert("Please select an approved and paid booking.");
+      return;
+    }
+
+    if (!description.trim()) {
+      alert("Please describe the maintenance problem.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const payload = {
+        booking_id: Number(selectedBooking.booking_id),
+        room_id: Number(selectedBooking.room_id),
+        maintenance_id: null,
+        request_description: `${category} - ${priority}: ${description.trim()}`,
+        request_status: "pending",
+      };
+
+      const createdRequestResponse = await createMaintenanceRequest(payload);
+
+      const createdRequest =
+        createdRequestResponse?.data &&
+        createdRequestResponse.data.maintenance_request_id
+          ? createdRequestResponse.data
+          : createdRequestResponse;
+
+      const newRequestId =
+        createdRequest?.maintenance_request_id ||
+        createdRequest?.request_id ||
+        Date.now();
+
+      const localRequest = buildLocalRequestObject(newRequestId);
+
+      saveLocalMaintenanceRequest(localRequest);
+
+      alert("Maintenance request submitted successfully.");
+      setSelectedBookingId("");
+      setCategory("General");
+      setPriority("Medium");
+      setDescription("");
+      setImageFile("");
+      setImageFileName("");
+      loadMaintenancePage();
+    } catch (error) {
+      console.warn("Backend maintenance request failed, saving locally:", error);
+
+      const localRequest = buildLocalRequestObject(Date.now());
+
+      saveLocalMaintenanceRequest(localRequest);
+
+      alert("Maintenance request saved locally for frontend testing.");
+      setSelectedBookingId("");
+      setCategory("General");
+      setPriority("Medium");
+      setDescription("");
+      setImageFile("");
+      setImageFileName("");
+      loadMaintenancePage();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const logout = (event) => {
@@ -31,276 +566,18 @@ function MaintenancePage() {
     window.location.href = "/";
   };
 
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
-  };
+  const pendingCount = requests.filter((request) => {
+    return normalizeStatus(request.request_status) === "pending";
+  }).length;
 
-  const getMaintenanceRequests = () => {
-    return JSON.parse(localStorage.getItem("maintenanceRequests")) || [];
-  };
+  const progressCount = requests.filter((request) => {
+    return normalizeStatus(request.request_status) === "in_progress";
+  }).length;
 
-  const saveMaintenanceRequests = (requests) => {
-    localStorage.setItem("maintenanceRequests", JSON.stringify(requests));
-  };
-
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const formatDateToday = () => {
-    return new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const addNotification = (userEmail, type, title, message) => {
-    if (!userEmail) return;
-
-    const notifications = getNotifications();
-
-    const newNotification = {
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      userEmail: userEmail,
-      type: type,
-      title: title,
-      message: message,
-      isRead: false,
-      date: formatDateToday(),
-
-      notification_id: Date.now() + Math.floor(Math.random() * 1000),
-      email: userEmail,
-      notification_type: type,
-      is_read: false,
-      created_at: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
-  };
-
-  const normalizeBooking = (booking) => {
-    return {
-      ...booking,
-
-      id: booking.id || booking.booking_id,
-      booking_id: booking.booking_id || booking.id,
-
-      userEmail:
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        booking.email ||
-        "",
-
-      studentEmail:
-        booking.studentEmail ||
-        booking.userEmail ||
-        booking.residentEmail ||
-        booking.email ||
-        "",
-
-      status: booking.status || booking.booking_status || "Pending",
-      booking_status: booking.booking_status || booking.status || "Pending",
-
-      housingId: booking.housingId || booking.dorm_id,
-      housingName: booking.housingName || booking.dorm_name || "Dorm Name",
-
-      roomId: booking.roomId || booking.room_id || "",
-      roomNumber: booking.roomNumber || booking.room_number || "",
-      roomType: booking.roomType || booking.room_type || "",
-    };
-  };
-
-  const currentEmail = getCurrentUserEmailValue().toLowerCase();
-
-  const approvedBookings = getBookings()
-    .map(normalizeBooking)
-    .filter((booking) => {
-      const bookingEmail = (
-        booking.userEmail ||
-        booking.studentEmail ||
-        ""
-      ).toLowerCase();
-
-      return bookingEmail === currentEmail && booking.status === "Approved";
-    });
-
-  const myRequests = getMaintenanceRequests().filter((request) => {
-    const requestEmail = (
-      request.userEmail ||
-      request.residentEmail ||
-      request.email ||
-      ""
-    ).toLowerCase();
-
-    return requestEmail === currentEmail;
-  });
-
-  const totalRequests = myRequests.length;
-  const pendingRequests = myRequests.filter(
-    (request) => request.status === "Pending"
-  ).length;
-  const progressRequests = myRequests.filter(
-    (request) => request.status === "In Progress"
-  ).length;
-  const resolvedRequests = myRequests.filter(
-    (request) => request.status === "Resolved"
-  ).length;
-
-  const getStatusClass = (status) => {
-    if (status === "Pending") return "pending";
-    if (status === "In Progress") return "progress";
-    if (status === "Resolved") return "resolved";
-    return "pending";
-  };
-
-  const getPriorityClass = (priorityValue) => {
-    if (priorityValue === "Low") return "low";
-    if (priorityValue === "Medium") return "medium";
-    if (priorityValue === "High") return "high";
-    if (priorityValue === "Urgent") return "urgent";
-    return "medium";
-  };
-
-  const previewMaintenanceImages = (event) => {
-    const files = Array.from(event.target.files);
-
-    if (files.length === 0) {
-      setUploadedImages([]);
-      return;
-    }
-
-    const imageFiles = [];
-
-    files.forEach((file) => {
-      if (!file.type.startsWith("image/")) {
-        alert("Please upload image files only.");
-        event.target.value = "";
-        setUploadedImages([]);
-        return;
-      }
-
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        imageFiles.push({
-          name: file.name,
-          data: e.target.result,
-        });
-
-        if (imageFiles.length === files.length) {
-          setUploadedImages(imageFiles);
-        }
-      };
-
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    const bookingId = Number(relatedBooking);
-
-    if (!bookingId) {
-      alert("Please select an approved booking.");
-      return;
-    }
-
-    const selectedBooking = approvedBookings.find((booking) => {
-      return Number(booking.id) === Number(bookingId);
-    });
-
-    if (!selectedBooking) {
-      alert("Selected booking not found or not approved.");
-      return;
-    }
-
-    if (!requestTitle || !maintenanceCategory || !priority || !description) {
-      alert("Please fill all required fields.");
-      return;
-    }
-
-    const requests = getMaintenanceRequests();
-    const today = formatDateToday();
-
-    const newRequest = {
-      id: Date.now(),
-
-      request_id: Date.now(),
-      booking_id: selectedBooking.booking_id || selectedBooking.id,
-      bookingId: selectedBooking.id,
-
-      userName: getCurrentUserNameValue(),
-      residentName: getCurrentUserNameValue(),
-      resident_name: getCurrentUserNameValue(),
-
-      userEmail: getCurrentUserEmailValue(),
-      residentEmail: getCurrentUserEmailValue(),
-      email: getCurrentUserEmailValue(),
-
-      housingId: selectedBooking.housingId,
-      housingName: selectedBooking.housingName,
-
-      dorm_id: selectedBooking.housingId,
-      dorm_name: selectedBooking.housingName,
-
-      roomId: selectedBooking.roomId || "",
-      roomNumber: selectedBooking.roomNumber || "",
-      roomType: selectedBooking.roomType || "",
-
-      room_id: selectedBooking.roomId || "",
-      room_number: selectedBooking.roomNumber || "",
-      room_type: selectedBooking.roomType || "",
-
-      title: requestTitle,
-      request_title: requestTitle,
-
-      category: maintenanceCategory,
-      issueType: maintenanceCategory,
-
-      priority: priority,
-      description: description,
-
-      imageName: uploadedImages.length > 0 ? uploadedImages[0].name : "",
-      images: uploadedImages,
-
-      status: "Pending",
-      request_status: "Pending",
-
-      submittedDate: today,
-      createdAt: today,
-      request_date: today,
-    };
-
-    requests.unshift(newRequest);
-    saveMaintenanceRequests(requests);
-
-    addNotification(
-      getCurrentUserEmailValue(),
-      "maintenance",
-      "Maintenance Request Submitted",
-      "Your maintenance request for " +
-        selectedBooking.housingName +
-        " has been submitted and is pending review."
-    );
-
-    setRelatedBooking("");
-    setRequestTitle("");
-    setMaintenanceCategory("");
-    setPriority("");
-    setDescription("");
-    setUploadedImages([]);
-    setRefresh(refresh + 1);
-
-    alert("Maintenance request submitted successfully.");
-  };
+  const completedCount = requests.filter((request) => {
+    const status = normalizeStatus(request.request_status);
+    return status === "completed" || status === "resolved";
+  }).length;
 
   return (
     <div className="maintenance-layout">
@@ -364,259 +641,232 @@ function MaintenancePage() {
       <main className="maintenance-main">
         <div className="maintenance-topbar">
           <div>
-            <h1>Maintenance Requests</h1>
-            <p>
-              Submit and track maintenance issues related to your approved
-              bookings.
-            </p>
+            <h1>Maintenance</h1>
+            <p>Submit and track maintenance requests for your paid bookings.</p>
           </div>
         </div>
 
-        <section className="maintenance-grid">
-          <div className="maintenance-card">
-            <div className="card-header">
-              <h2>New Maintenance Request</h2>
-              <p>Select an approved booking and describe the maintenance issue.</p>
-            </div>
-
-            <form className="maintenance-form" onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="relatedBooking">Related Booking</label>
-
-                <select
-                  id="relatedBooking"
-                  value={relatedBooking}
-                  onChange={(event) => setRelatedBooking(event.target.value)}
-                  required
-                >
-                  <option value="">Select approved booking</option>
-
-                  {approvedBookings.map((booking) => (
-                    <option key={booking.id} value={booking.id}>
-                      {booking.housingName} - Room {booking.roomNumber || "-"} (
-                      {booking.roomType || "-"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="requestTitle">Request Title</label>
-                <input
-                  type="text"
-                  id="requestTitle"
-                  placeholder="Example: Broken window"
-                  value={requestTitle}
-                  onChange={(event) => setRequestTitle(event.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="maintenanceCategory">
-                  Maintenance Category
-                </label>
-
-                <select
-                  id="maintenanceCategory"
-                  value={maintenanceCategory}
-                  onChange={(event) =>
-                    setMaintenanceCategory(event.target.value)
-                  }
-                  required
-                >
-                  <option value="">Select category</option>
-                  <option value="Electricity">Electricity</option>
-                  <option value="Water">Water</option>
-                  <option value="Internet">Internet</option>
-                  <option value="Furniture">Furniture</option>
-                  <option value="Bathroom">Bathroom</option>
-                  <option value="Air Conditioning">Air Conditioning</option>
-                  <option value="Cleaning">Cleaning</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="priority">Priority</label>
-
-                <select
-                  id="priority"
-                  value={priority}
-                  onChange={(event) => setPriority(event.target.value)}
-                  required
-                >
-                  <option value="">Select priority</option>
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Urgent">Urgent</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description">Detailed Issue Description</label>
-
-                <textarea
-                  id="description"
-                  rows="5"
-                  placeholder="Describe the issue clearly..."
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  required
-                ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="maintenanceImages">Upload Issue Images</label>
-
-                <input
-                  type="file"
-                  id="maintenanceImages"
-                  accept="image/*"
-                  multiple
-                  onChange={previewMaintenanceImages}
-                />
-
-                <div className="maintenance-images-preview">
-                  {uploadedImages.length === 0 ? (
-                    <span>No images selected</span>
-                  ) : (
-                    uploadedImages.map((image, index) => (
-                      <img
-                        key={index}
-                        src={image.data}
-                        alt={image.name || "Maintenance"}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <button type="submit" className="submit-btn">
-                Submit Request
-              </button>
-            </form>
+        <section className="maintenance-stats">
+          <div className="maintenance-stat-card">
+            <h3>{requests.length}</h3>
+            <p>Total Requests</p>
           </div>
 
-          <div className="maintenance-card small-card">
-            <div className="card-header">
-              <h2>Summary</h2>
-            </div>
-
-            <div className="summary-boxes">
-              <div className="summary-item">
-                <h3>{totalRequests}</h3>
-                <p>Total Requests</p>
-              </div>
-
-              <div className="summary-item">
-                <h3>{pendingRequests}</h3>
-                <p>Pending</p>
-              </div>
-
-              <div className="summary-item">
-                <h3>{progressRequests}</h3>
-                <p>In Progress</p>
-              </div>
-
-              <div className="summary-item">
-                <h3>{resolvedRequests}</h3>
-                <p>Resolved</p>
-              </div>
-            </div>
+          <div className="maintenance-stat-card">
+            <h3>{pendingCount}</h3>
+            <p>Pending</p>
           </div>
 
-          <div className="maintenance-card full-card">
-            <div className="card-header">
-              <h2>My Requests</h2>
-              <p>Track the progress of your submitted maintenance requests.</p>
-            </div>
+          <div className="maintenance-stat-card">
+            <h3>{progressCount}</h3>
+            <p>In Progress</p>
+          </div>
 
-            <div className="request-list">
-              {myRequests.map((request) => {
-                const requestPriority = request.priority || "Medium";
-
-                return (
-                  <div className="request-item" key={request.id}>
-                    <div className="request-info">
-                      <h3>{request.title || "Maintenance Request"}</h3>
-
-                      <p>
-                        <i className="fa-solid fa-building"></i> Dorm:{" "}
-                        {request.housingName || request.dorm_name || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-door-open"></i> Room:{" "}
-                        {request.roomNumber || request.room_number || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-screwdriver-wrench"></i>{" "}
-                        Category: {request.category || request.issueType || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-triangle-exclamation"></i>{" "}
-                        Priority:{" "}
-                        <span
-                          className={`priority ${getPriorityClass(
-                            requestPriority
-                          )}`}
-                        >
-                          {requestPriority}
-                        </span>
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-calendar-days"></i> Submitted:{" "}
-                        {request.submittedDate || request.createdAt || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-file-lines"></i>{" "}
-                        {request.description || "-"}
-                      </p>
-
-                      <p>
-                        <i className="fa-solid fa-image"></i> Image:{" "}
-                        {request.imageName || "No image uploaded"}
-                      </p>
-
-                      {Array.isArray(request.images) &&
-                        request.images.length > 0 && (
-                          <div className="maintenance-image-gallery">
-                            {request.images.map((image, index) => (
-                              <img
-                                key={index}
-                                src={image.data}
-                                alt={image.name || "Maintenance"}
-                              />
-                            ))}
-                          </div>
-                        )}
-                    </div>
-
-                    <span
-                      className={`status ${getStatusClass(
-                        request.status || "Pending"
-                      )}`}
-                    >
-                      {request.status || "Pending"}
-                    </span>
-                  </div>
-                );
-              })}
-
-              {myRequests.length === 0 && (
-                <div className="empty-requests-message">
-                  <p>No maintenance requests yet.</p>
-                </div>
-              )}
-            </div>
+          <div className="maintenance-stat-card">
+            <h3>{completedCount}</h3>
+            <p>Completed</p>
           </div>
         </section>
+
+        {loading ? (
+          <div className="maintenance-card">
+            <h2>Loading maintenance page...</h2>
+          </div>
+        ) : (
+          <>
+            <section className="maintenance-card">
+              <h2>Submit Maintenance Request</h2>
+
+              {eligibleBookings.length === 0 ? (
+                <div className="empty-requests">
+                  <h3>No eligible bookings</h3>
+                  <p>
+                    You need an approved and paid booking before submitting a
+                    maintenance request.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="maintenance-form">
+                  <div className="form-group">
+                    <label>Select Booking</label>
+                    <select
+                      value={selectedBookingId}
+                      onChange={(event) =>
+                        setSelectedBookingId(event.target.value)
+                      }
+                      required
+                    >
+                      <option value="">Choose booking</option>
+
+                      {eligibleBookings.map((booking) => (
+                        <option
+                          key={booking.booking_id}
+                          value={booking.booking_id}
+                        >
+                          {booking.dorm_name} - Room {booking.room_number} (
+                          {booking.room_type})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedBooking && (
+                    <div className="selected-booking-box">
+                      <p>
+                        <strong>Dorm:</strong> {selectedBooking.dorm_name}
+                      </p>
+                      <p>
+                        <strong>Room:</strong> {selectedBooking.room_number}
+                      </p>
+                      <p>
+                        <strong>Room Type:</strong> {selectedBooking.room_type}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select
+                        value={category}
+                        onChange={(event) => setCategory(event.target.value)}
+                        required
+                      >
+                        <option value="General">General</option>
+                        <option value="Electricity">Electricity</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Furniture">Furniture</option>
+                        <option value="Internet">Internet</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Priority</label>
+                      <select
+                        value={priority}
+                        onChange={(event) => setPriority(event.target.value)}
+                        required
+                      >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      rows="5"
+                      placeholder="Describe the maintenance issue..."
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Upload Image Optional</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+
+                    {imageFileName && (
+                      <small className="form-note">
+                        Uploaded: {imageFileName}
+                      </small>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="submit-btn"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Submitting..." : "Submit Request"}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="maintenance-card">
+              <h2>My Maintenance Requests</h2>
+
+              {requests.length === 0 ? (
+                <div className="empty-requests">
+                  <h3>No maintenance requests yet</h3>
+                  <p>Your submitted requests will appear here.</p>
+                </div>
+              ) : (
+                <div className="requests-list">
+                  {requests.map((request) => (
+                    <div
+                      className="request-card"
+                      key={request.maintenance_request_id}
+                    >
+                      <div className="request-main">
+                        <div className="request-title-row">
+                          <h3>
+                            {request.maintenance_category ||
+                              "Maintenance Request"}
+                          </h3>
+
+                          <span
+                            className={`status-badge ${getStatusClass(
+                              request.request_status
+                            )}`}
+                          >
+                            {displayStatus(request.request_status)}
+                          </span>
+                        </div>
+
+                        <p>
+                          <strong>Dorm:</strong> {request.dorm_name || "-"}
+                        </p>
+
+                        <p>
+                          <strong>Room:</strong> {request.room_number || "-"}
+                        </p>
+
+                        <p>
+                          <strong>Priority:</strong> {request.priority || "-"}
+                        </p>
+
+                        <p>
+                          <strong>Description:</strong>{" "}
+                          {request.request_description || "-"}
+                        </p>
+
+                        <p>
+                          <strong>Submitted:</strong>{" "}
+                          {request.created_at || "-"}
+                        </p>
+
+                        {request.image_url && (
+                          <div className="maintenance-image-preview">
+                            <img src={request.image_url} alt="Maintenance" />
+                          </div>
+                        )}
+
+                        {request.isLocal && (
+                          <p>
+                            <strong>Note:</strong> Saved locally until backend
+                            maintenance store is fixed.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

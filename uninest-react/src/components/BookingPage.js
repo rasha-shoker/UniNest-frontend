@@ -1,21 +1,52 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./BookingPage.css";
+import { createBooking, createDocument } from "../api";
 
 function BookingPage() {
-  const pendingBooking = JSON.parse(localStorage.getItem("pendingBooking"));
-
-  const loggedInUser = localStorage.getItem("loggedInUser");
-  const loggedInUserEmail = localStorage.getItem("loggedInUserEmail");
-  const loggedInRole = localStorage.getItem("loggedInRole");
-  const loggedInUserType =
-    localStorage.getItem("loggedInUserType") || loggedInRole;
-  const loggedInResidentId = localStorage.getItem("loggedInResidentId");
-
+  const [pendingBooking, setPendingBooking] = useState(null);
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
-  const [documentType, setDocumentType] = useState("");
-  const [bookingDocument, setBookingDocument] = useState(null);
-  const [documentPreview, setDocumentPreview] = useState(null);
+  const [documentType, setDocumentType] = useState("ID");
+  const [documentFile, setDocumentFile] = useState("");
+  const [documentFileName, setDocumentFileName] = useState("");
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+  const loggedInUserEmail = localStorage.getItem("loggedInUserEmail") || "";
+  const loggedInUser = localStorage.getItem("loggedInUser") || "";
+  const loggedInRole = localStorage.getItem("loggedInRole") || "";
+
+  useEffect(() => {
+    const savedPendingBooking = localStorage.getItem("pendingBooking");
+
+    if (!savedPendingBooking) {
+      alert("No selected room found. Please choose a room first.");
+      window.location.href = "/housings";
+      return;
+    }
+
+    const booking = JSON.parse(savedPendingBooking);
+
+    if (!booking.room_id && !booking.roomId) {
+      alert("Selected room is missing. Please choose a room again.");
+      window.location.href = "/housings";
+      return;
+    }
+
+    if (!loggedInResidentId && loggedInRole !== "student" && loggedInRole !== "employee") {
+      localStorage.setItem("redirectAfterLogin", "booking");
+      alert("Please login before booking.");
+      window.location.href = "/login";
+      return;
+    }
+
+    setPendingBooking(booking);
+  }, [loggedInResidentId, loggedInRole]);
+
+  useEffect(() => {
+    calculateTotalPrice();
+  }, [checkInDate, checkOutDate, pendingBooking]);
 
   const formatDateToday = () => {
     return new Date().toLocaleDateString("en-GB", {
@@ -25,746 +56,489 @@ function BookingPage() {
     });
   };
 
-  const getTodayISO = () => {
-    return new Date().toISOString().split("T")[0];
+  const getRoomPrice = () => {
+    if (!pendingBooking) return 0;
+
+    return Number(
+      pendingBooking.room_price ||
+        pendingBooking.price ||
+        pendingBooking.roomPrice ||
+        0
+    );
   };
 
-  const getDormImage = (imagePath) => {
-    const path = imagePath || "images/aub1.jpg";
-    const fileName = path.replace("images/", "");
+  const calculateMonths = () => {
+    if (!checkInDate || !checkOutDate) return 0;
 
-    try {
-      return require(`../assets/images/${fileName}`);
-    } catch {
-      return require("../assets/images/aub1.jpg");
-    }
-  };
+    const start = new Date(checkInDate);
+    const end = new Date(checkOutDate);
 
-  const normalizePendingBooking = (booking) => {
-    if (!booking) return null;
+    if (end <= start) return 0;
 
-    return {
-      ...booking,
+    const yearDifference = end.getFullYear() - start.getFullYear();
+    const monthDifference = end.getMonth() - start.getMonth();
+    const dayDifference = end.getDate() - start.getDate();
 
-      booking_id: booking.booking_id || booking.id || Date.now(),
+    let months = yearDifference * 12 + monthDifference;
 
-      resident_id: booking.resident_id || loggedInResidentId || "",
-      resident_name:
-        booking.resident_name ||
-        booking.residentName ||
-        booking.userName ||
-        booking.studentName ||
-        loggedInUser ||
-        "",
-
-      email:
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        booking.residentEmail ||
-        loggedInUserEmail ||
-        "",
-
-      dorm_id: booking.dorm_id || booking.housingId,
-      dorm_name: booking.dorm_name || booking.housingName || "Dorm Name",
-      dorm_image: booking.dorm_image || booking.housingImage || "images/aub1.jpg",
-
-      university_name: booking.university_name || booking.university || "",
-      city: booking.city || "",
-      area: booking.area || booking.location || "",
-
-      room_id: booking.room_id || booking.roomId || "",
-      room_number: booking.room_number || booking.roomNumber || "",
-      room_type: booking.room_type || booking.roomType || "",
-      room_price: Number(booking.room_price || booking.price || 0),
-
-      available_from:
-        booking.available_from || booking.availableFrom || "Not specified",
-
-      available_to:
-        booking.available_to || booking.availableTo || "Not specified",
-
-      check_in_date: booking.check_in_date || booking.checkInDate || "",
-      check_out_date: booking.check_out_date || booking.checkOutDate || "",
-      total_price: Number(booking.total_price || booking.totalCost || 0),
-
-      booking_status: booking.booking_status || booking.status || "Pending",
-      document_status:
-        booking.document_status || booking.documentStatus || "Pending",
-      payment_status:
-        booking.payment_status || booking.paymentStatus || "Pending",
-
-      created_at: booking.created_at || booking.createdAt || formatDateToday(),
-    };
-  };
-
-  const normalizedPendingBooking = normalizePendingBooking(pendingBooking);
-
-  const getBookings = () => {
-    return JSON.parse(localStorage.getItem("studentBookings")) || [];
-  };
-
-  const saveBookings = (bookings) => {
-    localStorage.setItem("studentBookings", JSON.stringify(bookings));
-  };
-
-  const getNotifications = () => {
-    return JSON.parse(localStorage.getItem("notifications")) || [];
-  };
-
-  const saveNotifications = (notifications) => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  };
-
-  const addNotification = (residentId, notificationType, title, message) => {
-    if (!residentId && !loggedInUserEmail) return;
-
-    const notifications = getNotifications();
-
-    const newNotification = {
-      notification_id: Date.now() + Math.floor(Math.random() * 1000),
-      resident_id: residentId || "",
-      title: title,
-      message: message,
-      notification_type: notificationType,
-      is_read: false,
-      created_at: formatDateToday(),
-
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      userEmail: loggedInUserEmail || "",
-      type: notificationType,
-      isRead: false,
-      date: formatDateToday(),
-    };
-
-    notifications.unshift(newNotification);
-    saveNotifications(notifications);
-  };
-
-  const calculateTotalCost = () => {
-    if (!checkInDate || !checkOutDate || !normalizedPendingBooking) {
-      return 0;
+    if (dayDifference > 0) {
+      months += 1;
     }
 
-    const inDate = new Date(checkInDate);
-    const outDate = new Date(checkOutDate);
-
-    if (outDate <= inDate) {
-      return 0;
-    }
-
-    const diffTime = outDate - inDate;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    const monthlyPrice = Number(normalizedPendingBooking.room_price || 0);
-    const dailyPrice = monthlyPrice / 30;
-
-    return Math.ceil(dailyPrice * diffDays);
+    return months > 0 ? months : 1;
   };
 
-  const isDateInsideRoomAvailability = () => {
-    const availableFrom = normalizedPendingBooking.available_from;
-    const availableTo = normalizedPendingBooking.available_to;
+  const calculateTotalPrice = () => {
+    const months = calculateMonths();
+    const price = getRoomPrice();
 
-    if (
-      !availableFrom ||
-      !availableTo ||
-      availableFrom === "Not specified" ||
-      availableTo === "Not specified"
-    ) {
-      return true;
-    }
-
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    const from = new Date(availableFrom);
-    const to = new Date(availableTo);
-
-    if (checkIn < from || checkOut > to) {
-      alert(
-        "This room is only available from " +
-          availableFrom +
-          " to " +
-          availableTo +
-          ". Please choose dates inside this period."
-      );
-      return false;
-    }
-
-    return true;
+    setTotalPrice(months * price);
   };
 
-  const previewBookingDocument = (event) => {
+  const handleDocumentChange = (event) => {
     const file = event.target.files[0];
 
-    if (!file) {
-      setBookingDocument(null);
-      setDocumentPreview(null);
-      return;
-    }
-
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      alert("Please upload a valid file: PDF, JPG, PNG, DOC, or DOCX.");
-      event.target.value = "";
-      setBookingDocument(null);
-      setDocumentPreview(null);
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
 
     reader.onload = (e) => {
-      const documentObject = {
-        file_name: file.name,
-        file_type: file.type,
-        file_path: e.target.result,
-
-        name: file.name,
-        type: file.type,
-        data: e.target.result,
-      };
-
-      setBookingDocument(documentObject);
-      setDocumentPreview(documentObject);
+      setDocumentFile(e.target.result);
+      setDocumentFileName(file.name);
     };
 
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event) => {
+  const saveLocalBookingFallback = (bookingObject) => {
+    const oldBookings = JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    oldBookings.unshift(bookingObject);
+
+    localStorage.setItem("studentBookings", JSON.stringify(oldBookings));
+  };
+
+  const saveLocalDocumentFallback = (documentObject) => {
+    const oldDocuments = JSON.parse(localStorage.getItem("documents")) || [];
+
+    oldDocuments.unshift(documentObject);
+
+    localStorage.setItem("documents", JSON.stringify(oldDocuments));
+  };
+
+  const buildBookingPayload = () => {
+    return {
+      resident_id: Number(loggedInResidentId || pendingBooking.resident_id),
+      room_id: Number(pendingBooking.room_id || pendingBooking.roomId),
+      check_in_date: checkInDate,
+      check_out_date: checkOutDate,
+      total_price: Number(totalPrice),
+      booking_status: "pending",
+      admin_note: "",
+      admin_id: pendingBooking.admin_id || null,
+    };
+  };
+
+  const buildLocalBookingObject = (bookingId) => {
+    return {
+      ...pendingBooking,
+
+      booking_id: bookingId,
+      resident_id: loggedInResidentId || pendingBooking.resident_id || "",
+      resident_name: loggedInUser || pendingBooking.resident_name || "",
+      email: loggedInUserEmail || pendingBooking.email || "",
+
+      room_id: pendingBooking.room_id || pendingBooking.roomId,
+      check_in_date: checkInDate,
+      check_out_date: checkOutDate,
+      total_price: Number(totalPrice),
+      booking_status: "pending",
+      admin_note: "",
+      created_at: formatDateToday(),
+
+      document_status: documentFile ? "pending" : "not_uploaded",
+      payment_status: "pending",
+
+      id: bookingId,
+      userName: loggedInUser || pendingBooking.resident_name || "",
+      studentName: loggedInUser || pendingBooking.resident_name || "",
+      residentName: loggedInUser || pendingBooking.resident_name || "",
+
+      userEmail: loggedInUserEmail || pendingBooking.email || "",
+      studentEmail: loggedInUserEmail || pendingBooking.email || "",
+      residentEmail: loggedInUserEmail || pendingBooking.email || "",
+
+      roomId: pendingBooking.room_id || pendingBooking.roomId,
+      roomNumber: pendingBooking.room_number || pendingBooking.roomNumber,
+      roomType: pendingBooking.room_type || pendingBooking.roomType,
+      price: Number(pendingBooking.room_price || pendingBooking.price || 0),
+
+      checkInDate: checkInDate,
+      checkOutDate: checkOutDate,
+      totalCost: Number(totalPrice),
+
+      status: "pending",
+      documentStatus: documentFile ? "pending" : "not_uploaded",
+      paymentStatus: "pending",
+    };
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!normalizedPendingBooking) {
-      alert("No selected room found. Please select a room first.");
-      window.location.href = "/housings";
+    if (!pendingBooking) {
+      alert("No pending booking found.");
       return;
     }
 
-    if (!loggedInUser || !loggedInUserEmail || !loggedInUserType) {
-      alert("Please login first to complete your booking.");
+    if (!loggedInResidentId) {
+      alert("Please login again before booking.");
       window.location.href = "/login";
       return;
     }
 
-    if (loggedInUserType !== "student" && loggedInUserType !== "employee") {
-      alert("Only residents can submit booking requests.");
+    if (!checkInDate || !checkOutDate) {
+      alert("Please choose check-in and check-out dates.");
       return;
     }
 
-    if (loggedInUserType === "admin") {
-      alert("Admin cannot submit booking requests.");
-      window.location.href = "/admin-dashboard";
+    if (new Date(checkOutDate) <= new Date(checkInDate)) {
+      alert("Check-out date must be after check-in date.");
       return;
     }
 
-    const totalPrice = calculateTotalCost();
+    if (!documentFile) {
+      alert("Please upload your required document.");
+      return;
+    }
 
     if (totalPrice <= 0) {
-      alert("Please select a valid check-in and check-out date.");
+      alert("Total price must be greater than 0.");
       return;
     }
 
-    if (!isDateInsideRoomAvailability()) {
-      return;
-    }
+    try {
+      setSubmitting(true);
 
-    if (!documentType) {
-      alert("Please select document type.");
-      return;
-    }
+      const bookingPayload = buildBookingPayload();
 
-    if (!bookingDocument || !bookingDocument.file_path) {
-      alert("Please upload a booking document.");
-      return;
-    }
+      const createdBookingResponse = await createBooking(bookingPayload);
 
-    const bookings = getBookings();
+      const createdBooking =
+        createdBookingResponse?.data && createdBookingResponse.data.booking_id
+          ? createdBookingResponse.data
+          : createdBookingResponse;
 
-    const duplicatePending = bookings.find((booking) => {
-      const bookingResidentId = String(booking.resident_id || "");
-      const bookingEmail = (
-        booking.email ||
-        booking.userEmail ||
-        booking.studentEmail ||
-        ""
-      ).toLowerCase();
+      const newBookingId =
+        createdBooking?.booking_id ||
+        createdBooking?.id ||
+        pendingBooking.booking_id ||
+        Date.now();
 
-      const bookingDormId = Number(booking.dorm_id || booking.housingId);
-      const bookingRoomId = String(booking.room_id || booking.roomId || "");
-      const bookingStatus = booking.booking_status || booking.status || "Pending";
+      const localBookingObject = buildLocalBookingObject(newBookingId);
 
-      return (
-        (bookingResidentId === String(loggedInResidentId) ||
-          bookingEmail === loggedInUserEmail.toLowerCase()) &&
-        bookingDormId === Number(normalizedPendingBooking.dorm_id) &&
-        bookingRoomId === String(normalizedPendingBooking.room_id) &&
-        bookingStatus === "Pending"
+      saveLocalBookingFallback(localBookingObject);
+
+      try {
+        await createDocument({
+          booking_id: Number(newBookingId),
+          file_path: documentFile,
+          document_type: documentType,
+          document_status: "pending",
+        });
+
+        saveLocalDocumentFallback({
+          document_id: Date.now(),
+          booking_id: Number(newBookingId),
+          file_path: documentFile,
+          file_name: documentFileName,
+          document_type: documentType,
+          document_status: "pending",
+          uploaded_at: formatDateToday(),
+        });
+      } catch (documentError) {
+        console.warn("Document backend save failed:", documentError);
+
+        saveLocalDocumentFallback({
+          document_id: Date.now(),
+          booking_id: Number(newBookingId),
+          file_path: documentFile,
+          file_name: documentFileName,
+          document_type: documentType,
+          document_status: "pending",
+          uploaded_at: formatDateToday(),
+        });
+      }
+
+      localStorage.removeItem("pendingBooking");
+      localStorage.removeItem("redirectAfterLogin");
+
+      alert("Booking request submitted successfully.");
+      window.location.href = "/my-bookings";
+    } catch (error) {
+      console.error("Booking backend save failed:", error);
+
+      const localBookingId = pendingBooking.booking_id || Date.now();
+      const localBookingObject = buildLocalBookingObject(localBookingId);
+
+      saveLocalBookingFallback(localBookingObject);
+
+      saveLocalDocumentFallback({
+        document_id: Date.now(),
+        booking_id: Number(localBookingId),
+        file_path: documentFile,
+        file_name: documentFileName,
+        document_type: documentType,
+        document_status: "pending",
+        uploaded_at: formatDateToday(),
+      });
+
+      localStorage.removeItem("pendingBooking");
+      localStorage.removeItem("redirectAfterLogin");
+
+      alert(
+        "Booking saved locally for frontend testing. Later we will fix backend POST /api/bookings if needed."
       );
-    });
 
-    if (duplicatePending) {
-      alert("You already have a pending booking request for this room.");
-      return;
+      window.location.assign("/my-bookings");
+    } finally {
+      setSubmitting(false);
     }
-
-    const bookingId = Date.now();
-
-    const completedBooking = {
-      ...normalizedPendingBooking,
-
-      booking_id: bookingId,
-
-      resident_id: loggedInResidentId || normalizedPendingBooking.resident_id || "",
-      resident_name: loggedInUser,
-      email: loggedInUserEmail,
-      user_type: loggedInUserType,
-
-      dorm_id: normalizedPendingBooking.dorm_id,
-      dorm_name: normalizedPendingBooking.dorm_name,
-      dorm_image: normalizedPendingBooking.dorm_image || "images/aub1.jpg",
-
-      university_name: normalizedPendingBooking.university_name || "",
-      city: normalizedPendingBooking.city || "",
-      area: normalizedPendingBooking.area || "",
-
-      room_id: normalizedPendingBooking.room_id || "",
-      room_number: normalizedPendingBooking.room_number || "",
-      room_type: normalizedPendingBooking.room_type || "",
-      room_price: Number(normalizedPendingBooking.room_price || 0),
-
-      available_from: normalizedPendingBooking.available_from || "",
-      available_to: normalizedPendingBooking.available_to || "",
-
-      check_in_date: checkInDate,
-      check_out_date: checkOutDate,
-      total_price: totalPrice,
-
-      booking_status: "Pending",
-      admin_note: "",
-      admin_id: null,
-
-      document_type: documentType,
-      document_status: "Pending",
-      file_path: bookingDocument.file_path,
-      file_name: bookingDocument.file_name,
-      file_type: bookingDocument.file_type,
-
-      payment_status: "Pending",
-
-      created_at: formatDateToday(),
-
-      id: bookingId,
-
-      userName: loggedInUser,
-      studentName: loggedInUser,
-      residentName: loggedInUser,
-
-      userEmail: loggedInUserEmail,
-      studentEmail: loggedInUserEmail,
-      residentEmail: loggedInUserEmail,
-
-      userRole: loggedInUserType,
-
-      housingId: normalizedPendingBooking.dorm_id,
-      housingName: normalizedPendingBooking.dorm_name,
-      housingImage: normalizedPendingBooking.dorm_image || "images/aub1.jpg",
-
-      university: normalizedPendingBooking.university_name || "",
-      location: normalizedPendingBooking.area || normalizedPendingBooking.city || "",
-
-      roomId: normalizedPendingBooking.room_id || "",
-      roomNumber: normalizedPendingBooking.room_number || "",
-      roomType: normalizedPendingBooking.room_type || "",
-      price: Number(normalizedPendingBooking.room_price || 0),
-
-      availableFrom: normalizedPendingBooking.available_from || "",
-      availableTo: normalizedPendingBooking.available_to || "",
-
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
-      totalCost: totalPrice,
-
-      documentType: documentType,
-      documentName: bookingDocument.file_name,
-      documentFileType: bookingDocument.file_type,
-      documentData: bookingDocument.file_path,
-
-      documentStatus: "Pending",
-      status: "Pending",
-      paymentStatus: "Pending",
-
-      createdAt: formatDateToday(),
-    };
-
-    bookings.push(completedBooking);
-    saveBookings(bookings);
-
-    localStorage.removeItem("pendingBooking");
-
-    addNotification(
-      completedBooking.resident_id,
-      "booking",
-      "Booking Request Submitted",
-      "Your booking request for " +
-        completedBooking.dorm_name +
-        " is pending admin approval."
-    );
-
-    alert(
-      "Booking request submitted successfully. Your booking is now pending admin approval."
-    );
-
-    window.location.href = "/my-bookings";
   };
 
-  if (!normalizedPendingBooking) {
-    return (
-      <div className="booking-page">
-        <header className="navbar">
-          <div className="logo">
-            <h2>UniNest</h2>
-          </div>
-        </header>
+  const logout = (event) => {
+    event.preventDefault();
 
-        <section className="page-header">
-          <div className="page-header-content">
-            <h1>No Booking Selected</h1>
-            <p>Please select a room first before submitting a booking request.</p>
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
+    localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
+    window.location.href = "/";
+  };
+
+  if (!pendingBooking) {
+    return (
+      <div className="booking-layout">
+        <main className="booking-main">
+          <div className="booking-card">
+            <h2>Loading booking...</h2>
           </div>
-        </section>
+        </main>
       </div>
     );
   }
 
-  const totalCost = calculateTotalCost();
-
-  const minDate =
-    normalizedPendingBooking.available_from &&
-    normalizedPendingBooking.available_from !== "Not specified"
-      ? normalizedPendingBooking.available_from
-      : getTodayISO();
-
-  const maxDate =
-    normalizedPendingBooking.available_to &&
-    normalizedPendingBooking.available_to !== "Not specified"
-      ? normalizedPendingBooking.available_to
-      : undefined;
+  const months = calculateMonths();
 
   return (
-    <div className="booking-page">
-      <header className="navbar">
-        <div className="logo">
+    <div className="booking-layout">
+      <aside className="booking-sidebar">
+        <div className="sidebar-logo">
           <h2>UniNest</h2>
+          <p>Resident Panel</p>
         </div>
 
-        <nav>
-          <ul className="nav-links">
-            <li>
-              <a href="/">Home</a>
-            </li>
-            <li>
-              <a href="/housings">Dorms</a>
-            </li>
-            <li>
-              <a href="/student-dashboard">Dashboard</a>
-            </li>
-            <li>
-              <a href="/my-bookings">My Bookings</a>
-            </li>
-            <li>
-              <a href="/" onClick={(event) => {
-                event.preventDefault();
-                localStorage.removeItem("loggedInAdminId");
-                localStorage.removeItem("loggedInResidentId");
-                localStorage.removeItem("loggedInUser");
-                localStorage.removeItem("loggedInUserEmail");
-                localStorage.removeItem("loggedInRole");
-                localStorage.removeItem("loggedInUserType");
-                window.location.href = "/";
-              }}>
-                Logout
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </header>
+        <ul className="sidebar-menu">
+          <li>
+            <a href="/student-dashboard">
+              <i className="fa-solid fa-house"></i> Dashboard
+            </a>
+          </li>
 
-      <section className="page-header">
-        <div className="page-header-content">
-          <h1>Booking Request</h1>
-          <p>
-            Complete your booking request by selecting dates and uploading the
-            required document.
-          </p>
+          <li>
+            <a href="/my-bookings" className="active">
+              <i className="fa-solid fa-bed"></i> My Bookings
+            </a>
+          </li>
+
+          <li>
+            <a href="/payment">
+              <i className="fa-solid fa-credit-card"></i> Payment
+            </a>
+          </li>
+
+          <li>
+            <a href="/maintenance">
+              <i className="fa-solid fa-screwdriver-wrench"></i> Maintenance
+            </a>
+          </li>
+
+          <li>
+            <a href="/notifications">
+              <i className="fa-solid fa-bell"></i> Notifications
+            </a>
+          </li>
+
+          <li>
+            <a href="/profile">
+              <i className="fa-solid fa-user"></i> Profile
+            </a>
+          </li>
+
+          <li>
+            <a href="/housings">
+              <i className="fa-solid fa-magnifying-glass"></i> Explore Dorms
+            </a>
+          </li>
+
+          <li>
+            <a href="/" onClick={logout}>
+              <i className="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main className="booking-main">
+        <div className="booking-topbar">
+          <div>
+            <h1>Complete Booking</h1>
+            <p>Confirm your selected dorm room and submit your booking request.</p>
+          </div>
         </div>
-      </section>
 
-      <section className="booking-section">
-        <div className="booking-container">
+        <section className="booking-content">
           <div className="booking-summary-card">
-            <img
-              src={getDormImage(normalizedPendingBooking.dorm_image)}
-              alt="Dorm"
-            />
+            <h2>Selected Room</h2>
 
-            <div className="booking-summary-info">
-              <h2>{normalizedPendingBooking.dorm_name || "Dorm Name"}</h2>
+            <div className="booking-summary-grid">
+              <p>
+                <strong>Dorm:</strong>{" "}
+                {pendingBooking.dorm_name ||
+                  pendingBooking.housingName ||
+                  "Dorm Name"}
+              </p>
 
               <p>
-                <i className="fa-solid fa-location-dot"></i>
                 <strong>Location:</strong>{" "}
-                {normalizedPendingBooking.area ||
-                  normalizedPendingBooking.city ||
+                {pendingBooking.area ||
+                  pendingBooking.city ||
+                  pendingBooking.location ||
                   "-"}
               </p>
 
               <p>
-                <i className="fa-solid fa-school"></i>
-                <strong>University:</strong>{" "}
-                {normalizedPendingBooking.university_name || "-"}
-              </p>
-
-              <p>
-                <i className="fa-solid fa-bed"></i>
-                <strong>Room Type:</strong>{" "}
-                {normalizedPendingBooking.room_type || "-"}
-              </p>
-
-              <p>
-                <i className="fa-solid fa-door-open"></i>
                 <strong>Room Number:</strong>{" "}
-                {normalizedPendingBooking.room_number || "-"}
+                {pendingBooking.room_number ||
+                  pendingBooking.roomNumber ||
+                  "-"}
               </p>
 
               <p>
-                <i className="fa-solid fa-dollar-sign"></i>
-                <strong>Price/month:</strong> $
-                {normalizedPendingBooking.room_price || "0"}
+                <strong>Room Type:</strong>{" "}
+                {pendingBooking.room_type ||
+                  pendingBooking.roomType ||
+                  "-"}
               </p>
 
               <p>
-                <i className="fa-solid fa-calendar-check"></i>
-                <strong>Available From:</strong>{" "}
-                {normalizedPendingBooking.available_from || "Not specified"}
+                <strong>Monthly Price:</strong> ${getRoomPrice()}
               </p>
 
               <p>
-                <i className="fa-solid fa-calendar-xmark"></i>
-                <strong>Available To:</strong>{" "}
-                {normalizedPendingBooking.available_to || "Not specified"}
-              </p>
-
-              <p>
-                <i className="fa-solid fa-file-circle-check"></i>
-                <strong>Document Status:</strong> Pending
-              </p>
-
-              <p>
-                <i className="fa-solid fa-circle-info"></i>
-                <strong>Booking Status:</strong> Pending
-              </p>
-
-              <p>
-                <i className="fa-solid fa-credit-card"></i>
-                <strong>Payment Status:</strong> Pending
+                <strong>Resident:</strong> {loggedInUser || "Resident"}
               </p>
             </div>
           </div>
 
-          <div className="booking-form-card">
-            <h2>Complete Booking Information</h2>
+          <div className="booking-card">
+            <h2>Booking Information</h2>
 
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="checkInDate">Check-in Date</label>
-                <input
-                  type="date"
-                  id="checkInDate"
-                  value={checkInDate}
-                  min={minDate}
-                  max={maxDate}
-                  onChange={(event) => {
-                    setCheckInDate(event.target.value);
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Check-in Date</label>
+                  <input
+                    type="date"
+                    value={checkInDate}
+                    onChange={(event) => setCheckInDate(event.target.value)}
+                    required
+                  />
+                </div>
 
-                    if (
-                      checkOutDate &&
-                      new Date(checkOutDate) <= new Date(event.target.value)
-                    ) {
-                      setCheckOutDate("");
-                    }
-                  }}
-                  required
-                />
+                <div className="form-group">
+                  <label>Check-out Date</label>
+                  <input
+                    type="date"
+                    value={checkOutDate}
+                    onChange={(event) => setCheckOutDate(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="price-box">
+                <p>
+                  <strong>Duration:</strong> {months} month(s)
+                </p>
+
+                <p>
+                  <strong>Total Price:</strong> ${totalPrice}
+                </p>
               </div>
 
               <div className="form-group">
-                <label htmlFor="checkOutDate">Check-out Date</label>
-                <input
-                  type="date"
-                  id="checkOutDate"
-                  value={checkOutDate}
-                  min={checkInDate || minDate}
-                  max={maxDate}
-                  onChange={(event) => setCheckOutDate(event.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="documentType">Document Type</label>
+                <label>Document Type</label>
                 <select
-                  id="documentType"
                   value={documentType}
                   onChange={(event) => setDocumentType(event.target.value)}
                   required
                 >
-                  <option value="">Select document type</option>
-                  <option value="Identification Document">
-                    Identification Document
-                  </option>
-                  <option value="University Document">
-                    University Document
-                  </option>
-                  <option value="Company Verification Document">
-                    Company Verification Document
-                  </option>
-                  <option value="Work Verification Document">
-                    Work Verification Document
-                  </option>
+                  <option value="ID">ID</option>
+                  <option value="University ID">University ID</option>
+                  <option value="Employee ID">Employee ID</option>
+                  <option value="Passport">Passport</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label htmlFor="bookingDocument">Upload Booking Document</label>
-
+                <label>Upload Document</label>
                 <input
                   type="file"
-                  id="bookingDocument"
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  onChange={previewBookingDocument}
+                  accept="image/*,.pdf"
+                  onChange={handleDocumentChange}
                   required
                 />
 
-                <small className="input-note">
-                  Allowed files: PDF, JPG, PNG, DOC, DOCX.
-                </small>
-
-                <div className="booking-document-preview">
-                  {!documentPreview && <span>No document selected</span>}
-
-                  {documentPreview &&
-                    documentPreview.file_type &&
-                    documentPreview.file_type.startsWith("image/") && (
-                      <>
-                        <img
-                          src={documentPreview.file_path}
-                          alt="Booking Document"
-                        />
-                        <p>{documentPreview.file_name}</p>
-                      </>
-                    )}
-
-                  {documentPreview &&
-                    documentPreview.file_type &&
-                    !documentPreview.file_type.startsWith("image/") && (
-                      <div className="file-preview-box">
-                        <i className="fa-solid fa-file-lines"></i>
-                        <p>{documentPreview.file_name}</p>
-                      </div>
-                    )}
-                </div>
+                {documentFileName && (
+                  <small className="form-note">
+                    Uploaded: {documentFileName}
+                  </small>
+                )}
               </div>
 
-              <div className="total-cost-box">
-                <p>Total Cost</p>
-                <h3>${totalCost}</h3>
-                <small>
-                  The cost is calculated automatically based on room price and
-                  stay duration.
-                </small>
+              <div className="booking-note">
+                <p>
+                  Your booking will be sent as <strong>Pending</strong>. The
+                  admin must approve your document and booking request.
+                </p>
               </div>
 
-              <button type="submit" className="btn primary-btn">
-                Submit Booking Request
-              </button>
+              <div className="booking-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => {
+                    localStorage.removeItem("pendingBooking");
+                    window.location.href = "/housings";
+                  }}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
 
-              <a
-                href={`/housing-details?id=${normalizedPendingBooking.dorm_id}`}
-                className="secondary-link"
-              >
-                Back to dorm details
-              </a>
+                <button type="submit" className="submit-btn" disabled={submitting}>
+                  {submitting ? "Submitting..." : "Submit Booking Request"}
+                </button>
+              </div>
             </form>
           </div>
-        </div>
-      </section>
-
-      <footer className="footer">
-        <div className="footer-container">
-          <div className="footer-box">
-            <h3>UniNest</h3>
-            <p>
-              A modern dorm booking platform that helps students and employees
-              find safe, comfortable, and affordable accommodation.
-            </p>
-          </div>
-
-          <div className="footer-box">
-            <h3>Quick Links</h3>
-            <ul>
-              <li>
-                <a href="/">Home</a>
-              </li>
-              <li>
-                <a href="/housings">Dorms</a>
-              </li>
-              <li>
-                <a href="/student-dashboard">Dashboard</a>
-              </li>
-              <li>
-                <a href="/my-bookings">My Bookings</a>
-              </li>
-            </ul>
-          </div>
-
-          <div className="footer-box">
-            <h3>Contact Info</h3>
-            <p>
-              <i className="fa-solid fa-envelope"></i> support@uninest.com
-            </p>
-            <p>
-              <i className="fa-solid fa-phone"></i> +961 76 741 699
-            </p>
-            <p>
-              <i className="fa-solid fa-phone"></i> +961 81 894 380
-            </p>
-          </div>
-
-          <div className="footer-box">
-            <h3>Follow Us</h3>
-            <div className="social-icons">
-              <a href="#" aria-label="Facebook">
-                <i className="fa-brands fa-facebook-f"></i>
-              </a>
-              <a href="#" aria-label="Instagram">
-                <i className="fa-brands fa-instagram"></i>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <p>&copy; 2026 UniNest. All Rights Reserved.</p>
-        </div>
-      </footer>
+        </section>
+      </main>
     </div>
   );
 }
