@@ -46,7 +46,22 @@ function ManageBookingsPage() {
   };
 
   const getStatusClass = (status) => {
-    return normalizeStatus(status);
+    const value = normalizeStatus(status);
+
+    if (value === "approved") return "approved";
+    if (value === "rejected") return "rejected";
+    if (value === "cancelled") return "cancelled";
+    if (value === "paid" || value === "completed") return "paid";
+
+    return "pending";
+  };
+
+  const formatDateToday = () => {
+    return new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const normalizeBooking = (booking) => {
@@ -56,89 +71,220 @@ function ManageBookingsPage() {
 
     return {
       ...booking,
-      booking_id: booking.booking_id,
+
+      booking_id: booking.booking_id || booking.id,
       resident_id: booking.resident_id || resident.resident_id || "",
       resident_name:
-        booking.resident_name || resident.full_name || "Resident",
-      email: booking.email || resident.email || resident.user?.email || "-",
+        booking.resident_name ||
+        booking.residentName ||
+        booking.userName ||
+        booking.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
 
-      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
-      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+      email:
+        booking.email ||
+        booking.userEmail ||
+        booking.studentEmail ||
+        booking.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        "-",
+
+      dorm_id:
+        booking.dorm_id ||
+        booking.housingId ||
+        dorm.dorm_id ||
+        room.dorm_id ||
+        "",
+
+      dorm_name:
+        booking.dorm_name ||
+        booking.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
 
       city: booking.city || dorm.city || "",
-      area: booking.area || dorm.area || "",
+      area: booking.area || dorm.area || booking.location || "",
 
-      room_id: booking.room_id || room.room_id || "",
-      room_number: booking.room_number || room.room_number || "-",
-      room_type: booking.room_type || room.room_type || "-",
-      room_price: Number(booking.room_price || room.room_price || 0),
+      room_id: booking.room_id || booking.roomId || room.room_id || "",
+      room_number:
+        booking.room_number || booking.roomNumber || room.room_number || "-",
+      room_type: booking.room_type || booking.roomType || room.room_type || "-",
+      room_price: Number(
+        booking.room_price || booking.price || room.room_price || 0
+      ),
 
-      check_in_date: booking.check_in_date || "-",
-      check_out_date: booking.check_out_date || "-",
-      total_price: Number(booking.total_price || 0),
+      check_in_date: booking.check_in_date || booking.checkInDate || "-",
+      check_out_date: booking.check_out_date || booking.checkOutDate || "-",
+      total_price: Number(
+        booking.total_price || booking.totalCost || booking.amount || 0
+      ),
 
-      booking_status: booking.booking_status || "pending",
+      booking_status: booking.booking_status || booking.status || "pending",
       admin_note: booking.admin_note || "",
-      admin_id: booking.admin_id || null,
+      admin_id: booking.admin_id || "",
 
-      created_at: booking.created_at || "-",
-      updated_at: booking.updated_at || "Not updated yet",
+      created_at: booking.created_at || booking.createdAt || "-",
+      updated_at: booking.updated_at || booking.updatedAt || "Not updated yet",
+
+      document_status:
+        booking.document_status || booking.documentStatus || "pending",
+
+      payment_status:
+        booking.payment_status || booking.paymentStatus || "pending",
+
+      isLocal: booking.isLocal || false,
     };
   };
 
   const normalizeDocument = (document) => {
     return {
       ...document,
-      document_id: document.document_id,
-      booking_id: document.booking_id,
-      file_path: document.file_path || "",
-      document_type: document.document_type || "Not specified",
-      document_status: document.document_status || "pending",
+      document_id: document.document_id || document.id,
+      booking_id: document.booking_id || document.bookingId,
+      file_path: document.file_path || document.file || "",
+      file_name: document.file_name || document.fileName || "",
+      document_type: document.document_type || document.type || "Document",
+      document_status: document.document_status || document.status || "pending",
       uploaded_at: document.uploaded_at || document.created_at || "",
+      isLocal: document.isLocal || false,
     };
   };
 
   const normalizePayment = (payment) => {
     return {
       ...payment,
-      payment_id: payment.payment_id,
-      booking_id: payment.booking_id,
+      payment_id: payment.payment_id || payment.id,
+      booking_id: payment.booking_id || payment.bookingId,
       amount: Number(payment.amount || 0),
-      payment_method: payment.payment_method || "Not paid yet",
-      payment_status: payment.payment_status || "pending",
-      created_at: payment.created_at || "",
+      payment_method: payment.payment_method || payment.method || "Not paid yet",
+      payment_status: payment.payment_status || payment.status || "pending",
+      created_at: payment.created_at || payment.payment_date || "",
+      isLocal: payment.isLocal || false,
     };
+  };
+
+  const getLocalBookings = () => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    return localBookings.map((booking) =>
+      normalizeBooking({
+        ...booking,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalDocuments = () => {
+    const localDocuments = JSON.parse(localStorage.getItem("documents")) || [];
+
+    return localDocuments.map((document) =>
+      normalizeDocument({
+        ...document,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalPayments = () => {
+    const localPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    return localPayments.map((payment) =>
+      normalizePayment({
+        ...payment,
+        isLocal: true,
+      })
+    );
+  };
+
+  const mergeById = (backendItems, localItems, idField) => {
+    const merged = [...localItems];
+
+    backendItems.forEach((backendItem) => {
+      const exists = merged.some((localItem) => {
+        return Number(localItem[idField]) === Number(backendItem[idField]);
+      });
+
+      if (!exists) {
+        merged.push(backendItem);
+      }
+    });
+
+    return merged;
   };
 
   const loadBookings = async () => {
     try {
       setLoading(true);
 
-      const [bookingsResponse, documentsResponse, paymentsResponse] =
-        await Promise.all([
-          getBookings(),
-          getDocuments().catch(() => []),
-          getPayments().catch(() => []),
-        ]);
+      const localBookings = getLocalBookings();
+      const localDocuments = getLocalDocuments();
+      const localPayments = getLocalPayments();
 
-      const bookingsList = Array.isArray(bookingsResponse)
-        ? bookingsResponse
-        : bookingsResponse.data || [];
+      let backendBookings = [];
+      let backendDocuments = [];
+      let backendPayments = [];
 
-      const documentsList = Array.isArray(documentsResponse)
-        ? documentsResponse
-        : documentsResponse.data || [];
+      try {
+        const bookingsResponse = await getBookings();
+        const bookingsList = Array.isArray(bookingsResponse)
+          ? bookingsResponse
+          : bookingsResponse.data || [];
 
-      const paymentsList = Array.isArray(paymentsResponse)
-        ? paymentsResponse
-        : paymentsResponse.data || [];
+        backendBookings = bookingsList.map(normalizeBooking);
+      } catch (error) {
+        console.warn("Backend bookings could not be loaded:", error);
+      }
 
-      setBookings(bookingsList.map(normalizeBooking));
-      setDocuments(documentsList.map(normalizeDocument));
-      setPayments(paymentsList.map(normalizePayment));
+      try {
+        const documentsResponse = await getDocuments();
+        const documentsList = Array.isArray(documentsResponse)
+          ? documentsResponse
+          : documentsResponse.data || [];
+
+        backendDocuments = documentsList.map(normalizeDocument);
+      } catch (error) {
+        console.warn("Backend documents could not be loaded:", error);
+      }
+
+      try {
+        const paymentsResponse = await getPayments();
+        const paymentsList = Array.isArray(paymentsResponse)
+          ? paymentsResponse
+          : paymentsResponse.data || [];
+
+        backendPayments = paymentsList.map(normalizePayment);
+      } catch (error) {
+        console.warn("Backend payments could not be loaded:", error);
+      }
+
+      const mergedBookings = mergeById(
+        backendBookings,
+        localBookings,
+        "booking_id"
+      ).sort((a, b) => Number(b.booking_id || 0) - Number(a.booking_id || 0));
+
+      const mergedDocuments = mergeById(
+        backendDocuments,
+        localDocuments,
+        "document_id"
+      );
+
+      const mergedPayments = mergeById(
+        backendPayments,
+        localPayments,
+        "payment_id"
+      );
+
+      setBookings(mergedBookings);
+      setDocuments(mergedDocuments);
+      setPayments(mergedPayments);
     } catch (error) {
       console.error("Failed to load admin bookings:", error);
-      alert("Could not load bookings from backend.");
+      alert("Could not load bookings.");
     } finally {
       setLoading(false);
     }
@@ -156,12 +302,72 @@ function ManageBookingsPage() {
     });
   };
 
-  const getImageUrl = () => {
-    try {
-      return require("../assets/images/aub1.jpg");
-    } catch {
-      return "";
-    }
+  const updateLocalBooking = (bookingId, updates) => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    const updatedBookings = localBookings.map((booking) => {
+      const currentBookingId = booking.booking_id || booking.id;
+
+      if (Number(currentBookingId) === Number(bookingId)) {
+        return {
+          ...booking,
+          ...updates,
+          status: updates.booking_status || updates.status || booking.status,
+          updated_at: formatDateToday(),
+          updatedAt: formatDateToday(),
+        };
+      }
+
+      return booking;
+    });
+
+    localStorage.setItem("studentBookings", JSON.stringify(updatedBookings));
+  };
+
+  const updateLocalDocument = (documentId, updates) => {
+    const localDocuments = JSON.parse(localStorage.getItem("documents")) || [];
+
+    const updatedDocuments = localDocuments.map((document) => {
+      const currentDocumentId = document.document_id || document.id;
+
+      if (Number(currentDocumentId) === Number(documentId)) {
+        return {
+          ...document,
+          ...updates,
+          status:
+            updates.document_status || updates.status || document.status,
+          updated_at: formatDateToday(),
+          updatedAt: formatDateToday(),
+        };
+      }
+
+      return document;
+    });
+
+    localStorage.setItem("documents", JSON.stringify(updatedDocuments));
+  };
+
+  const deleteLocalBooking = (bookingId) => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    const updatedBookings = localBookings.filter((booking) => {
+      const currentBookingId = booking.booking_id || booking.id;
+      return Number(currentBookingId) !== Number(bookingId);
+    });
+
+    localStorage.setItem("studentBookings", JSON.stringify(updatedBookings));
+  };
+
+  const deleteLocalDocumentsForBooking = (bookingId) => {
+    const localDocuments = JSON.parse(localStorage.getItem("documents")) || [];
+
+    const updatedDocuments = localDocuments.filter((document) => {
+      return Number(document.booking_id) !== Number(bookingId);
+    });
+
+    localStorage.setItem("documents", JSON.stringify(updatedDocuments));
   };
 
   const approveDocument = async (bookingId) => {
@@ -177,11 +383,31 @@ function ManageBookingsPage() {
         document_status: "approved",
       });
 
+      updateLocalDocument(document.document_id, {
+        document_status: "approved",
+      });
+
+      updateLocalBooking(bookingId, {
+        document_status: "approved",
+        documentStatus: "approved",
+      });
+
       alert("Document approved successfully.");
       loadBookings();
     } catch (error) {
-      console.error("Document approval failed:", error);
-      alert("Document could not be approved. Check PATCH /documents/{id}.");
+      console.warn("Backend document approval failed:", error);
+
+      updateLocalDocument(document.document_id, {
+        document_status: "approved",
+      });
+
+      updateLocalBooking(bookingId, {
+        document_status: "approved",
+        documentStatus: "approved",
+      });
+
+      alert("Document approved locally for frontend testing.");
+      loadBookings();
     }
   };
 
@@ -203,11 +429,33 @@ function ManageBookingsPage() {
         admin_note: "Document rejected.",
       });
 
+      updateLocalDocument(document.document_id, {
+        document_status: "rejected",
+      });
+
+      updateLocalBooking(bookingId, {
+        booking_status: "rejected",
+        document_status: "rejected",
+        admin_note: "Document rejected.",
+      });
+
       alert("Document rejected and booking rejected.");
       loadBookings();
     } catch (error) {
-      console.error("Document rejection failed:", error);
-      alert("Document could not be rejected. Check Laravel document route.");
+      console.warn("Backend document rejection failed:", error);
+
+      updateLocalDocument(document.document_id, {
+        document_status: "rejected",
+      });
+
+      updateLocalBooking(bookingId, {
+        booking_status: "rejected",
+        document_status: "rejected",
+        admin_note: "Document rejected.",
+      });
+
+      alert("Document rejected locally for frontend testing.");
+      loadBookings();
     }
   };
 
@@ -222,7 +470,9 @@ function ManageBookingsPage() {
     }
 
     const document = getDocumentForBooking(bookingId);
-    const documentStatus = normalizeStatus(document?.document_status);
+    const documentStatus = normalizeStatus(
+      document?.document_status || booking.document_status
+    );
 
     if (document && documentStatus !== "approved") {
       alert("Please approve the uploaded document first.");
@@ -237,15 +487,31 @@ function ManageBookingsPage() {
     try {
       await updateBooking(bookingId, {
         booking_status: "approved",
-        admin_id: localStorage.getItem("loggedInAdminId") || null,
+        admin_id: localStorage.getItem("loggedInAdminId") || 1,
+        admin_note: "Booking approved.",
+      });
+
+      updateLocalBooking(bookingId, {
+        booking_status: "approved",
+        status: "approved",
+        admin_id: localStorage.getItem("loggedInAdminId") || 1,
         admin_note: "Booking approved.",
       });
 
       alert("Booking approved successfully.");
       loadBookings();
     } catch (error) {
-      console.error("Booking approval failed:", error);
-      alert("Booking could not be approved. Check PATCH /bookings/{id}.");
+      console.warn("Backend booking approval failed:", error);
+
+      updateLocalBooking(bookingId, {
+        booking_status: "approved",
+        status: "approved",
+        admin_id: localStorage.getItem("loggedInAdminId") || 1,
+        admin_note: "Booking approved.",
+      });
+
+      alert("Booking approved locally for frontend testing.");
+      loadBookings();
     }
   };
 
@@ -260,28 +526,57 @@ function ManageBookingsPage() {
         admin_note: adminNote,
       });
 
+      updateLocalBooking(bookingId, {
+        booking_status: "rejected",
+        status: "rejected",
+        admin_note: adminNote,
+      });
+
       alert("Booking rejected successfully.");
       loadBookings();
     } catch (error) {
-      console.error("Booking rejection failed:", error);
-      alert("Booking could not be rejected. Check PATCH /bookings/{id}.");
+      console.warn("Backend booking rejection failed:", error);
+
+      updateLocalBooking(bookingId, {
+        booking_status: "rejected",
+        status: "rejected",
+        admin_note: adminNote,
+      });
+
+      alert("Booking rejected locally for frontend testing.");
+      loadBookings();
     }
   };
 
   const handleDeleteBooking = async (bookingId) => {
     const ok = window.confirm("Are you sure you want to delete this booking?");
 
-    if (!ok) {
-      return;
-    }
+    if (!ok) return;
 
     try {
       await deleteBooking(bookingId);
+
+      deleteLocalBooking(bookingId);
+      deleteLocalDocumentsForBooking(bookingId);
+
       alert("Booking deleted successfully.");
       loadBookings();
     } catch (error) {
-      console.error("Delete booking failed:", error);
-      alert("Booking could not be deleted. Check DELETE /bookings/{id}.");
+      console.warn("Backend delete booking failed:", error);
+
+      deleteLocalBooking(bookingId);
+      deleteLocalDocumentsForBooking(bookingId);
+
+      alert("Booking deleted locally for frontend testing.");
+      loadBookings();
+    }
+  };
+
+  const getImageUrl = () => {
+    try {
+      return require("../assets/images/aub1.jpg");
+    } catch {
+      return "";
     }
   };
 
@@ -427,15 +722,15 @@ function ManageBookingsPage() {
 
               const bookingStatus = displayStatus(booking.booking_status);
               const documentStatus = displayStatus(
-                document?.document_status || "pending"
+                document?.document_status || booking.document_status
               );
               const paymentStatus = displayStatus(
-                payment?.payment_status || "pending"
+                payment?.payment_status || booking.payment_status
               );
 
               const rawBookingStatus = normalizeStatus(booking.booking_status);
               const rawDocumentStatus = normalizeStatus(
-                document?.document_status || "pending"
+                document?.document_status || booking.document_status
               );
 
               return (
@@ -470,8 +765,7 @@ function ManageBookingsPage() {
 
                       <p>
                         <i className="fa-solid fa-location-dot"></i>{" "}
-                        <strong>Location:</strong>{" "}
-                        {booking.city || "-"}
+                        <strong>Location:</strong> {booking.city || "-"}
                         {booking.area ? ` - ${booking.area}` : ""}
                       </p>
 
@@ -498,7 +792,8 @@ function ManageBookingsPage() {
 
                       <p>
                         <i className="fa-solid fa-calendar-check"></i>{" "}
-                        <strong>Check-in:</strong> {booking.check_in_date || "-"}
+                        <strong>Check-in:</strong>{" "}
+                        {booking.check_in_date || "-"}
                       </p>
 
                       <p>
@@ -523,6 +818,14 @@ function ManageBookingsPage() {
                           <strong>Admin Note:</strong> {booking.admin_note}
                         </p>
                       )}
+
+                      {booking.isLocal && (
+                        <p>
+                          <i className="fa-solid fa-circle-info"></i>{" "}
+                          <strong>Note:</strong> Saved locally until backend
+                          booking store is fixed.
+                        </p>
+                      )}
                     </div>
 
                     <div className="document-box">
@@ -538,7 +841,9 @@ function ManageBookingsPage() {
 
                       {document?.file_path ? (
                         <div className="booking-document-view">
-                          {String(document.file_path).startsWith("data:image") ? (
+                          {String(document.file_path).startsWith(
+                            "data:image"
+                          ) ? (
                             <img
                               src={document.file_path}
                               alt="Booking Document"
@@ -550,8 +855,8 @@ function ManageBookingsPage() {
                               rel="noreferrer"
                               className="download-document-btn"
                             >
-                              <i className="fa-solid fa-eye"></i>
-                              View / Review Document
+                              <i className="fa-solid fa-eye"></i> View / Review
+                              Document
                             </a>
                           )}
                         </div>
@@ -565,7 +870,9 @@ function ManageBookingsPage() {
                         <strong>Document Status:</strong>{" "}
                         <span
                           className={`document-status ${getStatusClass(
-                            document?.document_status || "pending"
+                            document?.document_status ||
+                              booking.document_status ||
+                              "pending"
                           )}`}
                         >
                           {documentStatus}

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import "./HousingsPage.css";
 import { getDorms, API_BASE_URL } from "../api";
 
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
 function HousingsPage() {
   const [dorms, setDorms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,56 +26,28 @@ function HousingsPage() {
   };
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
+
     getDorms()
       .then((data) => {
-        const normalizedDorms = Array.isArray(data) ? data.map(normalizeDorm) : [];
+        const dormList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+        const normalizedDorms = dormList.map(normalizeDorm);
         setDorms(normalizedDorms);
-        setLoading(false);
       })
       .catch((error) => {
         console.error("Failed to load dorms:", error);
         setError("Could not load dorms from the backend.");
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, []);
-
-  const getDormImage = (dorm) => {
-    const imagePath =
-      dorm.image_url ||
-      dorm.images?.[0]?.image_url ||
-      "images/aub1.jpg";
-
-    if (imagePath.startsWith("http")) {
-      return imagePath;
-    }
-
-    if (imagePath.startsWith("/storage") || imagePath.startsWith("storage")) {
-      return `${API_BASE_URL}/${imagePath.replace(/^\/+/, "")}`;
-    }
-
-    const fileName = imagePath.replace("images/", "");
-
-    try {
-      return require(`../assets/images/${fileName}`);
-    } catch {
-      return require("../assets/images/aub1.jpg");
-    }
-  };
-
-  const normalizeRoomType = (roomTypeValue) => {
-    if (!roomTypeValue) return "";
-
-    const value = String(roomTypeValue).trim().toLowerCase();
-
-    if (value === "single" || value === "single room") return "Single Room";
-    if (value === "double" || value === "double room") return "Double Room";
-    if (value === "triple" || value === "triple room") return "Triple Room";
-    if (value === "shared" || value === "shared room") return "Shared Room";
-    if (value === "studio") return "Studio";
-    if (value === "apartment") return "Apartment";
-
-    return roomTypeValue;
-  };
 
   function normalizeDorm(dorm) {
     const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
@@ -112,6 +86,54 @@ function HousingsPage() {
       facilities: Array.isArray(dorm.facilities) ? dorm.facilities : [],
     };
   }
+
+  const getDormImage = (dorm) => {
+    const imagePath =
+      dorm.image_url ||
+      dorm.images?.[0]?.image_url ||
+      "images/aub1.jpg";
+
+    if (!imagePath) {
+      return require("../assets/images/aub1.jpg");
+    }
+
+    if (imagePath.startsWith("http")) {
+      return imagePath;
+    }
+
+    const cleanPath = imagePath.replace(/^\/+/, "");
+
+    if (
+      cleanPath.startsWith("storage/") ||
+      cleanPath.startsWith("uploads/") ||
+      cleanPath.startsWith("public/")
+    ) {
+      return `${BACKEND_BASE_URL}/${cleanPath}`;
+    }
+
+    const fileName = cleanPath.replace("images/", "");
+
+    try {
+      return require(`../assets/images/${fileName}`);
+    } catch {
+      return require("../assets/images/aub1.jpg");
+    }
+  };
+
+  const normalizeRoomType = (roomTypeValue) => {
+    if (!roomTypeValue) return "";
+
+    const value = String(roomTypeValue).trim().toLowerCase();
+
+    if (value === "single" || value === "single room") return "Single Room";
+    if (value === "double" || value === "double room") return "Double Room";
+    if (value === "triple" || value === "triple room") return "Triple Room";
+    if (value === "shared" || value === "shared room") return "Shared Room";
+    if (value === "studio") return "Studio";
+    if (value === "apartment") return "Apartment";
+
+    return roomTypeValue;
+  };
 
   const getDormAvailability = (dorm) => {
     const rooms = Array.isArray(dorm.rooms) ? dorm.rooms : [];
@@ -183,6 +205,21 @@ function HousingsPage() {
     return true;
   };
 
+  const getAvailableCities = () => {
+    if (university) {
+      return universityCities[university] || [];
+    }
+
+    const citySet = new Set();
+
+    dorms.forEach((dorm) => {
+      if (dorm.city) citySet.add(dorm.city);
+      if (dorm.area) citySet.add(dorm.area);
+    });
+
+    return Array.from(citySet).sort();
+  };
+
   const getFilteredDorms = () => {
     let filteredDorms = [...dorms];
 
@@ -252,7 +289,7 @@ function HousingsPage() {
   };
 
   const filteredDorms = getFilteredDorms();
-  const cities = university ? universityCities[university] || [] : [];
+  const cities = getAvailableCities();
 
   return (
     <div className="housings-page">
@@ -465,7 +502,8 @@ function HousingsPage() {
 
                     <p>
                       <i className="fa-solid fa-circle-info"></i>
-                      {dorm.eligibility_requirements || "Eligibility not specified"}
+                      {dorm.eligibility_requirements ||
+                        "Eligibility not specified"}
                     </p>
 
                     <p>
@@ -591,10 +629,10 @@ function HousingsPage() {
           <div className="housings-footer-box">
             <h3>Follow Us</h3>
             <div className="housings-social-icons">
-              <a href="#">
+              <a href="/">
                 <i className="fa-brands fa-facebook-f"></i>
               </a>
-              <a href="#">
+              <a href="/">
                 <i className="fa-brands fa-instagram"></i>
               </a>
             </div>

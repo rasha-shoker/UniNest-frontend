@@ -1,30 +1,46 @@
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 async function request(endpoint, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    throw new Error(responseText || `Request failed: ${endpoint}`);
-  }
-
-  if (!responseText) {
-    return null;
-  }
+  const url = `${API_BASE_URL}${endpoint}`;
 
   try {
-    return JSON.parse(responseText);
-  } catch {
-    return responseText;
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error("API request failed:", {
+        url,
+        status: response.status,
+        responseText,
+      });
+
+      throw new Error(responseText || `Request failed: ${endpoint}`);
+    }
+
+    if (!responseText) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      return responseText;
+    }
+  } catch (error) {
+    console.error("API connection error:", {
+      url,
+      error,
+    });
+
+    throw error;
   }
 }
 
@@ -51,7 +67,7 @@ export function createAdmin(data) {
 
 export function updateAdmin(admin_id, data) {
   return request(`/admins/${admin_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -83,7 +99,7 @@ export function createDorm(data) {
 
 export function updateDorm(dorm_id, data) {
   return request(`/dorms/${dorm_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -115,7 +131,7 @@ export function createRoom(data) {
 
 export function updateRoom(room_id, data) {
   return request(`/rooms/${room_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -147,7 +163,7 @@ export function createBooking(data) {
 
 export function updateBooking(booking_id, data) {
   return request(`/bookings/${booking_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -179,7 +195,7 @@ export function createResident(data) {
 
 export function updateResident(resident_id, data) {
   return request(`/residents/${resident_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -211,7 +227,7 @@ export function createPayment(data) {
 
 export function updatePayment(payment_id, data) {
   return request(`/payments/${payment_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -243,7 +259,7 @@ export function createDocument(data) {
 
 export function updateDocument(document_id, data) {
   return request(`/documents/${document_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -275,7 +291,7 @@ export function createMaintenanceRequest(data) {
 
 export function updateMaintenanceRequest(maintenance_request_id, data) {
   return request(`/maintenance-requests/${maintenance_request_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -307,7 +323,7 @@ export function createMaintenanceStaff(data) {
 
 export function updateMaintenanceStaff(maintenance_id, data) {
   return request(`/maintenance-staff/${maintenance_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -339,7 +355,7 @@ export function createReview(data) {
 
 export function updateReview(review_id, data) {
   return request(`/reviews/${review_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -371,7 +387,7 @@ export function createImage(data) {
 
 export function updateImage(image_id, data) {
   return request(`/images/${image_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -383,11 +399,15 @@ export function deleteImage(image_id) {
 }
 
 /* =========================
-   Optional Future Endpoints
+   Notifications
 ========================= */
 
 export function getNotifications() {
   return request("/notifications");
+}
+
+export function getNotification(notification_id) {
+  return request(`/notifications/${notification_id}`);
 }
 
 export function createNotification(data) {
@@ -399,7 +419,7 @@ export function createNotification(data) {
 
 export function updateNotification(notification_id, data) {
   return request(`/notifications/${notification_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -410,8 +430,16 @@ export function deleteNotification(notification_id) {
   });
 }
 
+/* =========================
+   Facilities
+========================= */
+
 export function getFacilities() {
   return request("/facilities");
+}
+
+export function getFacility(facility_id) {
+  return request(`/facilities/${facility_id}`);
 }
 
 export function createFacility(data) {
@@ -423,7 +451,7 @@ export function createFacility(data) {
 
 export function updateFacility(facility_id, data) {
   return request(`/facilities/${facility_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -434,8 +462,16 @@ export function deleteFacility(facility_id) {
   });
 }
 
+/* =========================
+   Room Availabilities
+========================= */
+
 export function getRoomAvailabilities() {
   return request("/room-availabilities");
+}
+
+export function getRoomAvailability(availability_id) {
+  return request(`/room-availabilities/${availability_id}`);
 }
 
 export function createRoomAvailability(data) {
@@ -447,7 +483,7 @@ export function createRoomAvailability(data) {
 
 export function updateRoomAvailability(availability_id, data) {
   return request(`/room-availabilities/${availability_id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -458,8 +494,16 @@ export function deleteRoomAvailability(availability_id) {
   });
 }
 
+/* =========================
+   Room Facilities
+========================= */
+
 export function getRoomFacilities() {
   return request("/room-facilities");
+}
+
+export function getRoomFacility(room_id, facility_id) {
+  return request(`/room-facilities/${room_id}/${facility_id}`);
 }
 
 export function createRoomFacility(data) {
@@ -469,8 +513,8 @@ export function createRoomFacility(data) {
   });
 }
 
-export function deleteRoomFacility(room_facility_id) {
-  return request(`/room-facilities/${room_facility_id}`, {
+export function deleteRoomFacility(room_id, facility_id) {
+  return request(`/room-facilities/${room_id}/${facility_id}`, {
     method: "DELETE",
   });
 }

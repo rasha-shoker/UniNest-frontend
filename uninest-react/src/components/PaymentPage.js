@@ -1,39 +1,24 @@
 import { useEffect, useState } from "react";
 import "./PaymentPage.css";
-import { createPayment, getBookings, getPayments } from "../api";
+import { createPayment, getPayments, updateBooking } from "../api";
 
 function PaymentPage() {
-  const params = new URLSearchParams(window.location.search);
-  const bookingId = Number(params.get("bookingId"));
-
-  const loggedInUser = localStorage.getItem("loggedInUser");
-  const loggedInUserEmail = localStorage.getItem("loggedInUserEmail") || "";
-  const loggedInRole = localStorage.getItem("loggedInRole");
-  const loggedInUserType =
-    localStorage.getItem("loggedInUserType") || loggedInRole;
-  const loggedInResidentId = localStorage.getItem("loggedInResidentId");
-
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [userPayments, setUserPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [payments, setPayments] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const logout = (event) => {
-    event.preventDefault();
+  const loggedInResidentId = localStorage.getItem("loggedInResidentId") || "";
+  const loggedInUserEmail = (
+    localStorage.getItem("loggedInUserEmail") || ""
+  ).toLowerCase();
 
-    localStorage.removeItem("loggedInAdminId");
-    localStorage.removeItem("loggedInResidentId");
-    localStorage.removeItem("loggedInUser");
-    localStorage.removeItem("loggedInUserEmail");
-    localStorage.removeItem("loggedInRole");
-    localStorage.removeItem("loggedInUserType");
-
-    window.location.href = "/";
-  };
+  useEffect(() => {
+    loadPaymentPage();
+  }, []);
 
   const normalizeStatus = (status) => {
     return String(status || "pending").toLowerCase();
@@ -51,6 +36,25 @@ function PaymentPage() {
     return "Pending";
   };
 
+  const getStatusClass = (status) => {
+    const value = normalizeStatus(status);
+
+    if (value === "paid" || value === "completed") return "paid";
+    if (value === "approved") return "approved";
+    if (value === "rejected") return "rejected";
+    if (value === "cancelled") return "cancelled";
+
+    return "pending";
+  };
+
+  const formatDateToday = () => {
+    return new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   const normalizeBooking = (booking) => {
     const room = booking.room || {};
     const dorm = room.dorm || booking.dorm || {};
@@ -61,204 +65,330 @@ function PaymentPage() {
 
       booking_id: booking.booking_id || booking.id,
       resident_id: booking.resident_id || resident.resident_id || "",
-      resident_name: booking.resident_name || resident.full_name || "",
-      email: booking.email || resident.email || "",
+      resident_name:
+        booking.resident_name ||
+        booking.residentName ||
+        booking.userName ||
+        booking.studentName ||
+        resident.full_name ||
+        resident.user?.full_name ||
+        "Resident",
 
-      dorm_id: booking.dorm_id || dorm.dorm_id || room.dorm_id || "",
-      dorm_name: booking.dorm_name || dorm.dorm_name || "Dorm Name",
+      email: (
+        booking.email ||
+        booking.userEmail ||
+        booking.studentEmail ||
+        booking.residentEmail ||
+        resident.email ||
+        resident.user?.email ||
+        ""
+      ).toLowerCase(),
+
+      dorm_id:
+        booking.dorm_id ||
+        booking.housingId ||
+        dorm.dorm_id ||
+        room.dorm_id ||
+        "",
+
+      dorm_name:
+        booking.dorm_name ||
+        booking.housingName ||
+        dorm.dorm_name ||
+        "Dorm Name",
 
       city: booking.city || dorm.city || "",
-      area: booking.area || dorm.area || "",
+      area: booking.area || dorm.area || booking.location || "",
 
-      room_id: booking.room_id || room.room_id || "",
-      room_number: booking.room_number || room.room_number || "",
-      room_type: booking.room_type || room.room_type || "",
-      room_price: Number(booking.room_price || room.room_price || 0),
+      room_id: booking.room_id || booking.roomId || room.room_id || "",
+      room_number:
+        booking.room_number || booking.roomNumber || room.room_number || "-",
+      room_type: booking.room_type || booking.roomType || room.room_type || "-",
+      room_price: Number(
+        booking.room_price || booking.price || room.room_price || 0
+      ),
 
-      check_in_date: booking.check_in_date || "-",
-      check_out_date: booking.check_out_date || "-",
-      total_price: Number(booking.total_price || 0),
+      check_in_date: booking.check_in_date || booking.checkInDate || "",
+      check_out_date: booking.check_out_date || booking.checkOutDate || "",
+      total_price: Number(
+        booking.total_price || booking.totalCost || booking.amount || 0
+      ),
 
-      booking_status: booking.booking_status || "pending",
-      created_at: booking.created_at || "",
+      booking_status: booking.booking_status || booking.status || "pending",
+      payment_status:
+        booking.payment_status || booking.paymentStatus || "pending",
+
+      created_at: booking.created_at || booking.createdAt || "",
+      isLocal: booking.isLocal || false,
     };
   };
 
   const normalizePayment = (payment) => {
-    const booking = payment.booking || {};
-    const bookingRoom = booking.room || {};
-    const dorm = bookingRoom.dorm || {};
-
     return {
       ...payment,
-
       payment_id: payment.payment_id || payment.id,
-      booking_id: payment.booking_id || booking.booking_id,
-
+      booking_id: payment.booking_id || payment.bookingId,
       amount: Number(payment.amount || 0),
-      payment_method: payment.payment_method || "-",
-      payment_status: payment.payment_status || "pending",
-      created_at: payment.created_at || "-",
-
-      dorm_name: payment.dorm_name || dorm.dorm_name || "Dorm Name",
-      room_number: payment.room_number || bookingRoom.room_number || "-",
-      room_type: payment.room_type || bookingRoom.room_type || "-",
+      payment_method: payment.payment_method || payment.method || "Cash",
+      payment_status: payment.payment_status || payment.status || "pending",
+      created_at: payment.created_at || payment.payment_date || "",
+      isLocal: payment.isLocal || false,
     };
   };
 
-  const loadPaymentPageData = async () => {
+  const getLocalBookings = () => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    return localBookings.map((booking) =>
+      normalizeBooking({
+        ...booking,
+        isLocal: true,
+      })
+    );
+  };
+
+  const getLocalPayments = () => {
+    const localPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    return localPayments.map((payment) =>
+      normalizePayment({
+        ...payment,
+        isLocal: true,
+      })
+    );
+  };
+
+  const loadPaymentPage = async () => {
     try {
       setLoading(true);
 
-      const [bookingsResponse, paymentsResponse] = await Promise.all([
-        getBookings(),
-        getPayments().catch(() => []),
-      ]);
+      const savedBooking = localStorage.getItem("selectedBookingForPayment");
 
-      const bookingsList = Array.isArray(bookingsResponse)
-        ? bookingsResponse
-        : bookingsResponse.data || [];
+      if (savedBooking) {
+        setSelectedBooking(normalizeBooking(JSON.parse(savedBooking)));
+      }
 
-      const paymentsList = Array.isArray(paymentsResponse)
-        ? paymentsResponse
-        : paymentsResponse.data || [];
+      const localPayments = getLocalPayments();
 
-      const currentEmail = loggedInUserEmail.toLowerCase();
-      const currentResidentId = String(loggedInResidentId || "");
+      let backendPayments = [];
 
-      const normalizedBookings = bookingsList.map(normalizeBooking);
+      try {
+        const paymentsResponse = await getPayments();
 
-      const foundBooking = normalizedBookings.find((booking) => {
-        const bookingEmail = String(booking.email || "").toLowerCase();
-        const bookingResidentId = String(booking.resident_id || "");
+        const paymentsList = Array.isArray(paymentsResponse)
+          ? paymentsResponse
+          : paymentsResponse.data || [];
 
-        return (
-          Number(booking.booking_id) === Number(bookingId) &&
-          (bookingResidentId === currentResidentId ||
-            bookingEmail === currentEmail)
-        );
-      });
+        backendPayments = paymentsList.map(normalizePayment);
+      } catch (error) {
+        console.warn("Backend payments could not be loaded:", error);
+      }
 
-      const normalizedPayments = paymentsList.map(normalizePayment);
-
-      const filteredPayments = normalizedPayments.filter((payment) => {
-        const paymentBooking = normalizedBookings.find((booking) => {
-          return Number(booking.booking_id) === Number(payment.booking_id);
-        });
-
-        if (!paymentBooking) {
-          return false;
-        }
-
-        const paymentBookingResidentId = String(paymentBooking.resident_id || "");
-        const paymentBookingEmail = String(paymentBooking.email || "").toLowerCase();
-
-        return (
-          paymentBookingResidentId === currentResidentId ||
-          paymentBookingEmail === currentEmail
-        );
-      });
-
-      setSelectedBooking(foundBooking || null);
-      setUserPayments(filteredPayments);
+      setPayments([...backendPayments, ...localPayments]);
     } catch (error) {
-      console.error("Failed to load payment data:", error);
-      alert("Could not load payment data from backend.");
+      console.error("Payment page load failed:", error);
+      alert("Could not load payment page.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadPaymentPageData();
-  }, []);
-
-  const paymentForSelectedBooking = userPayments.find((payment) => {
-    return Number(payment.booking_id) === Number(bookingId);
-  });
-
-  const selectedPaymentStatus =
-    paymentForSelectedBooking?.payment_status || "pending";
-
-  const amount = Number(
-    selectedBooking?.total_price || selectedBooking?.room_price || 0
-  );
-
-  const handleCardNumber = (event) => {
-    let value = event.target.value.replace(/\D/g, "").substring(0, 16);
-    value = value.replace(/(.{4})/g, "$1 ").trim();
-    setCardNumber(value);
+  const getPaymentForBooking = (bookingId) => {
+    return payments.find((payment) => {
+      return Number(payment.booking_id) === Number(bookingId);
+    });
   };
 
-  const handleSubmit = async (event) => {
+  const saveLocalPayment = (paymentObject) => {
+    const oldPayments = JSON.parse(localStorage.getItem("payments")) || [];
+
+    const exists = oldPayments.some((payment) => {
+      return Number(payment.booking_id) === Number(paymentObject.booking_id);
+    });
+
+    if (!exists) {
+      oldPayments.unshift(paymentObject);
+      localStorage.setItem("payments", JSON.stringify(oldPayments));
+    }
+  };
+
+  const updateLocalBookingPaymentStatus = (bookingId, newStatus) => {
+    const localBookings =
+      JSON.parse(localStorage.getItem("studentBookings")) || [];
+
+    const updatedBookings = localBookings.map((booking) => {
+      const currentBookingId = booking.booking_id || booking.id;
+
+      if (Number(currentBookingId) === Number(bookingId)) {
+        return {
+          ...booking,
+          payment_status: newStatus,
+          paymentStatus: newStatus,
+        };
+      }
+
+      return booking;
+    });
+
+    localStorage.setItem("studentBookings", JSON.stringify(updatedBookings));
+
+    const savedBooking = localStorage.getItem("selectedBookingForPayment");
+
+    if (savedBooking) {
+      const parsedBooking = JSON.parse(savedBooking);
+
+      if (Number(parsedBooking.booking_id || parsedBooking.id) === Number(bookingId)) {
+        localStorage.setItem(
+          "selectedBookingForPayment",
+          JSON.stringify({
+            ...parsedBooking,
+            payment_status: newStatus,
+            paymentStatus: newStatus,
+          })
+        );
+      }
+    }
+  };
+
+  const handlePayment = async (event) => {
     event.preventDefault();
 
     if (!selectedBooking) {
-      alert("Booking not found.");
+      alert("No booking selected for payment.");
       window.location.href = "/my-bookings";
       return;
     }
 
-    if (!paymentMethod) {
-      alert("Please select a payment method.");
+    if (normalizeStatus(selectedBooking.booking_status) !== "approved") {
+      alert("Only approved bookings can be paid.");
       return;
     }
 
+    const existingPayment = getPaymentForBooking(selectedBooking.booking_id);
+
     if (
-      (paymentMethod === "Credit Card" || paymentMethod === "Debit Card") &&
-      cardNumber.replace(/\s/g, "").length !== 16
+      existingPayment &&
+      (normalizeStatus(existingPayment.payment_status) === "paid" ||
+        normalizeStatus(existingPayment.payment_status) === "completed")
     ) {
-      alert("Please enter a valid 16-digit card number.");
+      alert("This booking is already paid.");
       return;
     }
 
-    if (
-      (paymentMethod === "Credit Card" || paymentMethod === "Debit Card") &&
-      cardHolder.trim().length < 3
-    ) {
-      alert("Please enter the card holder name.");
-      return;
-    }
+    if (paymentMethod === "Card") {
+      if (!cardHolder.trim() || !cardNumber.trim()) {
+        alert("Please fill card holder and card number.");
+        return;
+      }
 
-    if (
-      normalizeStatus(selectedPaymentStatus) === "paid" ||
-      normalizeStatus(selectedPaymentStatus) === "completed"
-    ) {
-      alert("This booking has already been paid.");
-      window.location.href = "/my-bookings";
-      return;
+      if (cardNumber.trim().length < 8) {
+        alert("Card number is too short.");
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
 
-      await createPayment({
-        booking_id: selectedBooking.booking_id,
-        amount: amount,
+      const paymentPayload = {
+        booking_id: Number(selectedBooking.booking_id),
+        amount: Number(selectedBooking.total_price || 0),
         payment_method: paymentMethod,
         payment_status: "paid",
-      });
+      };
+
+      const createdPaymentResponse = await createPayment(paymentPayload);
+
+      const createdPayment =
+        createdPaymentResponse?.data && createdPaymentResponse.data.payment_id
+          ? createdPaymentResponse.data
+          : createdPaymentResponse;
+
+      const localPayment = {
+        payment_id: createdPayment?.payment_id || Date.now(),
+        booking_id: Number(selectedBooking.booking_id),
+        amount: Number(selectedBooking.total_price || 0),
+        payment_method: paymentMethod,
+        payment_status: "paid",
+        created_at: formatDateToday(),
+        payment_date: formatDateToday(),
+        isLocal: selectedBooking.isLocal || false,
+      };
+
+      saveLocalPayment(localPayment);
+
+      try {
+        await updateBooking(selectedBooking.booking_id, {
+          payment_status: "paid",
+        });
+      } catch (bookingUpdateError) {
+        console.warn("Booking payment status update failed:", bookingUpdateError);
+      }
+
+      updateLocalBookingPaymentStatus(selectedBooking.booking_id, "paid");
 
       alert("Payment completed successfully.");
       window.location.href = "/my-bookings";
     } catch (error) {
-      console.error("Payment failed:", error);
-      alert("Payment could not be completed. Make sure POST /payments exists.");
+      console.warn("Backend payment failed, saving locally:", error);
+
+      const localPayment = {
+        payment_id: Date.now(),
+        booking_id: Number(selectedBooking.booking_id),
+        amount: Number(selectedBooking.total_price || 0),
+        payment_method: paymentMethod,
+        payment_status: "paid",
+        created_at: formatDateToday(),
+        payment_date: formatDateToday(),
+        isLocal: true,
+      };
+
+      saveLocalPayment(localPayment);
+      updateLocalBookingPaymentStatus(selectedBooking.booking_id, "paid");
+
+      alert("Payment saved locally for frontend testing.");
+      window.location.href = "/my-bookings";
     } finally {
       setSubmitting(false);
     }
   };
 
-  const canShowPaymentForm =
-    bookingId &&
-    selectedBooking &&
-    (loggedInUserType === "student" || loggedInUserType === "employee") &&
-    normalizeStatus(selectedBooking.booking_status) === "approved" &&
-    normalizeStatus(selectedPaymentStatus) !== "paid" &&
-    normalizeStatus(selectedPaymentStatus) !== "completed";
+  const logout = (event) => {
+    event.preventDefault();
+
+    localStorage.removeItem("loggedInAdminId");
+    localStorage.removeItem("loggedInResidentId");
+    localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("loggedInUserEmail");
+    localStorage.removeItem("loggedInRole");
+    localStorage.removeItem("loggedInUserType");
+
+    window.location.href = "/";
+  };
+
+  const myPayments = payments.filter((payment) => {
+    const localBookings = getLocalBookings();
+
+    const relatedBooking = localBookings.find((booking) => {
+      return Number(booking.booking_id) === Number(payment.booking_id);
+    });
+
+    if (!relatedBooking) {
+      return true;
+    }
+
+    const sameResident =
+      String(relatedBooking.resident_id || "") === String(loggedInResidentId);
+
+    const sameEmail =
+      String(relatedBooking.email || "").toLowerCase() === loggedInUserEmail;
+
+    return sameResident || sameEmail;
+  });
 
   return (
-    <div className="payment-page payment-layout">
+    <div className="payment-layout">
       <aside className="payment-sidebar">
         <div className="sidebar-logo">
           <h2>UniNest</h2>
@@ -320,214 +450,183 @@ function PaymentPage() {
         <div className="payment-topbar">
           <div>
             <h1>Payment</h1>
-            <p>Pay your approved booking fees and view your payment history.</p>
+            <p>Pay your approved booking and view payment records.</p>
           </div>
-
-          <a href="/my-bookings" className="primary-btn">
-            <i className="fa-solid fa-arrow-left"></i> My Bookings
-          </a>
         </div>
 
-        <section className="payment-container">
-          <div className="payment-summary-card">
-            <h2>Booking Summary</h2>
-
-            {loading ? (
-              <div className="payment-warning">Loading payment details...</div>
-            ) : !selectedBooking ? (
-              <div className="payment-warning">
-                Please choose an approved booking from My Bookings to pay.
-              </div>
-            ) : (
-              <>
-                <p>
-                  <i className="fa-solid fa-building"></i>{" "}
-                  <strong>Dorm:</strong>{" "}
-                  {selectedBooking.dorm_name || "Dorm Name"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-location-dot"></i>{" "}
-                  <strong>Location:</strong>{" "}
-                  {selectedBooking.city || "-"}
-                  {selectedBooking.area ? ` - ${selectedBooking.area}` : ""}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-door-open"></i>{" "}
-                  <strong>Room Number:</strong>{" "}
-                  {selectedBooking.room_number || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-bed"></i>{" "}
-                  <strong>Room Type:</strong>{" "}
-                  {selectedBooking.room_type || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-calendar-check"></i>{" "}
-                  <strong>Check-in:</strong>{" "}
-                  {selectedBooking.check_in_date || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-calendar-xmark"></i>{" "}
-                  <strong>Check-out:</strong>{" "}
-                  {selectedBooking.check_out_date || "-"}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-money-bill"></i>{" "}
-                  <strong>Total Cost:</strong> ${amount}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-circle-check"></i>{" "}
-                  <strong>Booking Status:</strong>{" "}
-                  {displayStatus(selectedBooking.booking_status)}
-                </p>
-
-                <p>
-                  <i className="fa-solid fa-credit-card"></i>{" "}
-                  <strong>Payment Status:</strong>{" "}
-                  {displayStatus(selectedPaymentStatus)}
-                </p>
-
-                {!canShowPaymentForm && (
-                  <div className="payment-warning">
-                    Only approved unpaid bookings can be paid.
-                  </div>
-                )}
-              </>
-            )}
+        {loading ? (
+          <div className="payment-card">
+            <h2>Loading payment page...</h2>
           </div>
+        ) : (
+          <section className="payment-content">
+            <div className="payment-card">
+              <h2>Selected Booking</h2>
 
-          <div className="payment-form-card">
-            <h2>Payment Information</h2>
+              {selectedBooking ? (
+                <>
+                  <div className="payment-booking-summary">
+                    <p>
+                      <strong>Dorm:</strong> {selectedBooking.dorm_name}
+                    </p>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="paymentMethod">Payment Method</label>
+                    <p>
+                      <strong>Room:</strong> {selectedBooking.room_number}
+                    </p>
 
-                <select
-                  id="paymentMethod"
-                  value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  disabled={!canShowPaymentForm}
-                  required
-                >
-                  <option value="">Select payment method</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-              </div>
+                    <p>
+                      <strong>Room Type:</strong> {selectedBooking.room_type}
+                    </p>
 
-              {(paymentMethod === "Credit Card" ||
-                paymentMethod === "Debit Card") && (
-                <div className="card-fields">
-                  <div className="form-group">
-                    <label htmlFor="cardNumber">Card Number</label>
-                    <input
-                      type="text"
-                      id="cardNumber"
-                      placeholder="XXXX XXXX XXXX XXXX"
-                      maxLength="19"
-                      value={cardNumber}
-                      onChange={handleCardNumber}
-                      disabled={!canShowPaymentForm}
-                    />
+                    <p>
+                      <strong>Check-in:</strong>{" "}
+                      {selectedBooking.check_in_date || "-"}
+                    </p>
+
+                    <p>
+                      <strong>Check-out:</strong>{" "}
+                      {selectedBooking.check_out_date || "-"}
+                    </p>
+
+                    <p>
+                      <strong>Booking Status:</strong>{" "}
+                      {displayStatus(selectedBooking.booking_status)}
+                    </p>
+
+                    <p>
+                      <strong>Payment Status:</strong>{" "}
+                      {displayStatus(selectedBooking.payment_status)}
+                    </p>
+
+                    <p className="payment-amount">
+                      <strong>Total Amount:</strong> $
+                      {selectedBooking.total_price || 0}
+                    </p>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="cardHolder">Card Holder Name</label>
-                    <input
-                      type="text"
-                      id="cardHolder"
-                      placeholder="Full name"
-                      value={cardHolder}
-                      onChange={(event) => setCardHolder(event.target.value)}
-                      disabled={!canShowPaymentForm}
-                    />
-                  </div>
+                  {normalizeStatus(selectedBooking.booking_status) ===
+                  "approved" ? (
+                    normalizeStatus(selectedBooking.payment_status) === "paid" ||
+                    normalizeStatus(selectedBooking.payment_status) ===
+                      "completed" ? (
+                      <div className="payment-note success-note">
+                        <p>This booking is already paid.</p>
+                      </div>
+                    ) : (
+                      <form onSubmit={handlePayment} className="payment-form">
+                        <div className="form-group">
+                          <label>Payment Method</label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(event) =>
+                              setPaymentMethod(event.target.value)
+                            }
+                          >
+                            <option value="Cash">Cash</option>
+                            <option value="Card">Card</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                          </select>
+                        </div>
+
+                        {paymentMethod === "Card" && (
+                          <>
+                            <div className="form-group">
+                              <label>Card Holder</label>
+                              <input
+                                type="text"
+                                value={cardHolder}
+                                onChange={(event) =>
+                                  setCardHolder(event.target.value)
+                                }
+                                placeholder="Enter card holder name"
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label>Card Number</label>
+                              <input
+                                type="text"
+                                value={cardNumber}
+                                onChange={(event) =>
+                                  setCardNumber(event.target.value)
+                                }
+                                placeholder="Enter card number"
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="pay-btn"
+                          disabled={submitting}
+                        >
+                          {submitting ? "Processing..." : "Confirm Payment"}
+                        </button>
+                      </form>
+                    )
+                  ) : (
+                    <div className="payment-note">
+                      <p>
+                        This booking must be approved by admin before payment.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="payment-note">
+                  <p>No booking selected for payment.</p>
+                  <a href="/my-bookings" className="pay-btn">
+                    Go to My Bookings
+                  </a>
                 </div>
               )}
+            </div>
 
-              <div className="payment-total-box">
-                <p>Payment Amount</p>
-                <h3>${amount}</h3>
-                <small>
-                  Payment status will be saved as Paid after submission.
-                </small>
-              </div>
-
-              <button
-                type="submit"
-                className="primary-btn"
-                disabled={!canShowPaymentForm || submitting}
-              >
-                {submitting ? "Processing..." : "Confirm Payment"}
-              </button>
-            </form>
-          </div>
-        </section>
-
-        <section className="payment-history-section">
-          <div className="payment-topbar small-topbar">
-            <div>
+            <div className="payment-card">
               <h2>Payment History</h2>
-              <p>All your previous payment records.</p>
-            </div>
-          </div>
 
-          {userPayments.length === 0 ? (
-            <div className="payment-empty">
-              <h3>No payments yet</h3>
-              <p>You have not completed any payment yet.</p>
-            </div>
-          ) : (
-            userPayments
-              .slice()
-              .reverse()
-              .map((payment) => (
-                <div className="payment-history-card" key={payment.payment_id}>
-                  <div>
-                    <h3>{payment.dorm_name || "Dorm Name"}</h3>
-                    <p>
-                      <i className="fa-solid fa-receipt"></i> Payment ID:{" "}
-                      {payment.payment_id}
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-door-open"></i> Room:{" "}
-                      {payment.room_number || "-"} - {payment.room_type || "-"}
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-money-bill"></i> Amount: $
-                      {payment.amount}
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-credit-card"></i> Method:{" "}
-                      {payment.payment_method}
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-calendar-days"></i> Date:{" "}
-                      {payment.created_at}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`payment-status ${normalizeStatus(
-                      payment.payment_status
-                    )}`}
-                  >
-                    {displayStatus(payment.payment_status)}
-                  </span>
+              {myPayments.length === 0 ? (
+                <div className="empty-payments">
+                  <p>No payments yet.</p>
                 </div>
-              ))
-          )}
-        </section>
+              ) : (
+                <div className="payment-list">
+                  {myPayments.map((payment) => (
+                    <div className="payment-history-card" key={payment.payment_id}>
+                      <div>
+                        <h3>Payment #{payment.payment_id}</h3>
+                        <p>
+                          <strong>Booking ID:</strong> {payment.booking_id}
+                        </p>
+                        <p>
+                          <strong>Method:</strong> {payment.payment_method}
+                        </p>
+                        <p>
+                          <strong>Date:</strong> {payment.created_at || "-"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p>
+                          <strong>${payment.amount}</strong>
+                        </p>
+
+                        <span
+                          className={`status-badge ${getStatusClass(
+                            payment.payment_status
+                          )}`}
+                        >
+                          {displayStatus(payment.payment_status)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

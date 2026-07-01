@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./HousingDetailsPage.css";
-import { getDorms, API_BASE_URL } from "../api";
+import { getDorm, API_BASE_URL } from "../api";
 
 function HousingDetailsPage() {
   const params = new URLSearchParams(window.location.search);
@@ -14,6 +14,8 @@ function HousingDetailsPage() {
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
   const formatDateToday = () => {
     return new Date().toLocaleDateString("en-GB", {
@@ -30,32 +32,44 @@ function HousingDetailsPage() {
       return;
     }
 
-    getDorms()
-      .then((data) => {
-        const dormsList = Array.isArray(data) ? data : data.data || [];
-
-        const foundDorm = dormsList.find((item) => {
-          return Number(item.dorm_id) === Number(dormId);
-        });
-
-        if (!foundDorm) {
-          setError("Dorm not found.");
-          setLoading(false);
-          return;
-        }
-
-        const normalizedDorm = normalizeDorm(foundDorm);
-
-        setDorm(normalizedDorm);
-        localStorage.setItem("selectedDormId", normalizedDorm.dorm_id);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Failed to load dorm details:", error);
-        setError("Could not load dorm details from the backend.");
-        setLoading(false);
-      });
+    loadDormDetails();
   }, [dormId]);
+
+  const loadDormDetails = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await getDorm(dormId);
+
+      const dormData =
+        response && response.data && response.data.dorm_id
+          ? response.data
+          : response;
+
+      if (!dormData || !dormData.dorm_id) {
+        setError("Dorm not found.");
+        setLoading(false);
+        return;
+      }
+
+      const normalizedDorm = normalizeDorm(dormData);
+
+      setDorm(normalizedDorm);
+      localStorage.setItem("selectedDormId", normalizedDorm.dorm_id);
+      localStorage.setItem("selectedHousingId", normalizedDorm.dorm_id);
+
+      if (normalizedDorm.image_url) {
+        setMainImage(normalizedDorm.image_url);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load dorm details:", error);
+      setError("Could not load dorm details from the backend.");
+      setLoading(false);
+    }
+  };
 
   const getImageSource = (imageInput) => {
     let imagePath = "";
@@ -77,6 +91,10 @@ function HousingDetailsPage() {
 
     const imagePathString = String(imagePath);
 
+    if (imagePathString.startsWith("data:")) {
+      return imagePathString;
+    }
+
     if (imagePathString.startsWith("http")) {
       return imagePathString;
     }
@@ -85,7 +103,14 @@ function HousingDetailsPage() {
       imagePathString.startsWith("/storage") ||
       imagePathString.startsWith("storage")
     ) {
-      return `${API_BASE_URL}/${imagePathString.replace(/^\/+/, "")}`;
+      return `${BACKEND_BASE_URL}/${imagePathString.replace(/^\/+/, "")}`;
+    }
+
+    if (
+      imagePathString.startsWith("/uploads") ||
+      imagePathString.startsWith("uploads")
+    ) {
+      return `${BACKEND_BASE_URL}/${imagePathString.replace(/^\/+/, "")}`;
     }
 
     const fileName = imagePathString.replace("images/", "");
@@ -93,8 +118,128 @@ function HousingDetailsPage() {
     try {
       return require(`../assets/images/${fileName}`);
     } catch {
-      return require("../assets/images/aub1.jpg");
+      try {
+        return require("../assets/images/aub1.jpg");
+      } catch {
+        return "";
+      }
     }
+  };
+
+  const getRawImageUrl = (imageInput) => {
+    if (!imageInput) return "";
+
+    if (typeof imageInput === "string") {
+      return imageInput;
+    }
+
+    return (
+      imageInput.image_url ||
+      imageInput.image ||
+      imageInput.housingImage ||
+      imageInput.data ||
+      ""
+    );
+  };
+
+  const getFacilityName = (facility) => {
+    if (typeof facility === "string") {
+      return facility;
+    }
+
+    return (
+      facility.facility_name ||
+      facility.name ||
+      facility.room_facility_name ||
+      facility.facility?.facility_name ||
+      facility.facility?.name ||
+      "Facility"
+    );
+  };
+
+  const getAllFacilities = (dormData, rooms) => {
+    const facilities = [];
+
+    if (Array.isArray(dormData.facilities)) {
+      dormData.facilities.forEach((facility) => {
+        const name = getFacilityName(facility);
+        if (name && !facilities.find((item) => item.name === name)) {
+          facilities.push({
+            id: facility.facility_id || facility.id || name,
+            name,
+          });
+        }
+      });
+    }
+
+    rooms.forEach((room) => {
+      if (Array.isArray(room.facilities)) {
+        room.facilities.forEach((facility) => {
+          const name = getFacilityName(facility);
+          if (name && !facilities.find((item) => item.name === name)) {
+            facilities.push({
+              id: facility.facility_id || facility.id || name,
+              name,
+            });
+          }
+        });
+      }
+    });
+
+    return facilities;
+  };
+
+  const normalizeRoom = (room) => {
+    const currentOccupancy = Number(room.current_occupancy || 0);
+    const occupancyLimit = Number(
+      room.occupancy_limit || room.room_capacity || 0
+    );
+
+    let availabilityStatus = room.availability_status || "available";
+
+    if (occupancyLimit > 0 && currentOccupancy >= occupancyLimit) {
+      availabilityStatus = "full";
+    }
+
+    const roomImages = Array.isArray(room.images) ? room.images : [];
+
+    return {
+      ...room,
+      room_id: room.room_id,
+      dorm_id: room.dorm_id,
+      room_number: room.room_number || "-",
+      room_type: room.room_type || "Room",
+      room_capacity: Number(room.room_capacity || 1),
+      current_occupancy: currentOccupancy,
+      occupancy_limit: occupancyLimit,
+      room_price: Number(room.room_price || 0),
+      availability_status: availabilityStatus,
+      image_url:
+        room.image_url ||
+        getRawImageUrl(roomImages[0]) ||
+        "",
+      images: roomImages,
+      facilities: Array.isArray(room.facilities) ? room.facilities : [],
+    };
+  };
+
+  const normalizeReview = (review) => {
+    const resident = review.resident || {};
+
+    return {
+      ...review,
+      review_id: review.review_id || review.id,
+      resident_id: review.resident_id || resident.resident_id || "",
+      resident_name:
+        resident.full_name ||
+        resident.user?.full_name ||
+        review.resident_name ||
+        "Resident",
+      rating: Number(review.rating || 0),
+      review_comment: review.review_comment || review.comment || "",
+      created_at: review.created_at || "",
+      review_status: review.review_status || review.status || "visible",
+    };
   };
 
   const normalizeDorm = (dormData) => {
@@ -102,37 +247,18 @@ function HousingDetailsPage() {
     const images = Array.isArray(dormData.images) ? dormData.images : [];
     const reviews = Array.isArray(dormData.reviews) ? dormData.reviews : [];
 
-    const normalizedRooms = rooms.map((room) => {
-      const currentOccupancy = Number(room.current_occupancy || 0);
-      const occupancyLimit = Number(
-        room.occupancy_limit || room.room_capacity || 0
-      );
+    const normalizedRooms = rooms.map(normalizeRoom);
 
-      let availabilityStatus = room.availability_status || "available";
+    const visibleReviews = reviews
+      .map(normalizeReview)
+      .filter((review) => {
+        return String(review.review_status || "visible").toLowerCase() !== "hidden";
+      });
 
-      if (
-        occupancyLimit > 0 &&
-        currentOccupancy >= occupancyLimit &&
-        !String(availabilityStatus).toLowerCase().includes("available")
-      ) {
-        availabilityStatus = "full";
-      }
-
-      return {
-        ...room,
-        room_id: room.room_id,
-        dorm_id: room.dorm_id,
-        room_number: room.room_number || "-",
-        room_type: room.room_type || "Room",
-        room_capacity: Number(room.room_capacity || 1),
-        current_occupancy: currentOccupancy,
-        occupancy_limit: occupancyLimit,
-        room_price: Number(room.room_price || 0),
-        availability_status: availabilityStatus,
-        image_url: room.image_url || "",
-        facilities: Array.isArray(room.facilities) ? room.facilities : [],
-      };
-    });
+    const mainImage =
+      dormData.image_url ||
+      getRawImageUrl(images[0]) ||
+      "images/aub1.jpg";
 
     return {
       ...dormData,
@@ -149,17 +275,13 @@ function HousingDetailsPage() {
         "Available for students and employees",
       contact_email: dormData.contact_email || "",
       contact_phone: dormData.contact_phone || "",
-      rating: dormData.rating || 0,
-      admin_id: dormData.admin_id,
-      image_url:
-        dormData.image_url ||
-        images[0]?.image_url ||
-        images[0]?.image ||
-        "images/aub1.jpg",
-      images: images,
-      reviews: reviews,
+      rating: Number(dormData.rating || 0),
+      admin_id: dormData.admin_id || "",
+      image_url: mainImage,
+      images,
+      reviews: visibleReviews,
       rooms: normalizedRooms,
-      facilities: Array.isArray(dormData.facilities) ? dormData.facilities : [],
+      facilities: getAllFacilities(dormData, normalizedRooms),
     };
   };
 
@@ -167,22 +289,11 @@ function HousingDetailsPage() {
     const rooms = Array.isArray(currentDorm.rooms) ? currentDorm.rooms : [];
 
     if (rooms.length === 0) {
-      return "Available";
+      return "No Rooms";
     }
 
     const hasAvailableRoom = rooms.some((room) => {
-      const status = String(room.availability_status || "").toLowerCase();
-
-      if (status.includes("available")) {
-        return true;
-      }
-
-      const currentOccupancy = Number(room.current_occupancy || 0);
-      const occupancyLimit = Number(
-        room.occupancy_limit || room.room_capacity || 0
-      );
-
-      return occupancyLimit > 0 && currentOccupancy < occupancyLimit;
+      return !isRoomFull(room);
     });
 
     return hasAvailableRoom ? "Available" : "Full";
@@ -221,19 +332,6 @@ function HousingDetailsPage() {
 
       return <i key={star} className="fa-regular fa-star star-empty"></i>;
     });
-  };
-
-  const getFacilityName = (facility) => {
-    if (typeof facility === "string") {
-      return facility;
-    }
-
-    return (
-      facility.facility_name ||
-      facility.name ||
-      facility.room_facility_name ||
-      "Facility"
-    );
   };
 
   const getFacilityIcon = (facility) => {
@@ -278,24 +376,41 @@ function HousingDetailsPage() {
       return;
     }
 
-    if (!isResidentLoggedInForBooking()) {
-      localStorage.setItem("redirectAfterLogin", "booking");
-      alert("Please login or register before booking.");
-      window.location.href = "/login";
+    if (!selectedRoom) {
+      alert("Please select an available room first.");
       return;
     }
 
-    if (!selectedRoom) {
-      alert("Please select an available room first.");
+    if (isRoomFull(selectedRoom)) {
+      alert("This room is full. Please select another room.");
+      return;
+    }
+
+    if (!isResidentLoggedInForBooking()) {
+      localStorage.setItem("redirectAfterLogin", "booking");
+
+      const visitorPendingBooking = buildPendingBooking("", "", "");
+      localStorage.setItem("pendingBooking", JSON.stringify(visitorPendingBooking));
+
+      alert("Please login or register before booking.");
+      window.location.href = "/login";
       return;
     }
 
     const residentName = localStorage.getItem("loggedInUser") || "";
     const residentId = localStorage.getItem("loggedInResidentId") || "";
     const email = localStorage.getItem("loggedInUserEmail") || "";
+
+    const pendingBooking = buildPendingBooking(residentId, residentName, email);
+
+    localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
+    window.location.href = "/booking";
+  };
+
+  const buildPendingBooking = (residentId, residentName, email) => {
     const bookingId = Date.now();
 
-    const pendingBooking = {
+    return {
       booking_id: bookingId,
       resident_id: residentId,
       room_id: selectedRoom.room_id,
@@ -318,7 +433,7 @@ function HousingDetailsPage() {
 
       room_number: selectedRoom.room_number,
       room_type: selectedRoom.room_type,
-      room_price: Number(selectedRoom.room_price),
+      room_price: Number(selectedRoom.room_price || 0),
 
       document_status: "pending",
       payment_status: "pending",
@@ -340,7 +455,7 @@ function HousingDetailsPage() {
       roomId: selectedRoom.room_id,
       roomNumber: selectedRoom.room_number,
       roomType: selectedRoom.room_type,
-      price: Number(selectedRoom.room_price),
+      price: Number(selectedRoom.room_price || 0),
 
       checkInDate: "",
       checkOutDate: "",
@@ -350,14 +465,12 @@ function HousingDetailsPage() {
       documentStatus: "pending",
       paymentStatus: "pending",
     };
-
-    localStorage.setItem("pendingBooking", JSON.stringify(pendingBooking));
-    window.location.href = "/booking";
   };
 
   const logout = (event) => {
     event.preventDefault();
 
+    localStorage.removeItem("loggedInAdminId");
     localStorage.removeItem("loggedInRole");
     localStorage.removeItem("loggedInUserType");
     localStorage.removeItem("loggedInUser");
@@ -506,7 +619,7 @@ function HousingDetailsPage() {
                     key={index}
                     src={getImageSource(image)}
                     alt={dorm.dorm_name}
-                    onClick={() => setMainImage(image)}
+                    onClick={() => setMainImage(getRawImageUrl(image))}
                   />
                 );
               })}
@@ -693,7 +806,7 @@ function HousingDetailsPage() {
             dorm.facilities.map((facility, index) => (
               <div
                 className="facility-box"
-                key={facility.facility_id || facility.id || index}
+                key={facility.facility_id || facility.id || facility.name || index}
               >
                 <i className={`fa-solid ${getFacilityIcon(facility)}`}></i>
                 <h3>{getFacilityName(facility)}</h3>
@@ -733,11 +846,7 @@ function HousingDetailsPage() {
             dormReviews.map((review, index) => (
               <div className="review-card" key={review.review_id || index}>
                 <div className="review-header">
-                  <h3>
-                    {review.resident?.full_name ||
-                      review.resident_name ||
-                      "Resident"}
-                  </h3>
+                  <h3>{review.resident_name || "Resident"}</h3>
 
                   <span className="review-stars">
                     {renderStars(review.rating)}
